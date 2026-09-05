@@ -7,6 +7,7 @@
 - [A ReDoS test that passed for the wrong reason](#a-redos-test-that-passed-for-the-wrong-reason)
 - [scope.cancel() without join() let one test's coroutine bleed into the next](#scopecancel-without-join-let-one-tests-coroutine-bleed-into-the-next)
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
+- [git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits](#git-reset---hard-meant-for-a-throwaway-test-commit-wiped-real-uncommitted-edits)
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
@@ -125,3 +126,40 @@ started exercising Android-facing code, and nothing caught the mismatch
 until it crashed) — worth remembering the next time a test targets code
 outside `domain/`: check whether it can reach a real Android SDK stub
 call before assuming a JVM test run is a clean signal either way.
+
+## git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits
+
+**2026-09-05.** While manually testing `git-guard-pretooluse.sh`'s new
+`gh pr create` check, a temporary file was added, staged, and committed
+by itself to exercise the hook against a real diff. Real,
+already-written edits to `submit-a-pr/SKILL.md` and
+`git-guard-pretooluse.sh` itself were sitting uncommitted in the same
+working tree at the time — not staged, just present. "Clean up the test
+commit" was done with `git reset --hard HEAD~1`, which does two things
+at once: moves the branch pointer back a commit, *and* discards every
+uncommitted change in the working tree, staged or not. It's exactly the
+hook's own existing check for this ("discards uncommitted changes and
+moves the branch, losing any commits not reachable elsewhere") — which
+did not stop this from happening, because the mistake was recognizing
+"this is a `git reset --hard`" as risk-relevant only in the abstract,
+not registering that *this specific tree, right now* had real unstaged
+work sitting in it. Recovered by redoing both edits from the same
+message's own prior content — recoverable here only because the edits
+were simple enough to reconstruct from memory of having just written
+them; a longer or more exploratory edit would not have been.
+
+The safe versions, used for the retry: commit real work immediately
+after writing it, before any test/cleanup step that touches the tree
+wholesale; when a throwaway commit needs undoing, `git reset --soft`
+(moves the branch pointer, leaves the working tree alone) instead of
+`--hard`; and for anything that doesn't need the actual worktree's
+history at all, use a fully separate throwaway `git init` elsewhere,
+which is what the hook's actual test suite moved to.
+
+**General form:** the git-guard-pretooluse.sh hook already names the
+right question ("confirm nothing unsaved is about to be dropped") — this
+was a case of reading a hook's warning as background noise about the
+command in general rather than a question about the actual, current
+state of the tree it was about to run against. No existing skill states
+this as its own rule; worth folding into a future skill on running
+destructive git commands mid-task if this pattern recurs.

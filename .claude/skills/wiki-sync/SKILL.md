@@ -12,6 +12,14 @@ Run this at the end of any change to this repo that could make something
 wiki describes, which is most small internal edits — check by grepping
 first rather than reflexively opening every page.
 
+**Not purely discretionary once a change is actually landing.** Skill
+`submit-a-pr`'s own step 2 runs this, by name, before a branch is pushed
+— not "remember to do this," a numbered step between "commit" and "push
+and open the PR." `git-guard-pretooluse.sh` also nudges at `gh pr create`
+if the branch added or removed an `app/src/` file with nothing under
+`wiki/` alongside it, as a backstop for a slip. Neither replaces actually
+running the procedure below deliberately.
+
 ## Why this exists
 
 `wiki/README.md` and `wiki/styleguide.md` already state the rule:
@@ -79,6 +87,8 @@ At the end of a change that could make a wiki fact wrong, for example:
 
 ## See also
 
+- [`submit-a-pr`](../submit-a-pr/SKILL.md) — its step 2 is where this
+  procedure is actually invoked before a change lands.
 - [`wiki/styleguide.md`](../../wiki/styleguide.md) — the house rules
   this skill's edits have to follow.
 - [`wiki/README.md`](../../wiki/README.md) — why the wiki is a link
