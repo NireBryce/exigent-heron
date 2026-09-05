@@ -79,7 +79,7 @@ message carries, not as a running paraphrase of the log — see
   by a test; reordered so the in-call check runs first and focus is
   never touched at all when it's going to skip anyway.
 - **`AppContainer`'s Phase 2 hardcoded rule targets `com.google.android.apps.messaging`**
-  (2026-09-05): `AGENTS.md` §6 says "rules hardcoded to one package"
+  (2026-09-05): `BUILD_PLAN.md` says "rules hardcoded to one package"
   without naming one. Google Messages is just a common default app to
   test against, not a meaningful choice — the comment next to
   `phase2HardcodedRules` says to swap it for whatever's actually

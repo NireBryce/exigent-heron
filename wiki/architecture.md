@@ -54,7 +54,7 @@ As of **2026-09-05** (Phase 2 complete except on-device verification, see
 Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
 
 - `debug/FakeNotifications.kt` — the Phase 1 fake-notification injector
-  (`AGENTS.md` §6). `debug/` source set only, per spec; see
+  (`BUILD_PLAN.md`). `debug/` source set only, per spec; see
   [testing.md](testing.md) for how to invoke it. Now shares
   `domain/ContentHash.kt`'s hashing rather than keeping its own copy —
   that duplication was the plan from the start, see its own comment.

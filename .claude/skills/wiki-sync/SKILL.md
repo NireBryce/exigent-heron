@@ -32,7 +32,7 @@ At the end of a change that could make a wiki fact wrong, for example:
   `traps-and-skills.md`, or `status.md` mentions by name
 - finishing a phase, or making real progress on one — `status.md`'s Built
   and Verified columns need to reflect what's actually true, not what
-  `AGENTS.md` §6 says should eventually be true
+  `BUILD_PLAN.md` says should eventually be true
 - fixing a bug `open-threads.md` describes as open, or finding a new one
   worth recording there
 - a decision made while implementing that `AGENTS.md` doesn't already

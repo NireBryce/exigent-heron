@@ -19,10 +19,11 @@ invented here:
 
 - §5: "Never commit a keystore or password" — signing reads from env vars
   only.
-- §6 (phase acceptance criteria): "Zero notification content in logcat
-  under `adb logcat | grep <appid>` during a full day" — the whole reason
+- §8 (definition of done): "Zero notification content in logcat under
+  `adb logcat | grep <appid>` during a full day" — the whole reason
   `SafeLog` (§4.6) exists is to make it structurally impossible for the app
-  to log a notification body.
+  to log a notification body. `BUILD_PLAN.md`'s own per-phase acceptance
+  criteria carry the same bar for the on-device checks in Phases 2 and 5.
 
 Both are about content that must never end up somewhere it can spread
 further. A Claude session quoting either one into the conversation

@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 
 /**
- * "No UI beyond an enable-access button" (AGENTS.md §6 Phase 2). The
+ * "No UI beyond an enable-access button" (BUILD_PLAN.md Phase 2). The
  * rule list, settings, and permission-flow polish arrive in Phases 3–4.
  */
 class MainActivity : ComponentActivity() {

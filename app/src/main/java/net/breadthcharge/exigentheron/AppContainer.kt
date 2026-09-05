@@ -52,7 +52,7 @@ class AppContainer(private val appContext: Context) {
     )
 }
 
-// Phase 2: "Rules hardcoded to one package" (AGENTS.md §6). Google
+// Phase 2: "Rules hardcoded to one package" (BUILD_PLAN.md). Google
 // Messages here is just a common default app to test against — swap the
 // package name for whatever's actually installed on your device. Real
 // persistence and a rule editor arrive in Phase 3.
