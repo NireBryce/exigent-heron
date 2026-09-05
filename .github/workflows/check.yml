@@ -1,0 +1,52 @@
+name: check
+
+# Equivalent of the flake-check workflow in nixos-configs, adapted for a
+# Gradle/Android project rather than a NixOS-hosts flake: same idea
+# (build the dev shell via Nix, then run the actual build/test commands a
+# contributor would run by hand -- see flake.nix's shellHook) but there's
+# no justfile, module tree, or lint ratchet here to mirror, since this
+# repo doesn't have them.
+#
+# Runs inside `nix develop` rather than a Java/Android setup action so CI
+# uses the exact same JDK/Kotlin/Gradle/SDK versions pinned in flake.nix
+# -- no separate version matrix to keep in sync by hand.
+#
+# assembleDebug (not release): release builds need signing config from
+# env vars that don't exist in CI (see app/build.gradle.kts) and aren't
+# a build error to skip -- see AGENTS.md §5. testDebugUnitTest runs
+# whatever JVM unit tests exist under app/src/test; there are none yet
+# as of Phase 0, so this currently just proves the empty test task
+# doesn't break.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: gradle assembleDebug + testDebugUnitTest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: assembleDebug + testDebugUnitTest (nix develop)
+        run: nix develop --command gradle assembleDebug testDebugUnitTest
+
+      # AGENTS.md §4.6, called out by name: "Add a lint check or a simple
+      # CI grep asserting android.util.Log appears in exactly one file."
+      # Plain grep, no nix/gradle needed -- SafeLog.kt is meant to be the
+      # only permitted entry point to Log; a second file using it directly
+      # is exactly the failure mode SafeLog exists to make structurally
+      # impossible (AGENTS.md §0/§4.6: no arbitrary-string logging path).
+      - name: assert android.util.Log usage is confined to one file
+        run: |
+          hits=$(grep -rl 'android\.util\.Log' app/src --include='*.kt' | wc -l)
+          if [ "$hits" -ne 1 ]; then
+            echo "::error::android.util.Log is referenced in $hits Kotlin files under app/src; AGENTS.md §4.6 requires exactly one (SafeLog.kt)."
+            grep -rl 'android\.util\.Log' app/src --include='*.kt' || true
+            exit 1
+          fi

@@ -1,0 +1,54 @@
+# Weekly flake.lock update PRs, the standard flake-repo pattern
+# (DeterminateSystems/update-flake-lock), copied from nixos-configs. The
+# PR is a *decision*, not an auto-merge: a nixpkgs bump can change the
+# pinned Android SDK/build-tools/JDK/Gradle versions in flake.nix, and
+# those are pinned deliberately (see flake.nix's own comment on staying
+# reproducible between `nix flake update` runs) -- a human reviews the
+# lock diff and merges when wanted.
+#
+# No path-to-flake-dir override: unlike nixos-configs, this repo's
+# flake.nix lives at the repo root, which is the action's default.
+#
+# Known caveat, accepted deliberately: PRs opened with the default
+# GITHUB_TOKEN do not trigger this repo's own pull_request workflows
+# (GitHub refuses the recursive run), so the `check` workflow will show
+# as missing rather than green on these PRs. That's the token, not a
+# broken build -- run `nix develop --command gradle assembleDebug
+# testDebugUnitTest` locally before merging, or push any commit to the
+# branch to trigger CI for real.
+
+name: update-flake-lock
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1' # Mondays 09:00 UTC
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: DeterminateSystems/update-flake-lock@main
+        with:
+          pr-title: "chore: update flake.lock"
+          pr-body: |
+            Automated weekly `nix flake update` (all inputs).
+
+            The lock diff is the review: this repo pins the Android SDK,
+            JDK, Kotlin, and Gradle versions deliberately (see flake.nix),
+            and an input bump can change what those resolve to. Check the
+            diff, run `nix develop --command gradle assembleDebug
+            testDebugUnitTest` locally (CI does not run on
+            GITHUB_TOKEN-opened PRs -- see this workflow's header), and
+            merge when the change is wanted.
+
+            Auto-opened by the update-flake-lock workflow; close unmerged
+            if the timing is wrong.
