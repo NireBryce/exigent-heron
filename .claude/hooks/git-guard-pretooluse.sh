@@ -6,13 +6,18 @@
 # pattern here has a real legitimate use; this is a mechanical backstop for
 # "confirm first on anything hard to reverse," not a replacement for
 # judgment. Adapted from nixos-configs' .claude/hooks/git-guard-pretooluse.sh
-# (same logic, generalized -- that version also gated on a specific
-# protected-branch skill this repo doesn't have).
+# (same logic, generalized).
 #
 # 2026-09-05: added a second class of checks -- direct commit/merge/push to
 # main (or master), and gh pr merge -- backing skill submit-a-pr's "branch,
-# then PR, then a human merges" workflow. Not from nixos-configs; this
-# repo's own addition once it needed one.
+# then PR, then a human merges" workflow. This is a deliberate difference
+# from the source, not an oversight: nixos-configs' own copy explicitly
+# does *not* gate on branch name ("that policy ... is already the ship
+# skill's job, not this hook's"), relying instead on a GitHub branch
+# ruleset on `main` plus its `ship` skill's own two confirmations. This
+# repo has no such ruleset (checked 2026-09-05: branch `main` isn't
+# protected) and, per an explicit choice made when this hook was extended,
+# gates here too rather than relying on skill discipline alone.
 #
 # Known limits: this is pattern-matching on the command string, not a git
 # parser. It does not follow shell variables/aliases, does not know what a
