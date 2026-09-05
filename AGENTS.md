@@ -326,14 +326,14 @@ Each phase must build and install. Do not proceed until acceptance criteria pass
 ### Phase 0 — Skeleton
 Project scaffold, version catalog, manifest hardening from §5, `.gitignore`, `SafeLog`, empty `AppContainer`.
 
-**Accept:** `./gradlew assembleDebug` succeeds. App installs, shows a blank screen. `INTERNET` absent from merged manifest (verify with `./gradlew :app:processDebugMainManifest` and read the output).
+**Accept:** `gradle assembleDebug` succeeds. App installs, shows a blank screen. `INTERNET` absent from merged manifest (verify with `gradle :app:processDebugMainManifest` and read the output).
 
 ### Phase 1 — Domain core, no Android
 Write `NotificationPayload`, `Rule`, `Decision`, `RuleEngine`, `SecretDetector`, `Deduplicator` and their unit tests. **Tests first.** No listener, no TTS, no UI.
 
 Also build a debug-only fake notification injector: a function in `debug/` source set producing synthetic `NotificationPayload`s so you can exercise the pipeline without a device. Debug source set only — it must not exist in release.
 
-**Accept:** `./gradlew testDebugUnitTest` passes with meaningful coverage of the dedup and secret-detection cases in §4.3 and §4.5. The `toString()` test passes.
+**Accept:** `gradle testDebugUnitTest` passes with meaningful coverage of the dedup and secret-detection cases in §4.3 and §4.5. The `toString()` test passes.
 
 ### Phase 2 — Listener + speech, hardcoded rules
 `NotificationTtsListener`, `NotificationExtractor`, `SpeechQueue`, `AndroidTtsEngine`, `AudioFocusManager`. Rules hardcoded to one package. No UI beyond an enable-access button.
