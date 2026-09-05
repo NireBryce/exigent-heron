@@ -76,4 +76,12 @@ tree) — see that script's own docstring for exactly what it does and
 doesn't catch. Everything else is the same rule `AGENTS.md` holds itself
 to: whichever change makes a page stale corrects it in the same change,
 not as a follow-up. Skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md)
-is the checklist for that.
+is the checklist for that — as of **2026-09-05**, not just a checklist
+someone might remember to run: skill
+[`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md)'s own step 2 runs
+it, by name, before a branch is pushed, and
+[`git-guard-pretooluse.sh`](../.claude/hooks/git-guard-pretooluse.sh)
+nudges a second time at `gh pr create` if the branch added or removed an
+`app/src/` file with nothing under `wiki/` alongside it. Neither is a
+substitute for actually running the procedure deliberately — see that
+hook's own comment for exactly what it can and can't catch.
