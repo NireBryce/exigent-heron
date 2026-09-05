@@ -72,10 +72,10 @@ for the hook that nudges toward this automatically.
 `NotificationTtsListener` exists as of Phase 2 (see
 [status.md](status.md)) but its on-device acceptance criteria are
 **unconfirmed** — no device was available the session that built it.
-`AGENTS.md` §6's own per-phase acceptance criteria are the actual test
+`BUILD_PLAN.md`'s own per-phase acceptance criteria are the actual test
 script to run (a notification spoken once, three duplicates in 10
 seconds still speaking once, a music duck-and-recover) — not restated
-here to avoid a second copy that can drift from §6's. To actually run
+here to avoid a second copy that can drift from theirs. To actually run
 them:
 
 1. `nix develop --command gradle installDebug` with a device or emulator
@@ -113,7 +113,7 @@ listener) rather than this placeholder.
 
 ## Hardening-pass device matrix (Phase 5)
 
-`AGENTS.md` §6 Phase 5 requires testing "on a locked device, in a call,
+`BUILD_PLAN.md` Phase 5 requires testing "on a locked device, in a call,
 and with a work profile present if available." Nothing to track here yet
 — this section exists so that when Phase 5 actually runs, the real
 devices/configurations tested (not just "tested," per skill

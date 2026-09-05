@@ -32,7 +32,7 @@ private const val INTER_UTTERANCE_SILENCE_MILLIS = 400L
  * / `::abandonFocus`, and an `AudioManager.mode` check.
  *
  * Not yet implemented, both explicitly deferred to Phase 4 per
- * AGENTS.md §6: collapsing a >5-item backlog to a single summary
+ * BUILD_PLAN.md: collapsing a >5-item backlog to a single summary
  * utterance, and respecting `NotificationManager.getCurrentInterruptionFilter()`
  * (DND).
  */

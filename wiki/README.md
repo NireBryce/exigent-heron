@@ -49,7 +49,7 @@ file, so it holds real procedural content instead of just links.
 
 ## Pages
 
-- [Status](status.md) — phase-by-phase: what `AGENTS.md` §6 specifies,
+- [Status](status.md) — phase-by-phase: what `BUILD_PLAN.md` specifies,
   what's actually built, and what's been verified (by running the actual
   command, dated) rather than assumed from the spec text alone.
 - [Architecture](architecture.md) — the real package layout as it stands,

@@ -49,7 +49,7 @@ hours before anyone checked it was already written up two days earlier.)
 4. **State fixed vs. verified precisely.** A fix that hasn't actually been
    built and re-tested (`gradle assembleDebug`/`testDebugUnitTest`, or a
    real run on-device per the relevant Phase's acceptance criteria in
-   AGENTS.md §6) is *in the tree*, not *fixed* — say which one, in the
+   BUILD_PLAN.md) is *in the tree*, not *fixed* — say which one, in the
    issue and your reply both, not just implied.
 
 ## See also

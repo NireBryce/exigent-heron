@@ -1,7 +1,8 @@
 # exigent-heron
 personal android tts utility, huge wip
 
-See [AGENTS.md](AGENTS.md) for the actual build spec.
+See [AGENTS.md](AGENTS.md) for the actual build spec, and
+[BUILD_PLAN.md](BUILD_PLAN.md) for the phase-by-phase build order.
 
 ## Dev environment
 

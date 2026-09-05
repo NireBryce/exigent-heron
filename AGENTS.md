@@ -13,7 +13,7 @@
 - Do not log notification content. Ever. Any build variant. This is not negotiable and is the most likely way you will silently ruin this app.
 - Do not add analytics, crash reporting, or telemetry of any kind.
 - Do not request the `INTERNET` permission. If something appears to need it, stop and ask.
-- Work in phases (§6). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
+- Work in phases (§6, in [BUILD_PLAN.md](BUILD_PLAN.md)). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
 - Commit at each phase boundary with a message describing what now works.
 
 ---
@@ -310,7 +310,7 @@ Add a separate "don't speak while locked" toggle, also defaulted on, checking `K
 
 - The listener service is the **only** component exported without being the launcher activity, and the `android:permission` attribute is what stops other apps binding it. Do not remove it.
 - Every other service, receiver, and provider: `android:exported="false"`.
-- **Do not create a `BroadcastReceiver` that accepts text to speak.** It is a convenient testing shortcut and it gives every app on the device a voice. For testing, use the debug-variant injector in §6 Phase 1.
+- **Do not create a `BroadcastReceiver` that accepts text to speak.** It is a convenient testing shortcut and it gives every app on the device a voice. For testing, use the debug-variant injector in [BUILD_PLAN.md](BUILD_PLAN.md) Phase 1.
 - No `INTERNET` permission in any manifest, including debug.
 - `data_extraction_rules.xml` should exclude everything.
 - Release build: `isMinifyEnabled = true`, `isShrinkResources = true`.
@@ -321,39 +321,7 @@ Add a separate "don't speak while locked" toggle, also defaulted on, checking `K
 
 ## 6. Phases
 
-Each phase must build and install. Do not proceed until acceptance criteria pass.
-
-### Phase 0 — Skeleton
-Project scaffold, version catalog, manifest hardening from §5, `.gitignore`, `SafeLog`, empty `AppContainer`.
-
-**Accept:** `gradle assembleDebug` succeeds. App installs, shows a blank screen. `INTERNET` absent from merged manifest (verify with `gradle :app:processDebugMainManifest` and read the output).
-
-### Phase 1 — Domain core, no Android
-Write `NotificationPayload`, `Rule`, `Decision`, `RuleEngine`, `SecretDetector`, `Deduplicator` and their unit tests. **Tests first.** No listener, no TTS, no UI.
-
-Also build a debug-only fake notification injector: a function in `debug/` source set producing synthetic `NotificationPayload`s so you can exercise the pipeline without a device. Debug source set only — it must not exist in release.
-
-**Accept:** `gradle testDebugUnitTest` passes with meaningful coverage of the dedup and secret-detection cases in §4.3 and §4.5. The `toString()` test passes.
-
-### Phase 2 — Listener + speech, hardcoded rules
-`NotificationTtsListener`, `NotificationExtractor`, `SpeechQueue`, `AndroidTtsEngine`, `AudioFocusManager`. Rules hardcoded to one package. No UI beyond an enable-access button.
-
-**Accept:** on a real device, a notification from the hardcoded app is spoken exactly once. Send the same notification three times in 10 seconds — it speaks once. Start music, trigger a notification — music ducks and recovers.
-
-### Phase 3 — Persistence + rules UI
-`SettingsRepository`, `RuleRepository`, DataStore wiring, rule list and editor screens, installed-app picker.
-
-**Accept:** rules survive app restart and force-stop. Invalid regex shows an error at save time rather than crashing later.
-
-### Phase 4 — Gates and polish
-`OutputRouteGate`, lock-state gate, DND respect, engine picker, queue-collapse-on-burst, announce-only mode, templates.
-
-**Accept:** with headset-only on and no headset connected, nothing is spoken. Engine picker lists engines and switching takes effect. Ten notifications in five seconds produce a single summary utterance.
-
-### Phase 5 — Hardening pass
-Grep the codebase for logging violations. Verify release build has no debug injector. Confirm merged release manifest. Test on a locked device, in a call, and with a work profile present if available.
-
-**Accept:** written checklist in `SECURITY.md` with every item ticked and evidence noted.
+Moved to [BUILD_PLAN.md](BUILD_PLAN.md) — the phase-by-phase build order (Phase 0 through Phase 5) and each phase's acceptance criteria. Work in phases; each phase must build and install, and phase N+1 does not start until phase N's criteria pass.
 
 ---
 
