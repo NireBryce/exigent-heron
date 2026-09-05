@@ -74,7 +74,13 @@ actual deep-dive exists to justify it.
   links down into a page, and that page links back to related pages.
 - Verify a link resolves before leaving it. `wiki/scripts/check_wiki.py
   links` catches a broken file target mechanically; `anchors` catches a
-  broken `#fragment`. Both run as part of `check`.
+  broken `#fragment`. Both run as part of `check`. (This goes further than
+  nixos-configs' own script, whose `wiki/styleguide.md` says outright
+  "there's no automated check for this" for a file target — only for
+  `#fragment` anchors and the `## Contents` block. `links` here is a real,
+  working check (`check_wiki.py`'s `check_links`), not a copied claim that
+  outran what was actually built — verified 2026-09-05 by reading the
+  function, not assumed from the docstring.)
 
 ## Keeping this from rotting
 
@@ -83,9 +89,12 @@ renamed heading, an unknown skill name, or a phase's claimed status
 disagreeing with what's actually in `app/src/main/java`. They do **not**
 catch a fact that's simply become untrue in prose (a claim about what a
 class does, a "why" that no longer applies) — that's a human/agent
-judgment call, same as nixos-configs' own script draws this exact line.
-The rule for everything the script can't see: whichever change makes a
-page stale corrects it in the same change, not as a follow-up. Skill
+judgment call. (nixos-configs' own script draws a version of this same
+line — mechanical checks are structural, not prose-aware, there too — but
+its actual check set differs, per the note above; don't read this as the
+two scripts checking identical things.) The rule for everything the script
+can't see: whichever change makes a page stale corrects it in the same
+change, not as a follow-up. Skill
 [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) is the checklist for
 noticing when that applies.
 
