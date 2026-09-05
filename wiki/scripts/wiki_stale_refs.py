@@ -8,17 +8,32 @@ call needed. This script covers the OTHER half: a bare filename mentioned
 in backticks with no link at all (`SafeLog.kt`, `RuleEngine.kt`), which is
 genuinely ambiguous to check mechanically:
 
-  - **Historical names are deliberately kept.** AGENTS.md's own convention
-    ("a bug recorded in a comment stays in the file") extends to prose: a
-    wiki page explaining a rename or removal may correctly still name the
-    old filename. It will never resolve, and correctly so.
   - **Shortened paths are a real convention here** (`SafeLog.kt` instead
     of the full `app/src/main/java/net/breadthcharge/exigentheron/
     SafeLog.kt`) -- resolved below by matching a tracked path's *suffix*,
-    not requiring an exact match.
-  - **Some backtick spans aren't this repo's files at all** -- an Android
-    framework class, a library name, an upstream file cited for
-    comparison.
+    not requiring an exact match. Mostly invisible in a run's output --
+    it's why the suffix match exists.
+  - **A future-phase file the spec names before it's built** -- an actual
+    run (2026-09-05) flags `OutputRouteGate.kt` and `SECURITY.md`: real
+    Phase 4/5 deliverables per `AGENTS.md`, named because they *will*
+    exist, not because they used to. Shrinks to zero, permanently, as
+    phases land.
+  - **A cross-repo citation, not this repo's own file** -- the same run
+    flags `wiki/hosts.md`, `blesh.md`, `carapace.md`: nixos-configs'
+    filenames, cited in `status.md`/`styleguide.md` for comparison.
+    Correctly unresolvable here, and will keep showing up for as long as
+    this wiki cites that repo by example.
+  - **A deliberately elided or build-output path, not a real source file**
+    -- `testing.md` writes a literal `...` to abbreviate a long package
+    (`app/src/debug/java/.../debug/FakeNotifications.kt`) and separately
+    names a gitignored build-artifact path
+    (`app/build/intermediates/.../AndroidManifest.xml`) that's real on
+    disk after a build but never tracked by git.
+  - **Historical names could legitimately be kept on purpose** (AGENTS.md's
+    own convention: a bug recorded in a comment stays in the file) even
+    though none of this wiki's current mentions are actually that yet --
+    this repo is too young to have one. Worth re-reading this bullet once
+    one exists, rather than assuming today's four-bucket list is final.
 
 None of that is something a script can reliably tell apart from a genuine
 stale reference. So, same as `wiki_churn.py`: this is NOT a pass/fail
@@ -40,8 +55,13 @@ import re
 import subprocess
 import sys
 
+# .nix added 2026-09-05: this repo's own flake.nix (the Nix dev shell,
+# referenced by name in traps-and-skills.md and testing.md) fell through
+# the original list entirely -- not flagged, just never recognized as a
+# file-mention candidate at all, since the regex below only matches a
+# span ending in one of these extensions in the first place.
 EXTS = ('.kt', '.kts', '.py', '.sh', '.md', '.xml', '.yaml', '.yml', '.json',
-        '.toml', '.pro')
+        '.toml', '.pro', '.nix')
 BACKTICK_FILE = re.compile(
     r'`([\w./-]+(?:' + '|'.join(re.escape(e) for e in EXTS) + r'))`')
 
