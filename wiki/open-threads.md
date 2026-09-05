@@ -38,6 +38,28 @@ section.
   **2026-09-05**, when it was added while building this wiki. Listed here
   as a closed thread, not an open one — kept as the record of when it
   actually landed, since `AGENTS.md` itself doesn't track that.
+- **`kotlinx-coroutines-core` is imported directly in `RuleEngine.kt`**
+  (`Dispatchers`, `withContext`, `withTimeoutOrNull` — needed for
+  `AGENTS.md` §4.4's timeout requirement) but isn't in §2's explicit
+  dependency list, which names `kotlinx-coroutines-test` as test-only. It
+  compiles and runs today because `androidx.lifecycle:lifecycle-runtime-ktx`
+  and Compose runtime both already pull it in transitively — not a new
+  dependency added, just an existing one used directly from `domain/`
+  code. Fine as long as that transitive graph holds; worth an explicit
+  `implementation(libs.kotlinx.coroutines.core)` line if that ever feels
+  fragile, rather than leaving `domain/`'s only non-Kotlin-stdlib import
+  resting on something no build file actually declares.
+- **`RuleEngine`'s backreference-regex gap has no product answer yet**
+  (see [history.md](history.md)): a `Rule.bodyPattern`/`titlePattern`
+  containing a backreference is still genuinely exponential and
+  non-interruptible even with the 100ms timeout — the timeout bounds the
+  caller, not the CPU cost. `AGENTS.md` §4.4 already asks for
+  `PatternSyntaxException` to be caught "at rule-save time and show the
+  error in the editor" once Phase 3 has an editor to show it in; whether
+  that same save-time check should also reject backreferences outright
+  (closing the gap entirely, at the cost of disallowing a rarely-needed
+  but legal regex feature) is an open product decision, not a bug — worth
+  deciding when Phase 3 builds that editor, not silently either way.
 
 ## Not applicable yet
 

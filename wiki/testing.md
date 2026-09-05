@@ -25,9 +25,9 @@ nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
-`app/src/test` — as of Phase 0 that's `NO-SOURCE` (nothing exists yet;
-confirmed 2026-09-05, see [status.md](status.md)). This changes starting
-Phase 1, which is tests-first per `AGENTS.md` §6.
+`app/src/test` — as of **2026-09-05** (Phase 1) that's 31 tests across
+`domain/`, all passing; see [status.md](status.md) for the current count
+rather than trusting this number as it ages.
 
 ## Checking the manifest
 
@@ -72,10 +72,25 @@ spoken once, three duplicates in 10 seconds still speaking once, a music
 duck-and-recover, etc.) — not restated here to avoid a second copy that
 can drift from §6's.
 
-Phase 1 also specifies a debug-only fake-notification injector
-(`debug/` source set) precisely so the domain pipeline can be exercised
-without a device before the real listener exists. Once it lands, this
-section is the place to note how to invoke it.
+`FakeNotifications` (`app/src/debug/java/.../debug/FakeNotifications.kt`,
+landed Phase 1) is the debug-only injector for exercising the domain
+pipeline (`Deduplicator` → `RuleEngine` → `SecretDetector`) without a
+device or a real listener. Nothing wires it to anything yet — there's no
+UI or listener to feed it into until Phase 2/3 — so for now it's reached
+from a unit test or a scratch `main()`, e.g.:
+
+```kotlin
+val engine = RuleEngine(rules = listOf(/* ... */))
+runBlocking {
+    FakeNotifications.scenarios().forEach { payload ->
+        println(engine.evaluate(payload)) // evaluate() is suspend
+    }
+}
+```
+
+This section is the place to note the real invocation once Phase 2/3
+gives it a caller worth describing (a debug menu item, a test harness
+run against the real listener, etc.) rather than this placeholder.
 
 ## Hardening-pass device matrix (Phase 5)
 

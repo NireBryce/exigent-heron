@@ -4,6 +4,7 @@
 
 - [Stale `./gradlew` references in AGENTS.md](#stale-gradlew-references-in-agentsmd)
 - [A logcat tag guessed from a class name instead of read from the source](#a-logcat-tag-guessed-from-a-class-name-instead-of-read-from-the-source)
+- [A ReDoS test that passed for the wrong reason](#a-redos-test-that-passed-for-the-wrong-reason)
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
@@ -44,3 +45,32 @@ earlier.
 specific external fact stated with more confidence than what was actually
 checked) — a class name and its logging tag are two different strings,
 and only one of them was ever read from the file.
+
+## A ReDoS test that passed for the wrong reason
+
+**2026-09-05.** `RuleEngineTest`'s first version of "catastrophic
+backtracking times out and suppresses rather than hanging" used the
+textbook ReDoS shape `^(a+)+$` against 27 `a`s — the standard example
+from every regex-DoS writeup. It passed. It also asserted essentially
+nothing: `RuleEngine.evaluate()` correctly returns `Suppress` both when a
+rule's match times out *and* when a rule just doesn't match, and this
+input doesn't match that pattern (the trailing `!` blocks the `$` anchor)
+— so a fast, ordinary non-match produced the exact same `Suppress` the
+test was checking for, in under a millisecond, having exercised none of
+the timeout path the test's own name claimed to cover. Caught only
+because the test's individual timing (`0.053s` for the whole suite) was
+implausibly fast for something meant to demonstrate exponential
+backtracking, and re-deriving *why* — rather than accepting a green
+check mark — led to actually measuring the pattern directly. It turned
+out OpenJDK memoizes exactly this shape (see
+[history.md](history.md)'s `RuleEngine` entry); the fix was a
+backreference pattern, verified separately to still be slow.
+
+**General form:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md), category 1 —
+"this is the standard ReDoS example" was exactly as unverified a fact as
+a logcat tag guessed from a class name, just wearing security-test
+clothing. A passing assertion is not, on its own, evidence the code path
+it names was ever reached; a suspiciously fast "slow path" test is a
+specific, checkable signal worth treating as a red flag rather than a
+lucky green.
