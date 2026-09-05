@@ -16,7 +16,7 @@ change is ready.
 
 Fires only when the ask is actually to land the change. Being asked to
 push a topic branch, or to open a PR without being asked to merge it, is a
-narrower ask than this whole flow — do just that part and stop; steps 4-6
+narrower ask than this whole flow — do just that part and stop; steps 5-7
 below are not yours to run unprompted. Doesn't extend to a third-party
 repo, either — same boundary `propose-issue` draws for filing issues.
 
@@ -107,7 +107,28 @@ normal, with an explicit pathspec on anything that isn't obviously the
 whole index (`git status --short` first) — a shared checkout can have
 something else's edit sitting staged.
 
-**2. Push and open the PR:**
+**2. Run `wiki-sync` before pushing — every time, not when it seems
+relevant.** Skill `wiki-sync`'s own premise is that this is the step that
+gets skipped by habit once a change is done and tested, not that it's
+hard to remember in the abstract. Making it step 2 here, before the PR
+even exists, is what turns "should run this" into "can't reach step 3
+without having run it": name what changed in wiki terms, grep `wiki/` for
+it, fix whatever's actually stale in this same branch — or, per that
+skill's own step 6, decide nothing applies and say so. Either way, finish
+with:
+
+```sh
+python3 wiki/scripts/check_wiki.py check
+```
+
+clean, the same non-negotiable way `gradle assembleDebug`/`testDebugUnitTest`
+need to be green before this goes further.
+`.claude/hooks/git-guard-pretooluse.sh` asks a second time at `gh pr
+create` if this branch adds or removes a file under `app/src/` with
+nothing under `wiki/` alongside it — a backstop for a slip, not a reason
+to skip doing this deliberately first.
+
+**3. Push and open the PR:**
 
 ```sh
 git push -u origin <branch-name>
@@ -122,7 +143,7 @@ instructions call for (Claude Code, as of 2026-09-05):
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-**3. Preview before asking anything** — read back what actually landed,
+**4. Preview before asking anything** — read back what actually landed,
 not what you meant to do:
 
 ```sh
@@ -142,7 +163,7 @@ chat is what stays in the transcript and what the user reads first; a
 preview that only exists inside the question's own text is easy to skim
 past on the way to just clicking an option.
 
-**4. Ask to merge — first confirmation.** Ask the user — through whatever
+**5. Ask to merge — first confirmation.** Ask the user — through whatever
 blocking ask/confirm mechanism your harness provides (Claude Code:
 `AskUserQuestion`) — with the PR's URL in the question text itself (not
 only an option label), and the merge method named in what you show:
@@ -156,7 +177,7 @@ only an option label), and the merge method named in what you show:
 On **no**: leave the PR open, say so, stop. It's still open for the user
 to take further — don't close it, don't delete the branch.
 
-**5. Merge — on yes only:**
+**6. Merge — on yes only:**
 
 ```sh
 gh pr merge <n> --rebase   # single-commit PR
@@ -166,7 +187,7 @@ gh pr merge <n> --merge    # multi-commit PR
 **Never pass `--delete-branch`.** That collapses the second confirmation
 below into the first one, which defeats the point of having two.
 
-**6. Ask again, separately — second confirmation, only if merged:**
+**7. Ask again, separately — second confirmation, only if merged:**
 whether to delete the branch. On yes:
 
 ```sh
@@ -183,13 +204,17 @@ had been pushed there directly.
 
 - [`use-a-worktree`](../use-a-worktree/SKILL.md) — the branch this
   skill's PR is built from.
+- [`wiki-sync`](../wiki-sync/SKILL.md) — step 2's full procedure; read it
+  directly rather than trusting this skill's summary of it.
 - [`propose-issue`](../propose-issue/SKILL.md) — the same "ask before an
   outward-facing action" shape, applied to filing an issue instead of
   opening a PR.
 - [`git-guard-pretooluse.sh`](../../hooks/git-guard-pretooluse.sh) — the
-  mechanical backstop for a direct commit/merge/push to `main` or a `gh pr
-  merge`, including one this skill's own step 0 or step 6 might trigger
-  intentionally (that's expected, not a bug to route around).
+  mechanical backstop for a direct commit/merge/push to `main`, a `gh pr
+  merge`, or a `gh pr create` that adds/removes an `app/src/` file with no
+  `wiki/` change alongside it (step 2 above) — including one this skill's
+  own step 0 or step 7 might trigger intentionally (that's expected, not a
+  bug to route around).
 - `~/nixos-configs`' skill `ship` — the source this was adapted from; read
   it directly rather than trusting this section's summary if the two
   drift.
