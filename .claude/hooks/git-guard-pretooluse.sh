@@ -9,20 +9,33 @@
 # (same logic, generalized -- that version also gated on a specific
 # protected-branch skill this repo doesn't have).
 #
+# 2026-09-05: added a second class of checks -- direct commit/merge/push to
+# main (or master), and gh pr merge -- backing skill submit-a-pr's "branch,
+# then PR, then a human merges" workflow. Not from nixos-configs; this
+# repo's own addition once it needed one.
+#
 # Known limits: this is pattern-matching on the command string, not a git
 # parser. It does not follow shell variables/aliases, does not know what a
 # rebase or push will actually touch, and a short-option cluster it doesn't
-# special-case can slip through. Extend the patterns below rather than
-# assuming every destructive shape is covered.
+# special-case can slip through. The "current branch" checks below run `git
+# rev-parse` in this hook process's own cwd, which usually matches what the
+# command is about to act on but won't chase a `cd` inside the same command
+# string. Extend the patterns below rather than assuming every destructive
+# shape is covered.
 set -euo pipefail
 
 input=$(cat)
 command=$(jq -r '.tool_input.command // empty' <<<"$input")
 
-# Only look at commands that actually invoke git.
-if ! grep -qE '(^|[;&|]|[[:space:]])git([[:space:]]|$)' <<<"$command"; then
+# Only look at commands that actually invoke git or gh.
+if ! grep -qE '(^|[;&|]|[[:space:]])(git|gh)([[:space:]]|$)' <<<"$command"; then
     exit 0
 fi
+
+# Current branch in this hook's own cwd -- used by the main/master checks
+# below. Empty if not in a repo or detached; the checks that use it just
+# won't match in that case.
+current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
 
 # A short-option cluster or long flag carrying -f/--force (e.g. -f, -uf,
 # -fd, --force), but not the safe long forms that refuse to overwrite work
@@ -78,6 +91,44 @@ fi
 # git stash drop / clear
 if [ -z "$reason" ] && grep -qE '\bstash\b' <<<"$command" && grep -qE '\b(drop|clear)\b' <<<"$command"; then
     reason="This permanently discards stashed changes with no undo. Confirm the stash isn't still needed."
+fi
+
+# git commit directly on main/master -- this repo lands changes via PR
+# (skill submit-a-pr), not a direct commit on the branch a PR would target.
+if [ -z "$reason" ] && grep -qE '\bcommit\b' <<<"$command" \
+    && { [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; }; then
+    reason="This would commit directly on '$current_branch'. This repo lands changes via a branch + PR (skill submit-a-pr), not a direct commit there -- confirm this one is really meant to land straight on '$current_branch', or branch first (skill use-a-worktree)."
+fi
+
+# git merge into main/master, whether by being checked out there already or
+# by naming it explicitly. Excludes "gh ... merge" (gh pr merge is handled
+# separately below, with its own reason).
+if [ -z "$reason" ] && grep -qE '\bmerge\b' <<<"$command" && ! grep -qE '\bgh\b' <<<"$command" \
+    && { [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ] \
+         || grep -qE '(^|[[:space:]:])(main|master)([[:space:]:]|$)' <<<"$command"; }; then
+    reason="This looks like a local merge into main/master. This repo lands changes via PR (skill submit-a-pr), not a direct local merge -- confirm this is really intended."
+fi
+
+# git push naming main/master explicitly (git push origin main, HEAD:main,
+# main:main, ...), or a bare "git push"/"git push -u"/"git push --force..."
+# with no remote or branch named at all, while main/master is what's
+# checked out -- that pushes whatever's checked out.
+if [ -z "$reason" ] && grep -qE '\bpush\b' <<<"$command" && ! grep -qE '\bgh\b' <<<"$command"; then
+    push_flagged=""
+    if grep -qE '(^|[[:space:]:])(main|master)([[:space:]:]|$)' <<<"$command"; then
+        push_flagged=1
+    elif { [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; } \
+        && grep -qE '(^|[;&|])[[:space:]]*git[[:space:]]+push([[:space:]]+(-[A-Za-z]+|--[A-Za-z-]+|origin|upstream))*[[:space:]]*($|[;&|])' <<<"$command"; then
+        push_flagged=1
+    fi
+    if [ -n "$push_flagged" ]; then
+        reason="This looks like a push to '$current_branch'. This repo lands changes via PR (skill submit-a-pr) -- push a feature branch and open a PR instead, or confirm this direct push is really intended."
+    fi
+fi
+
+# gh pr merge
+if [ -z "$reason" ] && grep -qE '\bgh\b' <<<"$command" && grep -qE '\bpr\b' <<<"$command" && grep -qE '\bmerge\b' <<<"$command"; then
+    reason="This merges a pull request. Skill submit-a-pr has a human decide that, not the agent unprompted -- confirm this merge is actually wanted right now rather than left for review."
 fi
 
 if [ -n "$reason" ]; then

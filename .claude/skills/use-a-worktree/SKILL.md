@@ -63,9 +63,11 @@ throwaway label, so the worktree directory and the branch stay obviously
 paired.
 
 Then `cd` into it and work exactly as you would from the main checkout —
-`gradle assembleDebug`/`testDebugUnitTest`, `nix develop`, `git commit`,
-`gh pr create` all work identically; it's a full, independent working
-directory, not a partial or read-only view. Note that `local.properties`
+`gradle assembleDebug`/`testDebugUnitTest`, `nix develop`, `git commit`
+all work identically; it's a full, independent working directory, not a
+partial or read-only view. Once the change is ready to land, hand off to
+skill [`submit-a-pr`](../submit-a-pr/SKILL.md) rather than pushing or
+merging into `main` directly from here. Note that `local.properties`
 is regenerated per-checkout by `flake.nix`'s `nix develop` shellHook (it's
 gitignored and machine-specific), so run `nix develop` once inside the new
 worktree before building there. **Verify you're actually in it**
