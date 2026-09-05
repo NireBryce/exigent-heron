@@ -10,8 +10,8 @@ description: How to work in an isolated git worktree instead of the shared check
 The first time in a session you're about to run a git command that changes
 what's checked out or what a branch points at — `git checkout -b`, `git
 commit`, `git merge`, `git branch -f`/`-d`, `git worktree` itself — while
-another Claude session (or a person) might be working in the same checkout
-at the same time. Not for read-only work: answering a question by reading
+another agent session (Claude Code or otherwise) or a person might be
+working in the same checkout at the same time. Not for read-only work: answering a question by reading
 files, running `gradle assembleDebug`/`testDebugUnitTest` or `nix flake
 check` against whatever's already checked out, or grepping around. Nothing
 in this skill needs to happen before *that*.

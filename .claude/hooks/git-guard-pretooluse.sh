@@ -21,6 +21,13 @@
 # per an explicit choice made when this hook was extended, gates here too
 # rather than relying on skill discipline alone.
 #
+# This is a Claude Code mechanism specifically (PreToolUse hooks are a
+# Claude Code harness feature) -- a different agent's tooling won't run
+# it. It is a backstop for a slip, not the policy itself: the actual rule
+# ("land changes via a branch + PR, whichever agent is doing the work")
+# lives in AGENTS.md's §0 and skill submit-a-pr, both plain files any
+# agent can read regardless of whether this hook fires for it.
+#
 # Known limits: this is pattern-matching on the command string, not a git
 # parser. It does not follow shell variables/aliases, does not know what a
 # rebase or push will actually touch, and a short-option cluster it doesn't
