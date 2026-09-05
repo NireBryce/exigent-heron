@@ -15,6 +15,7 @@
 - Do not request the `INTERNET` permission. If something appears to need it, stop and ask.
 - Work in phases (§6, in [BUILD_PLAN.md](BUILD_PLAN.md)). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
 - Commit at each phase boundary with a message describing what now works.
+- Land every change — a phase-boundary commit included — via a branch and a pull request, never a direct commit, merge, or push to `main`. This applies to whichever agent is doing the work, not Claude Code specifically. Skill `submit-a-pr` (`.claude/skills/submit-a-pr/SKILL.md`, plain markdown — readable directly by any agent, not only one with a harness that loads skills automatically) has the full procedure: branch, PR, ask before merging, ask again before deleting the branch. `.claude/hooks/git-guard-pretooluse.sh` backs this mechanically for Claude Code specifically (it's a Claude Code hook mechanism, so a different agent's tooling won't run it) — the rule itself doesn't depend on that hook firing.
 
 ---
 

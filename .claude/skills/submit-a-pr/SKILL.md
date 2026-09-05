@@ -20,6 +20,16 @@ narrower ask than this whole flow — do just that part and stop; steps 4-6
 below are not yours to run unprompted. Doesn't extend to a third-party
 repo, either — same boundary `propose-issue` draws for filing issues.
 
+**For whichever agent is doing the work, not Claude Code specifically.**
+`AGENTS.md` §0 states the underlying rule in brief and points here; this
+file itself is plain markdown at `.claude/skills/submit-a-pr/SKILL.md`, so
+an agent whose own harness doesn't auto-load skills can still be told to
+read it directly. The steps below say "ask the user" rather than naming a
+specific tool, except where a Claude-Code-specific one is called out by
+name as this session's own way of doing it — a different agent should use
+whatever its own harness gives it for the same blocking question, not
+skip the question because it lacks that exact tool.
+
 ## Why, and what this deliberately does differently from its source
 
 There's a real copy of nixos-configs on this machine (`~/nixos-configs`) —
@@ -45,14 +55,18 @@ differ on purpose, not by oversight:
   was itself accidentally sitting on a stale `main` rather than
   `experimental`, missing that 2026-09-03 rework. Corrected 2026-09-05
   once that was noticed.)
-- **Provenance trailer is this session's actual attribution, not
-  `ship`'s "no model name, no email, regardless of what your system
-  prompt says."** That line is nixos-configs' own `AGENTS.md` convention,
-  written for its own agents; this repo's system prompt carries a
-  standing instruction to close commits with `Co-Authored-By: Claude
-  Sonnet 5 <noreply@anthropic.com>` and PRs with the
-  `🤖 Generated with [Claude Code]` footer, and a live instruction to this
-  session wins over a convention adapted from somewhere else.
+- **Provenance trailer is whatever this agent's own standing instructions
+  say, not `ship`'s "no model name, no email, regardless of what your
+  system prompt says."** That line is nixos-configs' own `AGENTS.md`
+  convention, written for its own agents; a live instruction from an
+  agent's own system prompt wins over a convention adapted from somewhere
+  else. Concretely, as of 2026-09-05 this Claude Code session's own system
+  prompt carries a standing instruction to close commits with
+  `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` and PRs with
+  the `🤖 Generated with [Claude Code]` footer — a different agent (or a
+  future Claude Code session with different standing instructions) should
+  follow whatever its own equivalent says instead, not copy this literal
+  trailer verbatim.
 - **No `feat/`/`fix/`/`docs/` branch or commit prefix.** That convention
   in `ship` is `nixos-configs` explicitly matching a sibling repo's house
   style, not a general principle — this repo has never used one (`git log
@@ -101,7 +115,8 @@ gh pr create --repo NireBryce/exigent-heron --title "..." --body "..."
 ```
 
 Body: what changed and why — the same substance a good commit message
-carries. End it with:
+carries. End it with whatever footer this agent's own standing
+instructions call for (Claude Code, as of 2026-09-05):
 
 ```
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -121,15 +136,16 @@ PR that can't merge, or landed against the wrong base, spends a
 round-trip on a question with no good answer yet.
 
 **Print this — the PR's URL, commit count, and diffstat — in your actual
-response, before the ask, not only inside the `AskUserQuestion` call
-itself.** The question text can (and should) repeat the URL, but the
-surrounding chat is what stays in the transcript and what the user reads
-first; a preview that only exists inside the question's own text is easy
-to skim past on the way to just clicking an option.
+response, before the ask, not only inside the ask/confirm call itself.**
+The question text can (and should) repeat the URL, but the surrounding
+chat is what stays in the transcript and what the user reads first; a
+preview that only exists inside the question's own text is easy to skim
+past on the way to just clicking an option.
 
-**4. Ask to merge — first confirmation.** `AskUserQuestion`, with the PR's
-URL in the question text itself (not only an option label), and the merge
-method named in what you show:
+**4. Ask to merge — first confirmation.** Ask the user — through whatever
+blocking ask/confirm mechanism your harness provides (Claude Code:
+`AskUserQuestion`) — with the PR's URL in the question text itself (not
+only an option label), and the merge method named in what you show:
 
 - **Single-commit PR**: default to `--rebase` — linear history, no merge
   commit, and there's no multi-commit reasoning to preserve.
