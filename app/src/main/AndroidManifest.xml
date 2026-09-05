@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!--
-      No <uses-permission> here, ever, for INTERNET. See AGENTS.md §5/§0.
-      The listener service (BIND_NOTIFICATION_LISTENER_SERVICE) arrives in
-      Phase 2 along with .listener.NotificationTtsListener.
-    -->
+    <!-- No <uses-permission> here, ever, for INTERNET. See AGENTS.md §5/§0. -->
 
     <application
         android:name=".App"
@@ -26,6 +22,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          The one component in this app exported without being the
+          launcher activity. android:permission is what stops other apps
+          from binding it directly — do not remove it. See AGENTS.md §5.
+        -->
+        <service
+            android:name=".listener.NotificationTtsListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
     </application>
 

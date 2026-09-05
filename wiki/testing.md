@@ -25,9 +25,13 @@ nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
-`app/src/test` — as of **2026-09-05** (Phase 1) that's 31 tests across
-`domain/`, all passing; see [status.md](status.md) for the current count
-rather than trusting this number as it ages.
+`app/src/test` — as of **2026-09-05** (Phase 2) that's 53 tests, all
+passing; see [status.md](status.md) for the current count rather than
+trusting this number as it ages. A couple of the `speech/` and
+`listener/` tests exercise real background coroutines with real time —
+if one ever seems flaky, re-run it standalone a few times before
+assuming it's a fluke; see [traps-and-skills.md](traps-and-skills.md)
+for a real one already caught here.
 
 ## Checking the manifest
 
@@ -65,19 +69,34 @@ for the hook that nudges toward this automatically.
 
 ## Once there's a listener to test (Phase 2+)
 
-Not yet — `NotificationTtsListener` doesn't exist until Phase 2 (see
-[status.md](status.md)). Once it does, `AGENTS.md` §6's own per-phase
-acceptance criteria are the actual test script to run (a notification
-spoken once, three duplicates in 10 seconds still speaking once, a music
-duck-and-recover, etc.) — not restated here to avoid a second copy that
-can drift from §6's.
+`NotificationTtsListener` exists as of Phase 2 (see
+[status.md](status.md)) but its on-device acceptance criteria are
+**unconfirmed** — no device was available the session that built it.
+`AGENTS.md` §6's own per-phase acceptance criteria are the actual test
+script to run (a notification spoken once, three duplicates in 10
+seconds still speaking once, a music duck-and-recover) — not restated
+here to avoid a second copy that can drift from §6's. To actually run
+them:
+
+1. `nix develop --command gradle installDebug` with a device or emulator
+   attached.
+2. Launch the app, tap "Enable notification access", grant it in the
+   system settings screen that opens.
+3. `AppContainer.kt`'s `phase2HardcodedRules` targets
+   `com.google.android.apps.messaging` — install that (or, more likely,
+   edit that package name to whatever messaging app is actually on your
+   device, then reinstall) before expecting anything to speak.
+4. Trigger a real notification from that app; confirm it's spoken once.
+   Trigger the same notification 3× within 10s; confirm it speaks once,
+   not three times (`Deduplicator`). Start music, trigger a
+   notification; confirm it ducks and recovers (`AudioFocusManager`).
 
 `FakeNotifications` (`app/src/debug/java/.../debug/FakeNotifications.kt`,
 landed Phase 1) is the debug-only injector for exercising the domain
 pipeline (`Deduplicator` → `RuleEngine` → `SecretDetector`) without a
-device or a real listener. Nothing wires it to anything yet — there's no
-UI or listener to feed it into until Phase 2/3 — so for now it's reached
-from a unit test or a scratch `main()`, e.g.:
+device or a real listener. Still nothing wires it into the app itself —
+no debug menu, no UI for it — so it's reached from a unit test or a
+scratch `main()`, e.g.:
 
 ```kotlin
 val engine = RuleEngine(rules = listOf(/* ... */))
@@ -88,9 +107,9 @@ runBlocking {
 }
 ```
 
-This section is the place to note the real invocation once Phase 2/3
-gives it a caller worth describing (a debug menu item, a test harness
-run against the real listener, etc.) rather than this placeholder.
+This section is the place to note a real invocation once something
+actually calls it (a debug menu item, a harness run against the real
+listener) rather than this placeholder.
 
 ## Hardening-pass device matrix (Phase 5)
 

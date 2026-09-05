@@ -66,6 +66,18 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests {
+            // Android SDK stub methods (android.util.Log included) throw
+            // by default under plain JVM unit tests. Not Robolectric —
+            // this is AGP's own flag, no new dependency. Without it, a
+            // SafeLog call reached from a JVM test masks whatever the
+            // real exception was: see wiki/traps-and-skills.md,
+            // "SafeLog.error masked a real test exception".
+            isReturnDefaultValues = true
+        }
+    }
+
     buildFeatures {
         compose = true
     }

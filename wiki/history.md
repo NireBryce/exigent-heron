@@ -60,6 +60,31 @@ message carries, not as a running paraphrase of the log — see
     to the code it describes, and
     [traps-and-skills.md](traps-and-skills.md) for how the *first*
     attempt at testing this got it wrong.
+- **`SpeechQueue` depends on function references, not `AudioFocusManager`
+  or `AudioManager` directly** (2026-09-05): `AudioFocusManager`'s
+  constructor calls `context.getSystemService(...)` immediately, which
+  makes it — and anything holding one — impossible to construct in a
+  JVM test. `SpeechQueue` instead takes `requestAudioFocus: () -> Boolean`,
+  `abandonAudioFocus: () -> Unit`, and `isInCall: () -> Boolean`;
+  `AppContainer` wires the real ones (`audioFocusManager::requestFocus`,
+  a real `AudioManager.mode` check). This is what makes
+  `SpeechQueueTest` possible at all without a second fake class beyond
+  `TtsEngine`'s — see `SpeechQueue.kt`'s own doc comment.
+- **The in-call check moved ahead of the audio-focus request**
+  (2026-09-05): the first version of `SpeechQueue.speakOne()` requested
+  focus, then checked `isInCall()` and bailed. That's backwards — it
+  meant every notification arriving during a call would request (and
+  immediately abandon) audio focus for an utterance it was never going
+  to speak. Caught by re-reading the method before running anything, not
+  by a test; reordered so the in-call check runs first and focus is
+  never touched at all when it's going to skip anyway.
+- **`AppContainer`'s Phase 2 hardcoded rule targets `com.google.android.apps.messaging`**
+  (2026-09-05): `AGENTS.md` §6 says "rules hardcoded to one package"
+  without naming one. Google Messages is just a common default app to
+  test against, not a meaningful choice — the comment next to
+  `phase2HardcodedRules` says to swap it for whatever's actually
+  installed on the test device. Real persistence and a rule editor
+  arrive in Phase 3.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned

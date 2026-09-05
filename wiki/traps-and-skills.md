@@ -5,6 +5,8 @@
 - [Stale `./gradlew` references in AGENTS.md](#stale-gradlew-references-in-agentsmd)
 - [A logcat tag guessed from a class name instead of read from the source](#a-logcat-tag-guessed-from-a-class-name-instead-of-read-from-the-source)
 - [A ReDoS test that passed for the wrong reason](#a-redos-test-that-passed-for-the-wrong-reason)
+- [scope.cancel() without join() let one test's coroutine bleed into the next](#scopecancel-without-join-let-one-tests-coroutine-bleed-into-the-next)
+- [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
@@ -74,3 +76,52 @@ clothing. A passing assertion is not, on its own, evidence the code path
 it names was ever reached; a suspiciously fast "slow path" test is a
 specific, checkable signal worth treating as a red flag rather than a
 lucky green.
+
+## scope.cancel() without join() let one test's coroutine bleed into the next
+
+**2026-09-05.** `SpeechQueueTest`'s first version tore down each test
+with `scope.cancel()` as its last line. `cancel()` only *requests*
+cancellation — it doesn't wait for the cancelled coroutine to actually
+stop. `SpeechQueue`'s consumer runs on `Dispatchers.Default`, one thread
+pool shared by the entire JVM test process, not scoped per test. Ran the
+suite five times in a row clean, then on a sixth run: `Exception in
+thread "DefaultDispatcher-worker-1" ... Method e in android.util.Log not
+mocked`, coming from inside `SpeechQueue.consume()`'s own error-handling
+path — meaning a still-finishing coroutine from one test genuinely
+overlapped a later one's setup or teardown, hit a real exception, and
+the crash surfaced asynchronously without failing the JUnit run that
+triggered it. Fixed with a `CoroutineScope.shutdown()` test helper that
+calls `coroutineContext[Job]?.cancelAndJoin()` instead — 13 clean runs
+after, where the original showed the race roughly 1 run in 3.
+
+**General form:** no existing skill covers this one — cancellation being
+requested vs. a coroutine actually having stopped is a real distinction
+in kotlinx.coroutines specifically, not a fact-hygiene case about an
+unverified claim. Worth a skill of its own if this repo starts writing
+more coroutine tests with shared-dispatcher teardown; not written yet
+because one incident isn't enough to know the general shape.
+
+## SafeLog.error masked a real test exception
+
+**2026-09-05.** The same run above also demonstrated a second, separate
+problem once the first was understood: `SafeLog.error()` calls
+`android.util.Log.e()`, and Android SDK stub methods throw
+`RuntimeException("... not mocked")` when actually invoked under a plain
+JVM unit test (no Robolectric — not in this repo's dependency list, see
+`AGENTS.md` §2). `SpeechQueue.consume()`'s `catch (e: Exception)` branch
+calling `SafeLog.error("...", e)` to log a real failure therefore crashed
+*itself*, on a different exception than the one it was trying to report
+— which is how the race above surfaced as an opaque "Log not mocked"
+message instead of whatever `speakOne()` had actually thrown. Fixed with
+AGP's own `android.testOptions.unitTests.isReturnDefaultValues = true`
+(`app/build.gradle.kts`) — not Robolectric, no new dependency, stub
+calls return a default value instead of throwing.
+
+**General form:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md), category 3 in
+spirit (a thing that was true — "this code path is never exercised by a
+JVM test" — silently stopped being true once `speech/`/`listener/` tests
+started exercising Android-facing code, and nothing caught the mismatch
+until it crashed) — worth remembering the next time a test targets code
+outside `domain/`: check whether it can reach a real Android SDK stub
+call before assuming a JVM test run is a clean signal either way.

@@ -14,15 +14,15 @@ against a spec file instead of the tree itself being the source of truth.
 
 ## What exists right now
 
-As of **2026-09-05** (Phase 1 complete, see [status.md](status.md)), under
-`app/src/main/java/net/breadthcharge/exigentheron/`:
+As of **2026-09-05** (Phase 2 complete except on-device verification, see
+[status.md](status.md)), under `app/src/main/java/net/breadthcharge/exigentheron/`:
 
 - `App.kt` — `Application` subclass.
 - `AppContainer.kt` — the manual-DI container `AGENTS.md` §2 specifies
-  instead of Hilt. Deliberately empty right now (just holds
-  `appContext`); gets wired up incrementally as later phases introduce
-  things worth holding (`SettingsRepository`, `RuleRepository`, the speech
-  stack).
+  instead of Hilt. Now actually wires something: `Deduplicator`,
+  `RuleEngine` (built from `phase2HardcodedRules` — see its own comment
+  for why and what to change to test against a real app),
+  `SecretDetector`, `AudioFocusManager`, `AndroidTtsEngine`, `SpeechQueue`.
 - `SafeLog.kt` — the sole permitted entry point to `android.util.Log`
   (`AGENTS.md` §4.6). Logcat tag is `"ExigentHeron"`, not the class name —
   worth knowing before scoping an `adb logcat` (see
@@ -30,28 +30,44 @@ As of **2026-09-05** (Phase 1 complete, see [status.md](status.md)), under
   [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md)).
   Exposes exactly `decision(pkg, ruleId, action)`, `lifecycle(msg)`,
   `error(msg, t?)` — no arbitrary-string overload, by design.
-- `ui/MainActivity.kt` — launcher activity, currently a blank screen.
+- `ui/MainActivity.kt` — the Phase 2 enable-access button (`AGENTS.md`
+  §4.10), otherwise still blank.
 - `domain/` — pure Kotlin, no Android imports, per `AGENTS.md` §3:
   `NotificationPayload.kt`, `Rule.kt` (with `RuleAction`), `Decision.kt`,
-  `Deduplicator.kt`, `RuleEngine.kt`, `SecretDetector.kt`. Each carries a
-  doc comment covering its own contract; `RuleEngine.kt`'s is worth
-  reading directly rather than summarized here — it documents a real,
-  verified limitation of its own regex-timeout mitigation (see
+  `Deduplicator.kt`, `RuleEngine.kt`, `SecretDetector.kt`, `SpeechRequest.kt`.
+  Plus two files not in §3's tree — see "Deviations" below:
+  `ContentHash.kt` and `TextSanitizer.kt`. `RuleEngine.kt`'s doc comment
+  is worth reading directly rather than summarized here — it documents a
+  real, verified limitation of its own regex-timeout mitigation (see
   [history.md](history.md)).
+- `listener/` — `NotificationTtsListener.kt` (routing only, per §3),
+  `NotificationExtractor.kt` (the Android-facing half of §4.2's
+  extraction), and `NotificationExtractionPolicy.kt` — a third file not
+  in §3's tree, again see "Deviations": the pure, Android-import-free
+  half of §4.2's drop conditions, split out specifically so it's
+  JVM-testable without a device.
+- `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
+  impl, system default engine for now — see its own doc comment on why
+  engine selection waits for Phase 4), `AudioFocusManager.kt`,
+  `SpeechQueue.kt`. `OutputRouteGate.kt` doesn't exist yet — Phase 4.
 
 Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
 
 - `debug/FakeNotifications.kt` — the Phase 1 fake-notification injector
   (`AGENTS.md` §6). `debug/` source set only, per spec; see
-  [testing.md](testing.md) for how to invoke it.
+  [testing.md](testing.md) for how to invoke it. Now shares
+  `domain/ContentHash.kt`'s hashing rather than keeping its own copy —
+  that duplication was the plan from the start, see its own comment.
 
-Under `app/src/test/java/net/breadthcharge/exigentheron/domain/`: one
-test class per `domain/` class above (`NotificationPayloadTest`,
-`DeduplicatorTest`, `SecretDetectorTest`, `RuleEngineTest`) — 31 tests
-total, see [status.md](status.md) for the current pass count.
+Under `app/src/test/java/net/breadthcharge/exigentheron/`: one test class
+per testable class above, 53 tests total — see [status.md](status.md) for
+the current pass count. `listener/NotificationExtractionPolicyTest.kt`
+and `speech/SpeechQueueTest.kt` are the first tests in this repo to
+exercise Android-facing (if Android-import-light or -free) code rather
+than pure `domain/` — see [traps-and-skills.md](traps-and-skills.md) for
+two real problems that surfaced specifically because of that.
 
-Nothing under `listener/`, `speech/`, or `data/` yet — those arrive in
-Phases 2–4 per `AGENTS.md` §6.
+Nothing under `data/` yet — Phase 3.
 
 ## Target tree
 
@@ -63,13 +79,36 @@ from it separately.
 
 ## Deviations from AGENTS.md §3
 
-None yet. `AGENTS.md` §3's tree uses `com.<yourdomain>.notifreader` as a
+`AGENTS.md` §3's tree uses `com.<yourdomain>.notifreader` as a
 placeholder package name; the real one is `net.breadthcharge.exigentheron`
 (see `app/build.gradle.kts`'s `namespace` and `applicationId`) — not a
-deviation, just the placeholder resolved. If a real divergence from the
-spec tree happens later (a class that ends up somewhere other than its
-specified package, a component the spec didn't anticipate), record it
-here with a date and why, per skill
+deviation, just the placeholder resolved.
+
+**2026-09-05, three files not in §3's tree**, all real deviations, all
+in service of the same goal §3 itself states — testable logic living
+outside Android framework glue:
+
+- `domain/ContentHash.kt` — §4.1 says `NotificationPayload.contentHash`
+  is "a stable hash of title+body" but never says where it's computed.
+  Putting it in `domain/` (pure JVM, `java.security` not Android) is what
+  let `FakeNotifications` (debug/) and `NotificationExtractor` (main,
+  real notifications) share one implementation instead of two that could
+  drift apart — see [history.md](history.md).
+- `domain/TextSanitizer.kt` — §4.2's control/zero-width/bidi stripping is
+  specified under `NotificationExtractor`, but the stripping itself has
+  no Android dependency, so it lives in `domain/` and gets a real JVM
+  test the same way the rest of `domain/` does.
+- `listener/NotificationExtractionPolicy.kt` — §4.2's drop conditions
+  (ongoing, group summary, own package, empty title+body), as a pure
+  function over plain values rather than a `StatusBarNotification`.
+  Deliberately *not* moved into `domain/` — it's extraction policy, not
+  rule/secret/dedup business logic — but it has zero Android imports for
+  the same testability reason as the two above.
+
+If a real divergence from the spec tree happens later that *isn't* in
+this same spirit (a class that ends up somewhere other than its
+specified package for no principled reason, a component the spec didn't
+anticipate), record it here with a date and why, per skill
 [`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) — and say in the
 same change whether `AGENTS.md` itself should be corrected instead of the
 code, per its own §0 instinct to flag disagreement rather than build

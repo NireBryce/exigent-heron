@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.debug
 
-import java.security.MessageDigest
 import net.breadthcharge.exigentheron.domain.NotificationPayload
+import net.breadthcharge.exigentheron.domain.contentHashOf
 
 /**
  * Synthetic [NotificationPayload]s for exercising the domain pipeline
@@ -31,7 +31,7 @@ object FakeNotifications {
         isGroupSummary = isGroupSummary,
         isOngoing = isOngoing,
         visibility = visibility,
-        contentHash = contentHash(title, body),
+        contentHash = contentHashOf(title, body),
     )
 
     /** A handful of payloads covering the pipeline's interesting cases by hand. */
@@ -44,15 +44,4 @@ object FakeNotifications {
         ),
         payload(packageName = "com.example.spam", title = null, body = null),
     )
-
-    /**
-     * The same hashing [NotificationExtractor] (Phase 2) will need to
-     * use — kept local to this debug-only object rather than in
-     * `domain/` since domain has no reason to compute a hash itself,
-     * only to receive one already computed.
-     */
-    private fun contentHash(title: String?, body: String?): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest("$title|$body".toByteArray())
-        return digest.joinToString("") { "%02x".format(it) }
-    }
 }

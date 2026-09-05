@@ -8,7 +8,9 @@
 
 Open questions and known gaps, plus anything tracked as a GitHub issue.
 Adapted from nixos-configs' `open-threads.md` — same idea, much shorter,
-since this repo is three commits old.
+since this is still a young repo. (`git log` is the accurate commit
+count if that ever matters — see [history.md](history.md)'s own note on
+not keeping a second copy of it here.)
 
 **Before starting work on any of these, or investigating a symptom that
 might be one of them:** `gh issue list --repo NireBryce/exigent-heron
@@ -60,9 +62,32 @@ section.
   (closing the gap entirely, at the cost of disallowing a rarely-needed
   but legal regex feature) is an open product decision, not a bug — worth
   deciding when Phase 3 builds that editor, not silently either way.
+- **`SafeLog.decision`'s `ruleId` parameter is always `null` in practice**
+  (2026-09-05): `NotificationTtsListener.route()` calls
+  `SafeLog.decision(pkg, ruleId = null, action = ...)` because
+  `Decision.Speak`/`AnnounceOnly` don't carry the id of the `Rule` that
+  produced them — only `Decision.Suppress.reason` embeds "rule `<id>`"
+  as unstructured text, which isn't something to parse back out (that's
+  exactly the kind of string-parsing-for-structured-data `SafeLog`'s own
+  design avoids elsewhere). Cheap to fix by giving `Decision` an optional
+  `ruleId: String?` — not done yet since it's cosmetic (logging
+  completeness, not a spec requirement) and would touch Phase 1's
+  already-tested `Decision`/`RuleEngine`/`SecretDetector` mid–Phase 2.
+  Worth doing whenever a UI phase wants to show which rule fired for a
+  given decision, if not before.
+- **Phase 2's on-device acceptance criteria are unconfirmed** (see
+  [status.md](status.md)): no device was available the session that
+  built the listener/speech stack. Everything JVM-testable is tested and
+  green; "a notification is spoken once", "three duplicates in 10s still
+  speak once", and "music ducks and recovers" are still only true by
+  code review, not by having actually been run. [testing.md](testing.md)
+  has the steps — worth running before treating Phase 2 as more than
+  provisionally done.
 
 ## Not applicable yet
 
 `AGENTS.md` §8's "if OEM background-killing turns out to break it" clause
-— nothing to investigate until there's a running listener service to
-observe being killed (Phase 2+). Not forgotten, just not yet reachable.
+— `NotificationTtsListener` exists as of Phase 2, but nothing to
+investigate until it's actually *running*, unattended, on a real device
+long enough to observe whether an OEM kills it. Not forgotten, just not
+yet reachable — see the on-device thread above.
