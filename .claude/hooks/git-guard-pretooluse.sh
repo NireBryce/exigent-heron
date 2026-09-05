@@ -13,11 +13,13 @@
 # then PR, then a human merges" workflow. This is a deliberate difference
 # from the source, not an oversight: nixos-configs' own copy explicitly
 # does *not* gate on branch name ("that policy ... is already the ship
-# skill's job, not this hook's"), relying instead on a GitHub branch
-# ruleset on `main` plus its `ship` skill's own two confirmations. This
-# repo has no such ruleset (checked 2026-09-05: branch `main` isn't
-# protected) and, per an explicit choice made when this hook was extended,
-# gates here too rather than relying on skill discipline alone.
+# skill's job, not this hook's"), relying instead on GitHub branch
+# rulesets -- one on `experimental` (its default branch, trunk +
+# promotion model since 2026-09-03) and one on `main` (the promotion
+# target) -- plus its `ship` skill's own two confirmations. This repo has
+# no such ruleset (checked 2026-09-05: branch `main` isn't protected) and,
+# per an explicit choice made when this hook was extended, gates here too
+# rather than relying on skill discipline alone.
 #
 # Known limits: this is pattern-matching on the command string, not a git
 # parser. It does not follow shell variables/aliases, does not know what a

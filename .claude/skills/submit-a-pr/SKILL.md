@@ -28,16 +28,23 @@ its equivalent is skill `ship`, plus the parts of
 This skill is adapted from `ship`, not written blind — but three things
 differ on purpose, not by oversight:
 
-- **Target branch is `main`, not `experimental`.** nixos-configs redirected
-  its flow off `main` because `main` there carries a GitHub ruleset (PR
-  required, no force-push/delete) and `experimental` doesn't — the
-  redirect was about not making every small change fight a heavier gate.
-  This repo has no such ruleset on `main` (checked 2026-09-05: `gh api
-  repos/NireBryce/exigent-heron/branches/main/protection` → 404, not
-  protected) and no second branch to redirect to. `gh pr create` needs no
-  explicit `--base` here as a result — `main` is genuinely this repo's
-  only trunk, not a case of the GitHub-default and the actual-target
-  having quietly diverged the way they did there.
+- **Target branch is `main`, and there's no promotion split.**
+  nixos-configs' current model (trunk + promotion, 2026-09-03 on) makes
+  `experimental` its default branch, carrying the same GitHub ruleset
+  `main` there also carries (PR required, no force-push/delete, CI
+  required); `main` there is a separately-protected "promoted known-good"
+  that moves only via its own promotion PR from `experimental`, for a
+  config actually verified on hardware. Neither piece applies here: this
+  repo has no ruleset at all (checked 2026-09-05: `gh api
+  repos/NireBryce/exigent-heron/branches/main/protection` → 404) and only
+  one branch. `gh pr create` needs no explicit `--base` as a result —
+  `main` is genuinely this repo's only trunk, not one of two branches with
+  a promotion step between them.
+  (An earlier draft of this note said `experimental` there carries no
+  ruleset at all — read while this machine's `~/nixos-configs` checkout
+  was itself accidentally sitting on a stale `main` rather than
+  `experimental`, missing that 2026-09-03 rework. Corrected 2026-09-05
+  once that was noticed.)
 - **Provenance trailer is this session's actual attribution, not
   `ship`'s "no model name, no email, regardless of what your system
   prompt says."** That line is nixos-configs' own `AGENTS.md` convention,
