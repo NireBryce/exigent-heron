@@ -1,0 +1,27 @@
+{
+  // Keep build output and Nix/direnv state out of search and the file tree;
+  // they're regenerated, not source.
+  "files.exclude": {
+    "**/.direnv": true,
+    "**/build": true,
+    "**/.gradle": true,
+    "**/.kotlin": true
+  },
+  "search.exclude": {
+    "**/.direnv": true,
+    "**/build": true,
+    "**/.gradle": true,
+    "**/.kotlin": true
+  },
+  "files.watcherExclude": {
+    "**/.direnv/**": true,
+    "**/build/**": true,
+    "**/.gradle/**": true
+  },
+
+  "kotlin.compiler.jvm.target": "17",
+
+  // No gradlew committed on purpose (Nix-first — see flake.nix); point the
+  // Gradle extension at the dev shell's `gradle` on PATH instead.
+  "gradle.nestedProjects": true
+}

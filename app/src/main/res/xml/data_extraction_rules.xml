@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Excludes everything from both cloud backup and device-to-device
+     transfer. See AGENTS.md §5 — this app holds rules the user wrote and,
+     transiently, notification content; none of it leaves the device. -->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapability="true">
+        <exclude domain="root" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    // Kotlin language support (kotlin-language-server under the hood).
+    "fwcd.kotlin",
+    // Gradle task explorer/runner — works against the `gradle` the dev
+    // shell puts on PATH, no wrapper needed.
+    "vscjava.vscode-gradle",
+    // AndroidManifest.xml / data_extraction_rules.xml editing.
+    "redhat.vscode-xml",
+    // flake.nix editing.
+    "jnoortheen.nix-ide",
+    // Loads the flake devShell's env (JAVA_HOME, ANDROID_HOME, ...) into
+    // VS Code itself, not just integrated terminals — required for the
+    // Kotlin language server above to find a JDK and resolve Android
+    // classes correctly.
+    "mkhl.direnv"
+  ]
+}
