@@ -28,6 +28,15 @@
 # lives in AGENTS.md's §0 and skill submit-a-pr, both plain files any
 # agent can read regardless of whether this hook fires for it.
 #
+# 2026-09-05: added a third class -- one check, on `gh pr create`, nudging
+# on a new/removed app/src/ file with no wiki/ change alongside it on the
+# same branch. Backs submit-a-pr's own step 2 (run skill wiki-sync before
+# pushing) the same way the PR-workflow checks above back its step 0/step
+# 7 -- a backstop for a slip, not a replacement for actually running
+# wiki-sync deliberately. Deliberately narrow (new/removed files only, not
+# every edit) to match wiki-sync's own clearest, most mechanical trigger
+# rather than nagging on every ordinary code change.
+#
 # Known limits: this is pattern-matching on the command string, not a git
 # parser. It does not follow shell variables/aliases, does not know what a
 # rebase or push will actually touch, and a short-option cluster it doesn't
@@ -143,6 +152,23 @@ fi
 # gh pr merge
 if [ -z "$reason" ] && grep -qE '\bgh\b' <<<"$command" && grep -qE '\bpr\b' <<<"$command" && grep -qE '\bmerge\b' <<<"$command"; then
     reason="This merges a pull request. Skill submit-a-pr has a human decide that, not the agent unprompted -- confirm this merge is actually wanted right now rather than left for review."
+fi
+
+# gh pr create: nudge when this branch adds or removes a file under
+# app/src/ but touches nothing under wiki/ -- skill wiki-sync's own
+# clearest, most mechanical trigger ("adding, renaming, or removing a
+# class/file architecture.md mentions"). Only fires on added/deleted
+# files, not every edit, so an ordinary fix that doesn't change the
+# tree's shape doesn't get flagged. origin/main may be slightly behind
+# what's actually on GitHub if nothing fetched it recently in this
+# worktree -- same caliber of imprecision as the rest of this file.
+if [ -z "$reason" ] && grep -qE '\bgh\b' <<<"$command" && grep -qE '\bpr\b' <<<"$command" && grep -qE '\bcreate\b' <<<"$command"; then
+    changed=$(git diff --name-status origin/main...HEAD 2>/dev/null || true)
+    if [ -n "$changed" ] \
+        && grep -qE '^[AD][[:space:]]+app/src/' <<<"$changed" \
+        && ! grep -qE '^[[:alpha:]][[:space:]]+wiki/' <<<"$changed"; then
+        reason="This branch adds or removes a file under app/src/ but changes nothing under wiki/. Skill wiki-sync (submit-a-pr step 2) is exactly for this -- confirm architecture.md/status.md genuinely don't need updating, or that this was already checked."
+    fi
 fi
 
 if [ -n "$reason" ]; then
