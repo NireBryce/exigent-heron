@@ -33,9 +33,11 @@ hours before anyone checked it was already written up two days earlier.)
 1. **Before reproducing anything**, run `gh issue list --repo
    NireBryce/exigent-heron --search "<keywords>" --state all` with a
    couple of guesses from the report's own wording (symptom text, error
-   message, class/function name), and grep `AGENTS.md` for the same
-   keywords — this repo has no wiki or lessons-learned file, so those two
-   are the whole check.
+   message, class/function name), and grep `AGENTS.md`, `BUILD_PLAN.md`,
+   and `wiki/` for the same keywords — `wiki/open-threads.md` is where a
+   known gap or open question like this would already be tracked, and
+   `wiki/traps-and-skills.md` is where a past mistake matching the
+   symptom would already be written up with its general form.
 2. **A hit means read it fully** before doing anything else. Pick up from
    where it left off (an untested fix, an open question, a "not yet
    confirmed" status) rather than re-deriving from zero. If it's stale or
@@ -58,3 +60,6 @@ hours before anyone checked it was already written up two days earlier.)
   you noticed rather than one that was reported to you.
 - `fact-hygiene` skill — fixing anything a confirmed bug shows is now
   wrong in `AGENTS.md` or a code comment.
+- `wiki-sync` skill — the same, for anything a confirmed bug shows is now
+  wrong or missing in `wiki/`, such as `open-threads.md` needing a new
+  entry or an existing one closed out.
