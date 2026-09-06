@@ -40,10 +40,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.breadthcharge.exigentheron.data.RuleRepository
-import net.breadthcharge.exigentheron.domain.PatternValidation
 import net.breadthcharge.exigentheron.domain.Rule
 import net.breadthcharge.exigentheron.domain.RuleAction
-import net.breadthcharge.exigentheron.domain.RuleValidator
+import net.breadthcharge.exigentheron.domain.RuleFormValidator
 import java.util.UUID
 
 /**
@@ -78,30 +77,29 @@ class RuleEditorViewModel(
 
     /** Returns true (and persists) only once every field validates. */
     fun save(onSaved: () -> Unit) {
-        val title = titlePattern.trim().ifBlank { null }
-        val body = bodyPattern.trim().ifBlank { null }
-        val priority = priorityText.trim().toIntOrNull()
+        val result = RuleFormValidator.validate(
+            matchAllApps = matchAllApps,
+            selectedPackages = selectedPackages,
+            titlePattern = titlePattern,
+            bodyPattern = bodyPattern,
+            priorityText = priorityText,
+        )
+        titleError = result.errors.titleError
+        bodyError = result.errors.bodyError
+        appsError = result.errors.appsError
+        priorityError = result.errors.priorityError
 
-        titleError = (RuleValidator.validatePattern(title) as? PatternValidation.Invalid)?.message
-        bodyError = (RuleValidator.validatePattern(body) as? PatternValidation.Invalid)?.message
-        appsError = if (!matchAllApps && selectedPackages.isEmpty()) {
-            "Choose at least one app, or switch to \"All apps\""
-        } else {
-            null
-        }
-        priorityError = if (priority == null) "Priority must be a whole number" else null
-
-        if (titleError != null || bodyError != null || appsError != null || priorityError != null) return
+        if (!result.errors.isValid) return
 
         val rule = Rule(
             id = existingRule?.id ?: UUID.randomUUID().toString(),
             enabled = enabled,
             packageNames = if (matchAllApps) emptySet() else selectedPackages,
-            titlePattern = title,
-            bodyPattern = body,
+            titlePattern = result.titlePattern,
+            bodyPattern = result.bodyPattern,
             action = action,
             template = template.trim().ifBlank { null },
-            priority = priority!!,
+            priority = result.priority!!,
         )
         viewModelScope.launch {
             ruleRepository.upsert(rule)

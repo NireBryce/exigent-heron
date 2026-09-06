@@ -48,9 +48,9 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   error status line wired to `AppContainer.ttsEngineStatus`.
 - `ui/rules/` (Phase 3) — `RuleListScreen.kt` (list + enable toggle +
   delete, backed by `RuleListViewModel`), `RuleEditorScreen.kt` (form +
-  save-time validation via `RuleValidator`, backed by
-  `RuleEditorViewModel`; the app picker is a `Dialog` launched from inside
-  this screen, not a separate nav destination), `InstalledApps.kt`
+  save-time validation, backed by `RuleEditorViewModel`; the app picker
+  is a `Dialog` launched from inside this screen, not a separate nav
+  destination), `InstalledApps.kt`
   (`PackageManager.queryIntentActivities` against the `<queries>` block
   added to `AndroidManifest.xml` this phase — see "Deviations" below).
   ViewModels are constructed via `androidx.lifecycle.viewmodel.viewModelFactory`
@@ -62,7 +62,11 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   Phase 3 added four more, all still Android-import-free: `RuleValidator.kt`
   (single source of truth for "is this pattern acceptable" — rejects
   backreferences outright, used by both the rule editor and
-  `RuleEngine.compileOrNull`), `InterruptibleCharSequence.kt` (makes
+  `RuleEngine.compileOrNull`) — joined post-Phase-5 by `RuleFormValidator.kt`,
+  pulling `RuleEditorViewModel.save()`'s remaining form-only checks
+  (empty app selection, non-numeric priority) out into the same
+  pure/testable shape, so the whole save-time gate is unit-tested rather
+  than only its regex half — `InterruptibleCharSequence.kt` (makes
   `runInterruptible`'s `Thread.interrupt()` actually abort a runaway
   match — see [history.md](history.md)), `RuleCodec.kt` (pure JSON
   encode/decode/list-editing that `data/RuleRepository.kt` wraps),
