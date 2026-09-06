@@ -61,6 +61,14 @@ class NotificationTtsListener : NotificationListenerService() {
                 return
             }
         }
+        // Placed right before SpeechQueue.enqueue(), per AGENTS.md §3's
+        // data-flow diagram — a rule/secret-scan decision to speak can
+        // still be dropped here by the headset-only or lock-state gate.
+        if (!container.outputRouteGate.allows() || !container.lockStateGate.allows()) {
+            SafeLog.decision(payload.packageName, ruleId = null, action = "suppress")
+            return
+        }
+
         SafeLog.decision(payload.packageName, ruleId = null, action = decision::class.simpleName.orEmpty())
         container.speechQueue.enqueue(SpeechRequest(text = text, utteranceId = UUID.randomUUID().toString()))
     }
