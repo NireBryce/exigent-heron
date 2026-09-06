@@ -17,6 +17,11 @@ name: check
 # whatever JVM unit tests exist under app/src/test; there are none yet
 # as of Phase 0, so this currently just proves the empty test task
 # doesn't break.
+#
+# lintDebug/lintRelease run below despite the above: Android Lint only
+# analyzes sources/manifest/resources, never packages or signs, so
+# lintRelease works in CI the same as it does locally with no signing
+# config -- unlike assembleRelease, there's no reason to skip it.
 
 on:
   pull_request:
@@ -25,9 +30,17 @@ on:
 
 jobs:
   build-and-test:
-    name: gradle assembleDebug + testDebugUnitTest
+    name: gradle assembleDebug + testDebugUnitTest + lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # security-events:write is what upload-sarif below needs to post
+    # lintDebug/lintRelease's findings to the repo's code-scanning tab;
+    # not covered by this repo's default GITHUB_TOKEN permissions
+    # otherwise. contents:read is the actual default, spelled out because
+    # naming any `permissions:` key drops every other one to none.
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
@@ -50,3 +63,23 @@ jobs:
             grep -rl 'android\.util\.Log' app/src --include='*.kt' || true
             exit 1
           fi
+
+      # Android Lint, built into AGP already in use here -- no new
+      # dependency to add or ask about, just a task nothing was running.
+      # Both variants: lintRelease needs no signing config (lint only
+      # analyzes sources/manifest/resources, never packages or signs),
+      # so it runs the same in CI as assembleRelease deliberately can't
+      # (see this file's header comment on why assembleRelease is skipped).
+      - name: lintDebug + lintRelease (nix develop)
+        run: nix develop --command gradle lintDebug lintRelease
+
+      # Surfaces lint's findings in the PR's "Files changed"/Security tab
+      # via GitHub's code scanning, instead of only a build-log grep --
+      # existing tool's own report, not a second analysis.
+      - name: upload lint results to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: |
+            app/build/reports/lint-results-debug.sarif
+            app/build/reports/lint-results-release.sarif
