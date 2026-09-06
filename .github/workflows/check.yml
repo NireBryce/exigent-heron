@@ -80,11 +80,15 @@ jobs:
 
       # Surfaces lint's findings in the PR's "Files changed"/Security tab
       # via GitHub's code scanning, instead of only a build-log grep --
-      # existing tool's own report, not a second analysis.
+      # existing tool's own report, not a second analysis. sarif_file
+      # takes one file *or* one directory of SARIF files, not a
+      # newline-separated list of files -- a first attempt at this step
+      # passed both paths as one multi-line string, which upload-sarif
+      # treated as a single (nonexistent) path containing a literal
+      # newline. Pointing at the directory instead picks up both
+      # lint-results-debug.sarif and lint-results-release.sarif.
       - name: upload lint results to code scanning
         uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         if: always()
         with:
-          sarif_file: |
-            app/build/reports/lint-results-debug.sarif
-            app/build/reports/lint-results-release.sarif
+          sarif_file: app/build/reports
