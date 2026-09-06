@@ -5,10 +5,10 @@ import android.media.AudioManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import net.breadthcharge.exigentheron.data.RuleRepository
+import net.breadthcharge.exigentheron.data.SettingsRepository
 import net.breadthcharge.exigentheron.domain.Deduplicator
-import net.breadthcharge.exigentheron.domain.Rule
-import net.breadthcharge.exigentheron.domain.RuleAction
-import net.breadthcharge.exigentheron.domain.RuleEngine
+import net.breadthcharge.exigentheron.domain.RuleEngineHolder
 import net.breadthcharge.exigentheron.domain.SecretDetector
 import net.breadthcharge.exigentheron.speech.AndroidTtsEngine
 import net.breadthcharge.exigentheron.speech.AudioFocusManager
@@ -17,9 +17,7 @@ import net.breadthcharge.exigentheron.speech.SpeechQueue
 /**
  * Manual DI container: constructs and holds this app's singletons.
  *
- * No Hilt, no framework — see AGENTS.md §2. `SettingsRepository` and
- * `RuleRepository` (Phase 3, DataStore-backed) still don't exist —
- * [ruleEngine] below is built from [phase2HardcodedRules] until they do.
+ * No Hilt, no framework — see AGENTS.md §2.
  */
 class AppContainer(private val appContext: Context) {
 
@@ -27,8 +25,16 @@ class AppContainer(private val appContext: Context) {
 
     val deduplicator = Deduplicator(clock = System::currentTimeMillis)
 
-    val ruleEngine = RuleEngine(
-        rules = phase2HardcodedRules,
+    val ruleRepository = RuleRepository(appContext)
+    val settingsRepository = SettingsRepository(appContext)
+
+    // Rebuilt from ruleRepository.rules on every change (Phase 3) — a
+    // rule edit takes effect on the next notification, not on next app
+    // restart. Phase 2's phase2HardcodedRules is gone: this repo's
+    // rules, empty by default, are the real rule set now.
+    val ruleEngine = RuleEngineHolder(
+        rules = ruleRepository.rules,
+        scope = scope,
         onRuleFailure = { id, reason -> SafeLog.error("rule $id failed: $reason") },
     )
 
@@ -51,16 +57,3 @@ class AppContainer(private val appContext: Context) {
         scope = scope,
     )
 }
-
-// Phase 2: "Rules hardcoded to one package" (BUILD_PLAN.md). Google
-// Messages here is just a common default app to test against — swap the
-// package name for whatever's actually installed on your device. Real
-// persistence and a rule editor arrive in Phase 3.
-private val phase2HardcodedRules = listOf(
-    Rule(
-        id = "phase2-hardcoded",
-        enabled = true,
-        packageNames = setOf("com.google.android.apps.messaging"),
-        action = RuleAction.SPEAK,
-    ),
-)

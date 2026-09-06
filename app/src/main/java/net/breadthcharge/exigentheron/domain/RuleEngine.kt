@@ -2,7 +2,7 @@ package net.breadthcharge.exigentheron.domain
 
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val MAX_MATCH_INPUT_LENGTH = 2000
@@ -25,24 +25,28 @@ private val MATCH_TIMEOUT = 100.milliseconds
  *
  * **A caveat worth knowing, not just assuming away:** AGENTS.md §4.4
  * asks for `withTimeoutOrNull(100.milliseconds)` around matching to
- * stop catastrophic regex backtracking from ANRing the app. That wrap
- * bounds how long *this function* waits, by racing the match against a
- * timer on [Dispatchers.Default] — it does **not** stop the match
- * itself: `java.util.regex` (which `kotlin.text.Regex` wraps) has no
- * cooperative-cancellation checks, verified directly — interrupting a
- * thread mid-match does not stop it (see `wiki/history.md`).
+ * stop catastrophic regex backtracking from ANRing the app. `java.util.regex`
+ * (which `kotlin.text.Regex` wraps) has no cooperative-cancellation
+ * checks of its own, verified directly — interrupting a thread
+ * mid-match does nothing by default (see `wiki/history.md`). [matches]
+ * closes that gap rather than just living with it: matching runs inside
+ * [runInterruptible] (which does call `Thread.interrupt()` on
+ * cancellation) against an [InterruptibleCharSequence] wrapping the
+ * input, so an interrupt now actually aborts a runaway match — no
+ * `Dispatchers.Default` thread keeps burning after `evaluate()` has
+ * already returned `Suppress` and moved on.
  *
  * The textbook "crafted message" scenario the spec describes is
- * narrower than it sounds, though, also verified rather than assumed:
- * OpenJDK memoizes failed backtracking positions (JDK-6328855), which
- * makes classic nested-quantifier patterns like `(a+)+$` linear-time
- * on this JVM, not exponential. That memoization is disabled whenever
- * the pattern has a backreference (`\1` etc.) — those are still
- * genuinely exponential *and* still not interruptible. A rule author
- * can still write one, so the timeout stays; a rule that hits it keeps
- * burning a [Dispatchers.Default] thread after `evaluate()` has already
- * returned `Suppress` and moved on. The input-length cap below bounds
- * how bad that leak can get per attack.
+ * narrower than it sounds anyway, verified rather than assumed: OpenJDK
+ * memoizes failed backtracking positions (JDK-6328855), which makes
+ * classic nested-quantifier patterns like `(a+)+$` linear-time on this
+ * JVM, not exponential. That memoization is disabled whenever the
+ * pattern has a backreference (`\1` etc.) — those are still genuinely
+ * exponential, which is why [RuleValidator] rejects them outright at
+ * rule-save time rather than relying on interruption alone: even a
+ * cleanly-interrupted match still costs the full 100ms timeout on every
+ * notification from that app, forever. The input-length cap below
+ * bounds the remaining (non-backreference, JIT-memoized) case further.
  */
 class RuleEngine(
     rules: List<Rule>,
@@ -67,11 +71,12 @@ class RuleEngine(
     }
 
     private fun compileOrNull(rule: Rule, pattern: String): Regex? =
-        try {
-            Regex(pattern, RegexOption.IGNORE_CASE)
-        } catch (e: java.util.regex.PatternSyntaxException) {
-            onRuleFailure(rule.id, "invalid regex: ${e.message}")
-            null
+        when (val result = RuleValidator.validatePattern(pattern)) {
+            is PatternValidation.Ok -> Regex(pattern, RegexOption.IGNORE_CASE)
+            is PatternValidation.Invalid -> {
+                onRuleFailure(rule.id, result.message)
+                null
+            }
         }
 
     suspend fun evaluate(payload: NotificationPayload): Decision {
@@ -79,7 +84,7 @@ class RuleEngine(
             if (!matchesPackage(candidate.rule, payload)) continue
 
             val matched = withTimeoutOrNull(MATCH_TIMEOUT) {
-                withContext(Dispatchers.Default) { matches(candidate, payload) }
+                runInterruptible(Dispatchers.Default) { matches(candidate, payload) }
             }
 
             if (matched == null) {
@@ -94,13 +99,23 @@ class RuleEngine(
     private fun matchesPackage(rule: Rule, payload: NotificationPayload): Boolean =
         rule.packageNames.isEmpty() || payload.packageName in rule.packageNames
 
-    private fun matches(candidate: CompiledRule, payload: NotificationPayload): Boolean {
-        val title = payload.title.orEmpty().take(MAX_MATCH_INPUT_LENGTH)
-        val body = payload.body.orEmpty().take(MAX_MATCH_INPUT_LENGTH)
-        val titleOk = candidate.titleRegex?.containsMatchIn(title) ?: true
-        val bodyOk = candidate.bodyRegex?.containsMatchIn(body) ?: true
-        return titleOk && bodyOk
-    }
+    // Wrapped in InterruptibleCharSequence so runInterruptible's
+    // Thread.interrupt() (see the class doc above) actually stops a
+    // runaway match instead of only abandoning the caller. Catching
+    // InterruptedMatchException here rather than letting it propagate:
+    // by the time it's thrown, withTimeoutOrNull has already returned
+    // and moved on — this is purely about not burning the thread
+    // further, not about producing a meaningful return value.
+    private fun matches(candidate: CompiledRule, payload: NotificationPayload): Boolean =
+        try {
+            val title = InterruptibleCharSequence(payload.title.orEmpty().take(MAX_MATCH_INPUT_LENGTH))
+            val body = InterruptibleCharSequence(payload.body.orEmpty().take(MAX_MATCH_INPUT_LENGTH))
+            val titleOk = candidate.titleRegex?.containsMatchIn(title) ?: true
+            val bodyOk = candidate.bodyRegex?.containsMatchIn(body) ?: true
+            titleOk && bodyOk
+        } catch (e: InterruptedMatchException) {
+            false
+        }
 
     private fun toDecision(rule: Rule, payload: NotificationPayload): Decision {
         val text = render(rule.template, payload)

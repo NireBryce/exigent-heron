@@ -6,6 +6,7 @@
 - [Checking the manifest](#checking-the-manifest)
 - [Watching logcat safely](#watching-logcat-safely)
 - [Once there's a listener to test (Phase 2+)](#once-theres-a-listener-to-test-phase-2)
+- [Once there's a rule editor to test (Phase 3+)](#once-theres-a-rule-editor-to-test-phase-3)
 - [Hardening-pass device matrix (Phase 5)](#hardening-pass-device-matrix-phase-5)
 
 How to actually build, install, and exercise this app — as opposed to
@@ -25,13 +26,16 @@ nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
-`app/src/test` — as of **2026-09-05** (Phase 2) that's 53 tests, all
+`app/src/test` — as of **2026-09-05** (Phase 3) that's 73 tests, all
 passing; see [status.md](status.md) for the current count rather than
 trusting this number as it ages. A couple of the `speech/` and
 `listener/` tests exercise real background coroutines with real time —
 if one ever seems flaky, re-run it standalone a few times before
 assuming it's a fluke; see [traps-and-skills.md](traps-and-skills.md)
-for a real one already caught here.
+for a real one already caught here. `RuleEngineHolderTest` similarly
+needs real time rather than `kotlinx-coroutines-test`'s virtual-time
+`runTest` — see its own top-of-file comment for why mixing the two made
+`RuleEngine.evaluate()`'s timeout fire spuriously.
 
 ## Checking the manifest
 
@@ -82,10 +86,11 @@ them:
    attached.
 2. Launch the app, tap "Enable notification access", grant it in the
    system settings screen that opens.
-3. `AppContainer.kt`'s `phase2HardcodedRules` targets
-   `com.google.android.apps.messaging` — install that (or, more likely,
-   edit that package name to whatever messaging app is actually on your
-   device, then reinstall) before expecting anything to speak.
+3. Tap "Manage rules" → "+" and add a rule for whatever messaging app is
+   actually on your device (Phase 3 replaced the old
+   `phase2HardcodedRules` stopgap with a real rule editor — see
+   [history.md](history.md) — so there's no rule at all, and thus no
+   speech, until one is added this way).
 4. Trigger a real notification from that app; confirm it's spoken once.
    Trigger the same notification 3× within 10s; confirm it speaks once,
    not three times (`Deduplicator`). Start music, trigger a
@@ -110,6 +115,27 @@ runBlocking {
 This section is the place to note a real invocation once something
 actually calls it (a debug menu item, a harness run against the real
 listener) rather than this placeholder.
+
+## Once there's a rule editor to test (Phase 3+)
+
+Phase 3's own acceptance criteria (`BUILD_PLAN.md`) are also
+**unconfirmed** on-device this session — see [open-threads.md](open-threads.md).
+To run them:
+
+1. From "Manage rules", add a rule, force-stop the app
+   (Settings → Apps → exigent-heron → Force stop), relaunch, and open
+   "Manage rules" again — the rule should still be listed
+   (`RuleRepository`'s DataStore persistence).
+2. In the rule editor, enter an invalid title or body pattern — an
+   unbalanced paren (`(unclosed`), or a backreference (`\1`) — and tap
+   Save; confirm an inline error appears and the rule is not saved,
+   rather than the app crashing later when a real notification arrives.
+3. Tap "Choose apps" in the editor and confirm the installed-app list is
+   non-empty and searchable-by-scrolling — this is the first thing that
+   exercises the `<queries>` manifest addition (see
+   [architecture.md](architecture.md)); an empty list on a real device
+   despite installed launchable apps would mean that declaration isn't
+   doing its job.
 
 ## Hardening-pass device matrix (Phase 5)
 

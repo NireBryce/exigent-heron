@@ -3,6 +3,21 @@
 
     <!-- No <uses-permission> here, ever, for INTERNET. See AGENTS.md §5/§0. -->
 
+    <!--
+      A visibility declaration, not a permission grant: without it,
+      PackageManager.queryIntentActivities in the installed-app picker
+      (Phase 3) comes back empty on a real device under Android's
+      package-visibility rules (minSdk 31 / targetSdk 37 both enforce
+      them) — querying by a matching intent filter is exempt from those
+      rules, so this is enough without QUERY_ALL_PACKAGES.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="false"
