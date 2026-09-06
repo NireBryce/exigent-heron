@@ -8,6 +8,7 @@
 - [scope.cancel() without join() let one test's coroutine bleed into the next](#scopecancel-without-join-let-one-tests-coroutine-bleed-into-the-next)
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 - [git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits](#git-reset---hard-meant-for-a-throwaway-test-commit-wiped-real-uncommitted-edits)
+- [The queue-collapse burst test raced its own consumer thread](#the-queue-collapse-burst-test-raced-its-own-consumer-thread)
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
@@ -163,3 +164,50 @@ command in general rather than a question about the actual, current
 state of the tree it was about to run against. No existing skill states
 this as its own rule; worth folding into a future skill on running
 destructive git commands mid-task if this pattern recurs.
+
+## The queue-collapse burst test raced its own consumer thread
+
+**2026-09-06.** `SpeechQueueTest`'s "a burst of more than 5 pending
+items collapses to one summary utterance" (added building
+BUILD_PLAN.md Phase 4) sent all ten `enqueue()` calls ungated, with a
+comment reasoning that this was safe because `enqueue()`'s `trySend()`
+doesn't suspend the test's own thread — "same assumption the 'requests
+are spoken in order' test above already relies on." That reasoning
+doesn't actually transfer: the earlier test's assertion (each item's own
+text, in order) holds no matter how the consumer happens to split a
+burst across batches, but this test's assertion (exactly one summary,
+not several individually-spoken items) only holds if every send lands
+*before* the consumer's first receive — and the consumer runs on its
+own real thread (`Dispatchers.Default`), so nothing about the sender
+thread not suspending guarantees anything about when the receiver
+thread wakes up. Passed reliably in every local run and in several
+earlier CI runs on this same test suite, then failed twice in a row on
+a later PR's CI run with no change to `SpeechQueue.kt` or the test
+itself — confirmed as a real, reproducible race rather than
+infrastructure noise by forcing the same conditions locally
+(`gradle testDebugUnitTest --no-daemon` under a 2-core `taskset`, cold
+JVM): failed on the first attempt, consistent with a fresh CI runner's
+own cold-JVM-plus-few-cores starting conditions differing enough from a
+warm local Gradle daemon to change scheduling outcomes.
+
+Fixed with the same gate technique the "audio focus requested once for
+a burst" test above already uses, applied one call earlier: send a
+throwaway `"gate"` item first and block inside its `onSpeak()` before
+sending the real burst. While the consumer is suspended there, its
+`for (request in channel)` loop provably hasn't reached its next
+receive, so every one of the ten real sends is guaranteed to already be
+in the channel by the time it does — 8/8 clean afterward under the same
+constrained conditions that reproduced the failure.
+
+**General form:** two assertions can look like they need "the same"
+timing guarantee and not actually need the same *strength* of one —
+order-preservation-regardless-of-batching and
+exact-single-batch-detection are different claims, and a synchronization
+argument that discharges the first doesn't automatically discharge the
+second. Worth treating "no gate needed, same as the test above" as a
+claim to re-derive against what this specific assertion depends on, not
+inherit by analogy — the same shape as `fact-hygiene`'s category 1, just
+about a concurrency argument instead of an external fact. See also this
+page's own earlier `scope.cancel()`/`join()` entry: this is the second
+`SpeechQueueTest` race caused by treating `Dispatchers.Default` as if it
+shared the test's own thread instead of being a genuinely separate one.
