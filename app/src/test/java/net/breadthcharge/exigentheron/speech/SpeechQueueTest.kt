@@ -67,7 +67,7 @@ class SpeechQueueTest {
     fun `a single request is spoken, then a silence gap`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
 
         queue.enqueue(request("hello"))
         awaitCount(fake.speakCalls, 1)
@@ -82,7 +82,7 @@ class SpeechQueueTest {
     fun `requests are spoken in order`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
 
         queue.enqueue(request("first"))
         queue.enqueue(request("second"))
@@ -98,12 +98,28 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { true }, scope)
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { true }, { false }, scope)
 
         queue.enqueue(request("should not be heard"))
         // No speak() will ever come; wait on something that does happen
         // instead — the queue draining, which still runs even when the
         // in-call check skips the utterance itself.
+        withTimeout(5.seconds) {
+            while (abandonCalls.get() < 1) kotlinx.coroutines.yield()
+        }
+
+        assertThat(fake.speakCalls).isEmpty()
+        scope.shutdown()
+    }
+
+    @Test
+    fun `DND skips speaking entirely`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob())
+        val fake = FakeTtsEngine()
+        val abandonCalls = AtomicInteger()
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { true }, scope)
+
+        queue.enqueue(request("should not be heard"))
         withTimeout(5.seconds) {
             while (abandonCalls.get() < 1) kotlinx.coroutines.yield()
         }
@@ -120,7 +136,7 @@ class SpeechQueueTest {
         // Gate the first speak() so all three enqueues land as one
         // burst in the channel before the consumer processes any of it.
         val fake = FakeTtsEngine(onSpeak = { text -> if (text == "one") releaseFirst.await() })
-        val queue = SpeechQueue(fake, { requestCalls.incrementAndGet(); true }, {}, { false }, scope)
+        val queue = SpeechQueue(fake, { requestCalls.incrementAndGet(); true }, {}, { false }, { false }, scope)
 
         queue.enqueue(request("one"))
         queue.enqueue(request("two"))
@@ -137,7 +153,7 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val abandonCalls = AtomicInteger()
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, scope)
 
         queue.enqueue(request("only one"))
         withTimeout(5.seconds) {
@@ -148,24 +164,52 @@ class SpeechQueueTest {
         scope.shutdown()
     }
 
+    // There used to be a test here pinning exactly which items survive
+    // `DROP_OLDEST` eviction on a >32-item burst (gating one item's
+    // onSpeak() to force the rest to overflow while the consumer waited).
+    // Queue-collapse-on-burst (below) removed the property that test
+    // depended on: the collapse decision now drains and counts whatever
+    // is in the channel *before* any request reaches onSpeak, so a burst
+    // large enough to overflow the 32-item channel is — deterministically
+    // — also large enough to collapse (the threshold is 5), and the
+    // consumer's own concurrent draining means the exact surviving count
+    // is no longer a fixed number: it depends on how much the consumer
+    // reads in between sends, not just on capacity. `DROP_OLDEST` still
+    // bounds memory (it's `Channel`'s own guarantee, not this class's
+    // logic to re-test) — it just isn't independently observable through
+    // `SpeechQueue`'s output anymore once a burst that large always also
+    // collapses.
+
     @Test
-    fun `overflow drops the oldest pending items, not the newest`() = runBlocking {
+    fun `a burst of more than 5 pending items collapses to one summary utterance`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
-        val releaseFirst = CompletableDeferred<Unit>()
-        // Hold the consumer on item "0" so items "1".."39" all land in
-        // the 32-capacity buffer at once, forcing real overflow.
-        val fake = FakeTtsEngine(onSpeak = { text -> if (text == "0") releaseFirst.await() })
-        val queue = SpeechQueue(fake, { true }, {}, { false }, scope)
+        val fake = FakeTtsEngine()
+        // No gate needed: enqueue() is a fast, non-suspending trySend()
+        // on this test's own thread, and none of these ten calls yields
+        // — same assumption the "requests are spoken in order" test
+        // above already relies on for its (smaller, ungated) burst.
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
 
-        queue.enqueue(request("0"))
-        for (i in 1..39) queue.enqueue(request(i.toString()))
-        releaseFirst.complete(Unit)
-        // "0" (already dequeued before the gate) + the newest 32 of
-        // "1".."39" survive: "8".."39".
-        awaitCount(fake.speakCalls, 33)
+        for (i in 1..10) queue.enqueue(request(i.toString()))
+        awaitCount(fake.speakCalls, 1)
 
-        val expected = listOf("0") + (8..39).map { it.toString() }
-        assertThat(fake.speakCalls).containsExactlyElementsIn(expected).inOrder()
+        // Give any (incorrect) extra speak() calls a moment to show up
+        // before asserting there's exactly one.
+        withTimeout(2.seconds) { kotlinx.coroutines.delay(200) }
+        assertThat(fake.speakCalls).containsExactly("10 new notifications.")
+        scope.shutdown()
+    }
+
+    @Test
+    fun `5 or fewer pending items are read individually, not collapsed`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob())
+        val fake = FakeTtsEngine()
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
+
+        for (i in 1..5) queue.enqueue(request(i.toString()))
+        awaitCount(fake.speakCalls, 5)
+
+        assertThat(fake.speakCalls).containsExactly("1", "2", "3", "4", "5").inOrder()
         scope.shutdown()
     }
 }
