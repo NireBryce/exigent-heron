@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(gh pr create --repo NireBryce/exigent-heron --title 'Phase 3: persistence + rules UI' --body ' *)",
+      "Bash(awk -F'\"' '{sum+=$2} END{print sum}')",
+      "Bash(nix develop *)"
+    ]
+  }
+}

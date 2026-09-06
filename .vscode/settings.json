@@ -18,10 +18,20 @@
     "**/build/**": true,
     "**/.gradle/**": true
   },
-
   "kotlin.compiler.jvm.target": "17",
-
   // No gradlew committed on purpose (Nix-first — see flake.nix); point the
   // Gradle extension at the dev shell's `gradle` on PATH instead.
-  "gradle.nestedProjects": true
+  "gradle.nestedProjects": true,
+  "workbench.colorCustomizations": {
+    "notebook.outputContainerBackgroundColor": "#a57b5aa5",
+    "gitlens.trailingLineForegroundColor": "#000000",
+    "gitlens.trailingLineBackgroundColor": "#8a4482",
+    "editorBracketHighlight.foreground1": "#5caeef",
+    "editorBracketHighlight.foreground2": "#dfb976",
+    "editorBracketHighlight.foreground3": "#c172d9",
+    "editorBracketHighlight.foreground4": "#4fb1bc",
+    "editorBracketHighlight.foreground5": "#97c26c",
+    "editorBracketHighlight.foreground6": "#abb2c0",
+    "editorBracketHighlight.unexpectedBracket.foreground": "#de7842"
+  }
 }
