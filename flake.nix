@@ -1,5 +1,5 @@
 {
-  description = "exigent-heron dev shell: JDK, Kotlin, Gradle, Android SDK. No Android Studio required.";
+  description = "exigent-heron dev shell: JDK, Kotlin, Gradle, Android SDK, emulator. No Android Studio required.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -26,8 +26,10 @@
           platformToolsVersion = "37.0.1";
           buildToolsVersions = [ "37.0.0" ];
           platformVersions = [ "37.0" ];
-          includeEmulator = false;
-          includeSystemImages = false;
+          includeEmulator = true;
+          includeSystemImages = true;
+          systemImageTypes = [ "google_apis" ];
+          abiVersions = [ "x86_64" ];
           includeSources = false;
           includeNDK = false;
         };
@@ -73,6 +75,10 @@
             echo
             echo "No gradlew in this repo by design — use the 'gradle' on PATH,"
             echo "e.g. 'gradle assembleDebug' or 'gradle testDebugUnitTest'."
+            echo
+            echo "Emulator (needs /dev/kvm access, e.g. being in the 'kvm' group):"
+            echo "  avdmanager create avd -n dev -k \"system-images;android-37.0;google_apis;x86_64\" -d pixel_6"
+            echo "  emulator -avd dev"
           '';
         };
       }
