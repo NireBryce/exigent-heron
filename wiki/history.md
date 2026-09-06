@@ -193,6 +193,25 @@ message carries, not as a running paraphrase of the log — see
   own guarantee); it's just no longer independently observable through
   `SpeechQueue`'s output once collapse always fires first for a burst
   that size.
+- **CI's third-party GitHub Actions pinned to a commit SHA, and a CodeQL
+  workflow added** (2026-09-06, post-Phase-5): `check.yml` and
+  `update-flake-lock.yml` both referenced `DeterminateSystems/nix-installer-action@main`
+  — a floating branch ref, not a version — and `update-flake-lock.yml`
+  likewise referenced `DeterminateSystems/update-flake-lock@main`. A
+  compromised or force-pushed upstream on either would run arbitrary
+  code in this repo's CI with no diff to review first; `update-flake-lock.yml`
+  in particular runs with `contents: write`/`pull-requests: write`,
+  making that more consequential there, not less. Both now pin to the
+  commit SHA behind their current release tag (v22, v28 respectively),
+  with the tag named in a trailing comment for a human to read — the
+  same "bump deliberately" policy `libs.versions.toml` already states
+  for Gradle dependencies, just applied to Actions refs instead. New
+  `.github/workflows/codeql.yml` runs CodeQL's Kotlin/Java analysis
+  (free for this repo, which is public) with `build-mode: manual`, not
+  `autobuild` — CodeQL's autobuild heuristic expects a committed
+  `gradlew` to run, and this repo deliberately has none (see `check.yml`),
+  so it drives the same `nix develop --command gradle assembleDebug`
+  `check.yml` already uses instead of inventing a second build path.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned
