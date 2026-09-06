@@ -164,8 +164,13 @@ one summary utterance"); the other two need a real device:
 ## Hardening-pass device matrix (Phase 5)
 
 `BUILD_PLAN.md` Phase 5 requires testing "on a locked device, in a call,
-and with a work profile present if available." Nothing to track here yet
-— this section exists so that when Phase 5 actually runs, the real
-devices/configurations tested (not just "tested," per skill
-[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md)) get recorded
-here rather than only in a commit message.
+and with a work profile present if available." **Unconfirmed as of
+2026-09-06** — no device was available the session that ran the rest of
+Phase 5 (see [`SECURITY.md`](../SECURITY.md) for everything that
+sandbox *could* verify: the logging grep, the release-injector check,
+and the merged release manifest, all clean). The exact repro steps for
+each of the three, tied to the real gate classes, live in `SECURITY.md`
+§4 rather than being duplicated here — when a device is actually used to
+run them, record the real outcome in both `SECURITY.md` (ticking the
+item, with what was observed) and this line (dated), not just one of the
+two.
