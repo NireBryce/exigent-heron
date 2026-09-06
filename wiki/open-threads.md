@@ -88,6 +88,15 @@ section.
   directly) but not yet by having actually run the app.
   [testing.md](testing.md) has the steps.
 
+- **Phase 4's on-device acceptance criteria are unconfirmed** (see
+  [status.md](status.md)), same reason: no device available this session.
+  "Headset-only blocks speech with no headset connected" and "engine
+  picker switching takes effect" are true by code review only; "ten
+  notifications in five seconds collapse to one summary" is covered
+  directly by a passing JVM unit test (`SpeechQueueTest`), which is as
+  much of this criterion as doesn't need a device.
+  [testing.md](testing.md) has the on-device steps for all three.
+
 ## Not applicable yet
 
 `AGENTS.md` §8's "if OEM background-killing turns out to break it" clause

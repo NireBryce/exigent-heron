@@ -7,6 +7,7 @@
 - [Watching logcat safely](#watching-logcat-safely)
 - [Once there's a listener to test (Phase 2+)](#once-theres-a-listener-to-test-phase-2)
 - [Once there's a rule editor to test (Phase 3+)](#once-theres-a-rule-editor-to-test-phase-3)
+- [Once there's a settings screen to test (Phase 4+)](#once-theres-a-settings-screen-to-test-phase-4)
 - [Hardening-pass device matrix (Phase 5)](#hardening-pass-device-matrix-phase-5)
 
 How to actually build, install, and exercise this app — as opposed to
@@ -26,7 +27,7 @@ nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
-`app/src/test` — as of **2026-09-05** (Phase 3) that's 73 tests, all
+`app/src/test` — as of **2026-09-06** (Phase 4) that's 86 tests, all
 passing; see [status.md](status.md) for the current count rather than
 trusting this number as it ages. A couple of the `speech/` and
 `listener/` tests exercise real background coroutines with real time —
@@ -136,6 +137,29 @@ To run them:
    [architecture.md](architecture.md)); an empty list on a real device
    despite installed launchable apps would mean that declaration isn't
    doing its job.
+
+## Once there's a settings screen to test (Phase 4+)
+
+Phase 4's on-device acceptance criteria (`BUILD_PLAN.md`) are
+**unconfirmed** — no device available this session. The queue-collapse
+criterion is covered directly by a JVM unit test
+(`SpeechQueueTest`'s "a burst of more than 5 pending items collapses to
+one summary utterance"); the other two need a real device:
+
+1. Turn on "Headset only" in Settings (defaulted on already), disconnect
+   any headset, trigger a notification that would otherwise speak;
+   confirm nothing is spoken. Connect a wired or Bluetooth headset and
+   trigger another; confirm it speaks.
+2. Open Settings → "Choose engine", pick a different installed TTS
+   engine than the current one, and trigger a notification; confirm it
+   speaks using the newly chosen engine (audibly different voice, or
+   check `AppContainer.ttsEngine`'s bound package if inspecting via
+   debugger) rather than the one still active from before the switch.
+3. Trigger ten notifications within five seconds from an allowlisted
+   app; confirm a single "10 new notifications." utterance is heard
+   instead of ten read individually — this is BUILD_PLAN.md Phase 4's
+   own acceptance line, restated here as the on-device version of the
+   already-passing unit test above.
 
 ## Hardening-pass device matrix (Phase 5)
 
