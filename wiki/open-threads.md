@@ -39,6 +39,23 @@ section.
   **2026-09-05**, when it was added while building this wiki. Listed here
   as a closed thread, not an open one — kept as the record of when it
   actually landed, since `AGENTS.md` itself doesn't track that.
+- **`.github/workflows/check.yml` gained `lintDebug`/`lintRelease`**
+  (**2026-09-06**, post-Phase-5): Android Lint is built into AGP, already
+  in use, so running it cost no new dependency — it just wasn't wired
+  into anything before. Findings upload to the repo's code-scanning tab
+  via `github/codeql-action/upload-sarif` (needs `security-events: write`
+  added to the job's `permissions:`, since this repo's default
+  `GITHUB_TOKEN` doesn't carry it). `lintRelease` runs in CI despite
+  `assembleRelease` not being able to (no signing config there, see this
+  file's other entries) — lint only analyzes, never packages or signs,
+  so it needs nothing `assembleRelease` needs. The six findings present
+  when this landed (four dependency-version-bump suggestions already
+  handled by `update-flake-lock`'s review process, `ObsoleteSdkInt` on
+  `mipmap-anydpi-v26`, `MonochromeLauncherIcon`) were left as-is — cosmetic,
+  not worth a round-trip on their own; CodeQL's own SAST scanning and
+  pinning the `@main`-referenced third-party actions to a commit SHA were
+  considered and left for the user to decide on separately, not added
+  here.
 - **`kotlinx-coroutines-core` is imported directly in `RuleEngine.kt`**
   (`Dispatchers`, `withContext`, `withTimeoutOrNull` — needed for
   `AGENTS.md` §4.4's timeout requirement) but isn't in §2's explicit
