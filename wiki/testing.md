@@ -26,6 +26,19 @@ nix develop --command gradle assembleDebug
 nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
+As of **2026-09-06** the dev shell itself provides the emulator — no
+Android Studio needed to get one (`flake.nix`'s `androidComposition` pulls
+in a `google_apis` x86_64 system image alongside the SDK). Inside `nix
+develop`:
+
+```sh
+avdmanager create avd -n dev -k "system-images;android-37.0;google_apis;x86_64" -d pixel_6
+emulator -avd dev
+```
+
+Needs `/dev/kvm` access (e.g. being in the `kvm` group) for reasonable
+boot times.
+
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
 `app/src/test` — as of **2026-09-06** (Phase 4) that's 86 tests, all
 passing; see [status.md](status.md) for the current count rather than
