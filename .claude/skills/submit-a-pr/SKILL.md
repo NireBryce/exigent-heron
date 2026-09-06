@@ -102,8 +102,9 @@ git status -sb
   legitimate resolution; either way, don't silently fold them into an
   unrelated PR's diff. Ask if it's unclear which case applies.)
 
-**1. Work on the branch**, per skill `use-a-worktree`. Commit there as
-normal, with an explicit pathspec on anything that isn't obviously the
+**1. Work on the branch**, per skill `use-a-worktree`. Commit granularly
+as you go — one commit per logical unit of work, not one big commit at
+the end — with an explicit pathspec on anything that isn't obviously the
 whole index (`git status --short` first) — a shared checkout can have
 something else's edit sitting staged.
 
