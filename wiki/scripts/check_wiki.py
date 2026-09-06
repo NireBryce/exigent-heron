@@ -104,6 +104,7 @@ PHASE_FILES = {
 KNOWN_GRADLE_TASKS = {
     'assembleDebug', 'assembleRelease', 'testDebugUnitTest', 'installDebug',
     'build', 'clean', 'tasks', ':app:processDebugMainManifest',
+    ':app:processReleaseMainManifest', ':app:compileReleaseKotlin',
 }
 
 

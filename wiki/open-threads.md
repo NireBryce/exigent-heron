@@ -97,6 +97,17 @@ section.
   much of this criterion as doesn't need a device.
   [testing.md](testing.md) has the on-device steps for all three.
 
+- **Phase 5's on-device matrix is unconfirmed** (see
+  [status.md](status.md)): no device available this session. The
+  locked-device and in-call checks are true by code review plus JVM
+  tests of the pure gate/skip logic (`LockStateGateTest`,
+  `SpeechQueueTest`'s in-call skip case) but not by having run them
+  against a real `KeyguardManager`/`AudioManager` state; the
+  work-profile check has no specific behavior to verify beyond "installs
+  and behaves normally," per `SECURITY.md` §4's own reasoning for why
+  there's no feature to test there. `SECURITY.md` §4 has the exact
+  repro steps.
+
 ## Not applicable yet
 
 `AGENTS.md` §8's "if OEM background-killing turns out to break it" clause
