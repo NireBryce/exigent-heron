@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
@@ -17,16 +18,33 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.flow.first
+import net.breadthcharge.exigentheron.App
+import net.breadthcharge.exigentheron.data.RuleRepository
+import net.breadthcharge.exigentheron.domain.Rule
+import net.breadthcharge.exigentheron.ui.rules.RuleEditorScreen
+import net.breadthcharge.exigentheron.ui.rules.RuleListScreen
 
 /**
- * "No UI beyond an enable-access button" (BUILD_PLAN.md Phase 2). The
- * rule list, settings, and permission-flow polish arrive in Phases 3–4.
+ * No navigation-compose dependency (AGENTS.md §2's list doesn't have
+ * one, and three screens don't need one) — [Screen] plus a manual
+ * `when` in [MainActivity] is the whole nav stack.
  */
+private sealed interface Screen {
+    data object Main : Screen
+    data object RuleList : Screen
+    data class RuleEditor(val ruleId: String?) : Screen
+}
+
 class MainActivity : ComponentActivity() {
 
     // A plain field, not `remember { }` — this needs to survive and be
@@ -34,14 +52,51 @@ class MainActivity : ComponentActivity() {
     // inside MainScreen() still subscribes it to recomposition normally.
     private val accessGranted = mutableStateOf(false)
 
+    private val container get() = (application as App).container
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            var screen by remember { mutableStateOf<Screen>(Screen.Main) }
+
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Scaffold { innerPadding ->
-                        MainScreen(granted = accessGranted.value, modifier = Modifier.padding(innerPadding))
+                    when (val current = screen) {
+                        is Screen.Main -> Scaffold { innerPadding ->
+                            MainScreen(
+                                granted = accessGranted.value,
+                                onManageRules = { screen = Screen.RuleList },
+                                modifier = Modifier.padding(innerPadding),
+                            )
+                        }
+                        is Screen.RuleList -> {
+                            BackHandler { screen = Screen.Main }
+                            RuleListScreen(
+                                ruleRepository = container.ruleRepository,
+                                onAddRule = { screen = Screen.RuleEditor(ruleId = null) },
+                                onEditRule = { id -> screen = Screen.RuleEditor(ruleId = id) },
+                            )
+                        }
+                        is Screen.RuleEditor -> {
+                            BackHandler { screen = Screen.RuleList }
+                            var existingRule by remember(current.ruleId) { mutableStateOf<Rule?>(null) }
+                            var loaded by remember(current.ruleId) { mutableStateOf(current.ruleId == null) }
+                            if (current.ruleId != null && !loaded) {
+                                LoadRule(
+                                    ruleRepository = container.ruleRepository,
+                                    ruleId = current.ruleId,
+                                    onLoaded = { rule -> existingRule = rule; loaded = true },
+                                )
+                            }
+                            if (loaded) {
+                                RuleEditorScreen(
+                                    ruleRepository = container.ruleRepository,
+                                    existingRule = existingRule,
+                                    onDone = { screen = Screen.RuleList },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -58,7 +113,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainScreen(granted: Boolean, modifier: Modifier = Modifier) {
+private fun LoadRule(ruleRepository: RuleRepository, ruleId: String, onLoaded: (Rule?) -> Unit) {
+    LaunchedEffect(ruleId) {
+        val rule = ruleRepository.rules.first().firstOrNull { it.id == ruleId }
+        onLoaded(rule)
+    }
+}
+
+@Composable
+private fun MainScreen(granted: Boolean, onManageRules: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Column(
         modifier = modifier.fillMaxSize(),
@@ -74,6 +137,7 @@ private fun MainScreen(granted: Boolean, modifier: Modifier = Modifier) {
                 Text("Enable notification access")
             }
         }
+        Button(onClick = onManageRules) { Text("Manage rules") }
     }
 }
 

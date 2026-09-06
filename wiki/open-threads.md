@@ -28,12 +28,11 @@ section.
 
 ## Left open right now
 
-- **`app_name` (`res/values/strings.xml`) is still the literal string
-  `"exigent-heron"`** — the repo's own codename, not a real user-facing app
-  name. `AGENTS.md` never names the app (it's specified generically as "a
-  notification TTS reader"), so this may be intentional-for-now rather
-  than an oversight — worth deciding before Phase 3 (the UI phase) rather
-  than shipping the codename as the launcher label by default.
+- **`app_name` (`res/values/strings.xml`) stays `"exigent-heron"`** —
+  resolved 2026-09-05, while planning Phase 3 (the UI phase that ships it
+  as the visible launcher label): confirmed with the user, deliberate,
+  not an oversight. Listed here as a closed thread, not an open one — see
+  [history.md](history.md).
 - **The android.util.Log CI grep `AGENTS.md` §4.6 asks for** ("Add a lint
   check or a simple CI grep asserting `android.util.Log` appears in
   exactly one file") was missing from `.github/workflows/check.yml` until
@@ -51,17 +50,15 @@ section.
   `implementation(libs.kotlinx.coroutines.core)` line if that ever feels
   fragile, rather than leaving `domain/`'s only non-Kotlin-stdlib import
   resting on something no build file actually declares.
-- **`RuleEngine`'s backreference-regex gap has no product answer yet**
-  (see [history.md](history.md)): a `Rule.bodyPattern`/`titlePattern`
-  containing a backreference is still genuinely exponential and
-  non-interruptible even with the 100ms timeout — the timeout bounds the
-  caller, not the CPU cost. `AGENTS.md` §4.4 already asks for
-  `PatternSyntaxException` to be caught "at rule-save time and show the
-  error in the editor" once Phase 3 has an editor to show it in; whether
-  that same save-time check should also reject backreferences outright
-  (closing the gap entirely, at the cost of disallowing a rarely-needed
-  but legal regex feature) is an open product decision, not a bug — worth
-  deciding when Phase 3 builds that editor, not silently either way.
+- **`RuleEngine`'s backreference-regex gap** — resolved 2026-09-05, Phase
+  3: `RuleValidator` now rejects backreferences outright at rule-save
+  time (and defensively in `RuleEngine.compileOrNull`), and matching runs
+  inside `InterruptibleCharSequence` + `runInterruptible` so a
+  non-backreference timeout now actually stops the thread instead of
+  leaking it. Listed here as a closed thread — see
+  [history.md](history.md) for the reasoning (including the RE2J
+  alternative considered and rejected) and `RuleEngine.kt`'s own doc
+  comment.
 - **`SafeLog.decision`'s `ruleId` parameter is always `null` in practice**
   (2026-09-05): `NotificationTtsListener.route()` calls
   `SafeLog.decision(pkg, ruleId = null, action = ...)` because
@@ -83,6 +80,13 @@ section.
   code review, not by having actually been run. [testing.md](testing.md)
   has the steps — worth running before treating Phase 2 as more than
   provisionally done.
+- **Phase 3's on-device acceptance criteria are unconfirmed** (see
+  [status.md](status.md)), same reason: no device available this session.
+  "A rule added via the UI survives force-stop" and "an invalid pattern
+  errors at save time rather than crashing later" are true by code review
+  (the JVM tests cover `RuleValidator`/`RuleCodec`/`RuleEngineHolder`
+  directly) but not yet by having actually run the app.
+  [testing.md](testing.md) has the steps.
 
 ## Not applicable yet
 

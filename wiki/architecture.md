@@ -14,14 +14,15 @@ against a spec file instead of the tree itself being the source of truth.
 
 ## What exists right now
 
-As of **2026-09-05** (Phase 2 complete except on-device verification, see
+As of **2026-09-05** (Phase 3 complete except on-device verification, see
 [status.md](status.md)), under `app/src/main/java/net/breadthcharge/exigentheron/`:
 
 - `App.kt` — `Application` subclass.
 - `AppContainer.kt` — the manual-DI container `AGENTS.md` §2 specifies
-  instead of Hilt. Now actually wires something: `Deduplicator`,
-  `RuleEngine` (built from `phase2HardcodedRules` — see its own comment
-  for why and what to change to test against a real app),
+  instead of Hilt. Wires `Deduplicator`, `RuleRepository`,
+  `SettingsRepository`, `RuleEngineHolder` (rebuilds a `RuleEngine` from
+  `ruleRepository.rules` on every emission — Phase 2's
+  `phase2HardcodedRules` is gone, see [history.md](history.md)),
   `SecretDetector`, `AudioFocusManager`, `AndroidTtsEngine`, `SpeechQueue`.
 - `SafeLog.kt` — the sole permitted entry point to `android.util.Log`
   (`AGENTS.md` §4.6). Logcat tag is `"ExigentHeron"`, not the class name —
@@ -30,22 +31,49 @@ As of **2026-09-05** (Phase 2 complete except on-device verification, see
   [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md)).
   Exposes exactly `decision(pkg, ruleId, action)`, `lifecycle(msg)`,
   `error(msg, t?)` — no arbitrary-string overload, by design.
-- `ui/MainActivity.kt` — the Phase 2 enable-access button (`AGENTS.md`
-  §4.10), otherwise still blank.
+- `ui/MainActivity.kt` — enable-access button (`AGENTS.md` §4.10) plus,
+  as of Phase 3, a manual `Screen` sealed interface (`Main` / `RuleList` /
+  `RuleEditor`) switched in a `when` — no navigation-compose dependency,
+  since one isn't in `AGENTS.md` §2's list and three screens don't need
+  one.
+- `ui/rules/` (new, Phase 3) — `RuleListScreen.kt` (list + enable toggle +
+  delete, backed by `RuleListViewModel`), `RuleEditorScreen.kt` (form +
+  save-time validation via `RuleValidator`, backed by
+  `RuleEditorViewModel`; the app picker is a `Dialog` launched from inside
+  this screen, not a separate nav destination), `InstalledApps.kt`
+  (`PackageManager.queryIntentActivities` against the `<queries>` block
+  added to `AndroidManifest.xml` this phase — see "Deviations" below).
+  ViewModels are constructed via `androidx.lifecycle.viewmodel.viewModelFactory`
+  (already part of the existing `lifecycle-viewmodel-compose` dependency),
+  not Hilt.
 - `domain/` — pure Kotlin, no Android imports, per `AGENTS.md` §3:
   `NotificationPayload.kt`, `Rule.kt` (with `RuleAction`), `Decision.kt`,
   `Deduplicator.kt`, `RuleEngine.kt`, `SecretDetector.kt`, `SpeechRequest.kt`.
-  Plus two files not in §3's tree — see "Deviations" below:
+  Phase 3 added four more, all still Android-import-free: `RuleValidator.kt`
+  (single source of truth for "is this pattern acceptable" — rejects
+  backreferences outright, used by both the rule editor and
+  `RuleEngine.compileOrNull`), `InterruptibleCharSequence.kt` (makes
+  `runInterruptible`'s `Thread.interrupt()` actually abort a runaway
+  match — see [history.md](history.md)), `RuleCodec.kt` (pure JSON
+  encode/decode/list-editing that `data/RuleRepository.kt` wraps),
+  `RuleEngineHolder.kt` (rebuilds a live `RuleEngine` from a
+  `Flow<List<Rule>>` so a rule edit takes effect without an app restart).
+  Plus two files from Phase 1/2 not in §3's tree — see "Deviations" below:
   `ContentHash.kt` and `TextSanitizer.kt`. `RuleEngine.kt`'s doc comment
   is worth reading directly rather than summarized here — it documents a
-  real, verified limitation of its own regex-timeout mitigation (see
-  [history.md](history.md)).
+  real, verified limitation of its own regex-timeout mitigation, and how
+  Phase 3 closed most of it (see [history.md](history.md)).
 - `listener/` — `NotificationTtsListener.kt` (routing only, per §3),
   `NotificationExtractor.kt` (the Android-facing half of §4.2's
   extraction), and `NotificationExtractionPolicy.kt` — a third file not
   in §3's tree, again see "Deviations": the pure, Android-import-free
   half of §4.2's drop conditions, split out specifically so it's
   JVM-testable without a device.
+- `data/` (new, Phase 3) — `RuleRepository.kt` (Preferences DataStore, one
+  JSON blob under `stringPreferencesKey("rules_json")`, thin wrapper over
+  `domain/RuleCodec.kt`) and `SettingsRepository.kt` (scaffold only — the
+  DataStore file exists and is held, no fields yet; Phase 4 gives it a
+  shape, see [history.md](history.md)).
 - `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
   impl, system default engine for now — see its own doc comment on why
   engine selection waits for Phase 4), `AudioFocusManager.kt`,
@@ -60,14 +88,12 @@ Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
   that duplication was the plan from the start, see its own comment.
 
 Under `app/src/test/java/net/breadthcharge/exigentheron/`: one test class
-per testable class above, 53 tests total — see [status.md](status.md) for
+per testable class above, 73 tests total — see [status.md](status.md) for
 the current pass count. `listener/NotificationExtractionPolicyTest.kt`
 and `speech/SpeechQueueTest.kt` are the first tests in this repo to
 exercise Android-facing (if Android-import-light or -free) code rather
 than pure `domain/` — see [traps-and-skills.md](traps-and-skills.md) for
 two real problems that surfaced specifically because of that.
-
-Nothing under `data/` yet — Phase 3.
 
 ## Target tree
 
@@ -104,6 +130,15 @@ outside Android framework glue:
   Deliberately *not* moved into `domain/` — it's extraction policy, not
   rule/secret/dedup business logic — but it has zero Android imports for
   the same testability reason as the two above.
+
+**2026-09-05, one manifest addition not in `AGENTS.md` §5's snippet**:
+`AndroidManifest.xml` gained a `<queries>` block (`ACTION_MAIN` /
+`CATEGORY_LAUNCHER`) for the Phase 3 installed-app picker's
+`PackageManager.queryIntentActivities` call. Not a deviation from §5's
+hardening intent — it's a visibility declaration, not a permission grant,
+doesn't touch `INTERNET` or `QUERY_ALL_PACKAGES`, and §5's snippet predates
+Phase 3 needing to query other apps at all — but worth recording since §5
+itself doesn't mention it.
 
 If a real divergence from the spec tree happens later that *isn't* in
 this same spirit (a class that ends up somewhere other than its

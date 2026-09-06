@@ -135,31 +135,31 @@ class RuleEngineTest {
     }
 
     @Test
-    fun `catastrophic backtracking times out and suppresses rather than hanging`(): Unit = runBlocking {
+    fun `a backreference pattern is rejected at compile time, not run into a timeout`(): Unit = runBlocking {
+        // Historical note: this test used to feed `^(a+)+\1b$` — a
+        // backreference disables OpenJDK's backtracking memoization
+        // (JDK-6328855) and is genuinely exponential (measured 24 chars
+        // ≈ 277ms, 26 ≈ 1.1s, 28 ≈ 4.5s, doubling roughly every 2 chars)
+        // — to exercise evaluate()'s withTimeoutOrNull path. Phase 3
+        // closed that specific gap by rejecting backreferences in
+        // RuleValidator at rule-compile-time instead of letting them run
+        // at all, so the pattern below now fails here, before matching
+        // ever starts — see RuleEngine's doc comment. The interruption
+        // mechanism itself (InterruptibleCharSequence + runInterruptible)
+        // is covered separately in InterruptibleCharSequenceTest, since
+        // OpenJDK's memoization otherwise makes a genuinely slow
+        // *non*-backreference pattern hard to construct at all.
         val failures = mutableListOf<Pair<String, String>>()
-        // NOT the textbook `^(a+)+$` shape — verified empirically that it
-        // resolves in ~0ms up to 40 chars on this JVM (OpenJDK memoizes
-        // failed backtracking positions, JDK-6328855; see RuleEngine's doc
-        // comment and wiki/history.md). A first version of this test used
-        // that shape and it never actually exercised the timeout path —
-        // it happened to pass anyway, for the wrong reason, since a fast
-        // non-match also produces Suppress. A backreference (`\1`)
-        // disables that memoization and is still genuinely exponential:
-        // measured 24 chars ≈ 277ms, 26 ≈ 1.1s, 28 ≈ 4.5s, doubling
-        // roughly every 2 chars. 24 is deliberately conservative — enough
-        // to clear the 100ms production cutoff with room to spare, without
-        // leaving the leaked background match (withTimeoutOrNull doesn't
-        // actually stop it) tying up a Dispatchers.Default thread in the
-        // Gradle daemon for long. Resist rounding this up "for margin".
         val engine = RuleEngine(
             rules = listOf(rule(id = "evil", bodyPattern = """^(a+)+\1b$""")),
             onRuleFailure = { id, reason -> failures += id to reason },
         )
-        val adversarialBody = "a".repeat(24) + "!"
 
-        val decision = engine.evaluate(payload(body = adversarialBody))
+        val decision = engine.evaluate(payload(body = "a".repeat(24) + "!"))
 
-        assertThat(decision).isEqualTo(Decision.Suppress(reason = "rule evil timed out"))
-        assertThat(failures).containsExactly("evil" to "regex match timed out")
+        assertThat(decision).isInstanceOf(Decision.Suppress::class.java)
+        assertThat(failures).hasSize(1)
+        assertThat(failures.single().first).isEqualTo("evil")
+        assertThat(failures.single().second).contains("backreferences")
     }
 }

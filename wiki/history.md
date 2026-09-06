@@ -78,13 +78,83 @@ message carries, not as a running paraphrase of the log — see
   to speak. Caught by re-reading the method before running anything, not
   by a test; reordered so the in-call check runs first and focus is
   never touched at all when it's going to skip anyway.
-- **`AppContainer`'s Phase 2 hardcoded rule targets `com.google.android.apps.messaging`**
-  (2026-09-05): `BUILD_PLAN.md` says "rules hardcoded to one package"
-  without naming one. Google Messages is just a common default app to
-  test against, not a meaningful choice — the comment next to
-  `phase2HardcodedRules` says to swap it for whatever's actually
-  installed on the test device. Real persistence and a rule editor
-  arrive in Phase 3.
+- **`AppContainer`'s Phase 2 hardcoded rule targeted `com.google.android.apps.messaging`**
+  (2026-09-05): `BUILD_PLAN.md` said "rules hardcoded to one package"
+  without naming one. Google Messages was just a common default app to
+  test against, not a meaningful choice. Superseded in Phase 3, same day:
+  `phase2HardcodedRules` is gone, replaced by real `RuleRepository`
+  persistence and a rule editor — see the entries below.
+- **App name stays the repo codename, deliberately** (2026-09-05):
+  `res/values/strings.xml`'s `app_name` was flagged in
+  [open-threads.md](open-threads.md) as possibly-an-oversight before
+  Phase 3 (the UI phase) shipped it as the visible launcher label.
+  Confirmed with the user while planning Phase 3: keep
+  `"exigent-heron"` — intentional, not a placeholder left behind.
+- **Regex DoS mitigation: `InterruptibleCharSequence` + reject
+  backreferences, not RE2J** (2026-09-05, Phase 3): the gap
+  `RuleEngine`'s own doc comment already named — a backreference pattern
+  is genuinely exponential *and* the 100ms `withTimeoutOrNull` doesn't
+  actually stop the underlying match, only abandons the caller — got a
+  real fix this phase rather than staying a documented caveat. Two
+  options were weighed:
+  - **Chosen**: wrap regex input in `InterruptibleCharSequence` (checks
+    `Thread.currentThread().isInterrupted` in `charAt`, throws) and run
+    matching inside `kotlinx.coroutines.runInterruptible` (which calls
+    `Thread.interrupt()` on cancellation) — the standard Java mitigation
+    for un-cancellable `java.util.regex` matches. Plus: `RuleValidator`
+    now rejects backreferences outright at rule-compile-time (both in the
+    rule editor and defensively in `RuleEngine.compileOrNull`), since even
+    a cleanly-interrupted match still costs the full 100ms on every
+    notification from that app, forever. No new dependency.
+  - **Considered and rejected**: `google/re2j` — linear-time by
+    construction (RE2 doesn't support backreferences or lookaround at
+    all), which would have let the timeout/interruption machinery be
+    deleted entirely. Its license (BSD-3-Clause, confirmed by fetching
+    its actual `LICENSE`) is permissive and would have been fine, but it's
+    a dependency outside `AGENTS.md` §2's closed list, needs a NOTICE
+    file for attribution, and drops lookahead/lookbehind support for
+    every future rule author, not just ones who'd have written a
+    backreference. Chosen fix closes the actually-documented gap at a
+    much smaller cost; see `RuleEngine.kt`'s updated doc comment for the
+    same reasoning kept next to the code.
+  - One existing test, `RuleEngineTest`'s "catastrophic backtracking
+    times out and suppresses rather than hanging", used a backreference
+    pattern specifically *because* nothing else on this JVM reliably
+    stays slow (see the ReDoS entry above and
+    [traps-and-skills.md](traps-and-skills.md)) — that pattern now gets
+    rejected at compile time instead of ever running, so the test was
+    rewritten to assert the new (correct) behavior rather than the old
+    timeout path, which this same change made unreachable for that input.
+    `InterruptibleCharSequenceTest` covers the interruption mechanism
+    directly instead, since a genuinely slow *non*-backreference pattern
+    is now hard to construct at all on this JVM.
+- **`RuleEngineHolder` rebuilds `RuleEngine` reactively, not once at
+  `AppContainer` construction** (2026-09-05, Phase 3): `AGENTS.md` §2
+  specifies Coroutines + Flow but doesn't say how a persisted rule change
+  reaches the running `RuleEngine`. Rebuilding a `RuleEngine` from
+  whatever `RuleRepository.rules` currently emits (cheap — just regex
+  compilation over ~30 rules) is what makes a rule edit take effect on
+  the next notification rather than requiring an app restart or
+  force-stop; the alternative (construct once, ignore later edits until
+  restart) would have made the rule editor feel broken. Lives in
+  `domain/` despite reacting to a `Flow` — `Flow`/`CoroutineScope` are
+  coroutines, not Android, so this doesn't violate §3's "zero Android
+  imports" rule.
+- **`SettingsRepository` scaffolded empty on purpose** (2026-09-05,
+  Phase 3): `BUILD_PLAN.md` lists it under Phase 3, but no concrete
+  setting exists yet — headset-only/lock-gate/DND/engine-picker/
+  announce-only are all Phase 4 (`AGENTS.md` §4.8-§4.10). Decided with
+  the user: wire the DataStore file now (so Phase 4 only adds preference
+  keys, not plumbing) but add no placeholder field just to have one — a
+  fake field would violate `AGENTS.md` §0's YAGNI rule for no real gain.
+- **No navigation-compose dependency for the Phase 3 rule screens**
+  (2026-09-05): three screens (main, rule list, rule editor) don't
+  justify a new dependency outside `AGENTS.md` §2's list. `MainActivity`
+  holds a small `Screen` sealed interface and a manual `when` instead;
+  the installed-app picker is a `Dialog` launched from inside the rule
+  editor rather than a fourth nav destination, specifically to avoid
+  needing to pass a picker result back across a screen boundary with no
+  navigation library to do it.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned
