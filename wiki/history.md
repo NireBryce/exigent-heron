@@ -193,6 +193,18 @@ message carries, not as a running paraphrase of the log — see
   own guarantee); it's just no longer independently observable through
   `SpeechQueue`'s output once collapse always fires first for a burst
   that size.
+- **`RuleEditorViewModel.save()`'s form-only checks moved into
+  `RuleFormValidator`** (2026-09-06, post-Phase-5): a coverage review
+  found this was the one place in the UI layer that broke the pattern
+  every other screen already follows — decision logic pulled into a
+  pure, injectable function (`RuleValidator`, `RuleCodec`,
+  `shouldDropNotification`) rather than left inline in a `ViewModel`
+  where it can't be unit-tested without instantiating one. The regex
+  half was already out (`RuleValidator`); the empty-app-selection and
+  non-numeric-priority checks weren't. `RuleFormValidator.validate(...)`
+  now does both, returning parsed field values alongside the error set
+  so `save()` stays a thin caller. `RuleFormValidatorTest` covers all
+  four fields individually and in combination (86 → 96 tests).
 - **CI's third-party GitHub Actions pinned to a commit SHA, and a CodeQL
   workflow added** (2026-09-06, post-Phase-5): `check.yml` and
   `update-flake-lock.yml` both referenced `DeterminateSystems/nix-installer-action@main`
