@@ -1,0 +1,53 @@
+# CodeQL static analysis (Kotlin/Java). Free for a public repo (this one
+# is, checked 2026-09-06: `gh repo view --json visibility`) -- Advanced
+# Security, which CodeQL needs, is only a paid add-on for private repos.
+#
+# build-mode: manual, not autobuild -- CodeQL's autobuild heuristic looks
+# for a committed `gradlew` and runs that; this repo deliberately has
+# none (see check.yml and flake.nix: `gradle` comes from the Nix dev
+# shell, not a wrapper), so autobuild would fail before ever reaching a
+# build. Driving the same `nix develop --command gradle assembleDebug`
+# check.yml already uses between init and analyze gets CodeQL the same
+# compiled-code visibility a real build gives it, without inventing a
+# second build path to keep in sync.
+#
+# All three of actions/checkout, nix-installer-action, and codeql-action
+# are pinned to a commit SHA rather than a version tag/branch -- see
+# check.yml's nix-installer-action pin for why a floating ref is worth
+# avoiding in CI specifically.
+
+name: codeql
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, offset from update-flake-lock.yml's Monday 09:00 UTC run
+    # so the two don't contend for the same runner minute.
+    - cron: '30 4 * * 3'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, matching check.yml's tag
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+
+      - name: build (nix develop) -- gives CodeQL compiled code to analyze
+        run: nix develop --command gradle assembleDebug
+
+      - uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          category: "/language:java-kotlin"

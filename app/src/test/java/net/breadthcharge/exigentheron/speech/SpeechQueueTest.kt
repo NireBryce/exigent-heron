@@ -183,20 +183,39 @@ class SpeechQueueTest {
     @Test
     fun `a burst of more than 5 pending items collapses to one summary utterance`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
-        val fake = FakeTtsEngine()
-        // No gate needed: enqueue() is a fast, non-suspending trySend()
-        // on this test's own thread, and none of these ten calls yields
-        // — same assumption the "requests are spoken in order" test
-        // above already relies on for its (smaller, ungated) burst.
+        val gateReached = CompletableDeferred<Unit>()
+        val releaseGate = CompletableDeferred<Unit>()
+        // Unlike the "requests are spoken in order" test above, this one
+        // *does* need a gate: that test's assertion (each item's own
+        // text, in order) holds no matter how the consumer happens to
+        // split a burst across batches, but this test's assertion (one
+        // summary, not several individually-spoken items) only holds if
+        // all ten enqueue() calls land before the consumer's first
+        // receive — and the consumer runs on its own real thread
+        // (Dispatchers.Default), so nothing guarantees that ordering
+        // just because the sends themselves don't suspend. Reproduced
+        // the resulting flake directly: `gradle testDebugUnitTest
+        // --no-daemon` under a 2-core `taskset` failed here on a cold
+        // JVM, matching what a GitHub-hosted runner hit in CI.
+        val fake = FakeTtsEngine(onSpeak = { text ->
+            if (text == "gate") { gateReached.complete(Unit); releaseGate.await() }
+        })
         val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
 
-        for (i in 1..10) queue.enqueue(request(i.toString()))
-        awaitCount(fake.speakCalls, 1)
+        // Block the consumer inside speakOne() for a throwaway first
+        // item before sending the real burst — while it's suspended
+        // there, its `for (request in channel)` loop provably hasn't
+        // reached its next receive yet, so every one of the ten sends
+        // below is guaranteed to already be sitting in the channel by
+        // the time it does.
+        queue.enqueue(request("gate"))
+        gateReached.await()
 
-        // Give any (incorrect) extra speak() calls a moment to show up
-        // before asserting there's exactly one.
-        withTimeout(2.seconds) { kotlinx.coroutines.delay(200) }
-        assertThat(fake.speakCalls).containsExactly("10 new notifications.")
+        for (i in 1..10) queue.enqueue(request(i.toString()))
+        releaseGate.complete(Unit)
+
+        awaitCount(fake.speakCalls, 2) // "gate", then the one summary
+        assertThat(fake.speakCalls).containsExactly("gate", "10 new notifications.").inOrder()
         scope.shutdown()
     }
 

@@ -34,9 +34,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      # Pinned to a commit SHA, not @main -- see check.yml's identical
+      # nix-installer-action pin for why. This workflow has write access
+      # (contents/pull-requests above), which makes a floating ref here
+      # more consequential, not less.
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
-      - uses: DeterminateSystems/update-flake-lock@main
+      - uses: DeterminateSystems/update-flake-lock@834c491b2ece4de0bbd00d85214bb5e83b4da5c6 # v28
         with:
           pr-title: "chore: update flake.lock"
           pr-body: |
