@@ -3,6 +3,7 @@ package net.breadthcharge.exigentheron.speech
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -18,34 +19,53 @@ sealed interface TtsEngineStatus {
 }
 
 /**
- * Wraps [android.speech.tts.TextToSpeech]. Uses the system default
- * engine for now — AGENTS.md §4.8's explicit engine picker (enumerate
- * [TextToSpeech.getEngines], persist a choice, show the active one) is
- * Phase 4, once there's a settings screen and `SettingsRepository` to
- * hold that choice in. This class exposes [statusListener] so that UI,
- * once it exists, can still surface an init failure or missing-language
- * data instead of the silent no-op AGENTS.md §4.8 explicitly warns
- * against — Phase 2 has nowhere to show it yet, but nothing here
- * swallows it.
+ * Wraps [android.speech.tts.TextToSpeech]. [enginePackage] is the user's
+ * persisted choice from AGENTS.md §4.8's engine picker — null falls back
+ * to the system default, which is only ever a *temporary* state until
+ * the user has picked one in settings, never a silent permanent fallback
+ * (§4.8: "do not silently accept the system default"). This class
+ * exposes [statusListener] so the settings screen can surface an init
+ * failure or missing-language data instead of the silent no-op AGENTS.md
+ * §4.8 explicitly warns against.
  */
 class AndroidTtsEngine(
     context: Context,
+    enginePackage: String? = null,
     private val statusListener: (TtsEngineStatus) -> Unit = {},
 ) : TtsEngine {
 
     private val ready = CompletableDeferred<Unit>()
     private val pending = ConcurrentHashMap<String, Continuation<Unit>>()
 
-    private val tts: TextToSpeech = TextToSpeech(context.applicationContext) { code ->
-        if (code == TextToSpeech.SUCCESS) {
-            statusListener(TtsEngineStatus.Ready)
-            ready.complete(Unit)
-        } else {
+    private val initListener = TextToSpeech.OnInitListener { code ->
+        if (code != TextToSpeech.SUCCESS) {
             val reason = "TextToSpeech init failed (status=$code)"
             SafeLog.error(reason)
             statusListener(TtsEngineStatus.Failed(reason))
             ready.completeExceptionally(IllegalStateException(reason))
+            return@OnInitListener
         }
+        // AGENTS.md §4.8: LANG_MISSING_DATA/LANG_NOT_SUPPORTED get a
+        // visible error too, not a silent no-op — the engine "succeeded"
+        // but has nothing to actually speak the default locale with.
+        when (val langResult = tts.setLanguage(Locale.getDefault())) {
+            TextToSpeech.LANG_MISSING_DATA, TextToSpeech.LANG_NOT_SUPPORTED -> {
+                val reason = "TTS language unavailable (result=$langResult)"
+                SafeLog.error(reason)
+                statusListener(TtsEngineStatus.Failed(reason))
+                ready.completeExceptionally(IllegalStateException(reason))
+            }
+            else -> {
+                statusListener(TtsEngineStatus.Ready)
+                ready.complete(Unit)
+            }
+        }
+    }
+
+    private val tts: TextToSpeech = if (enginePackage != null) {
+        TextToSpeech(context.applicationContext, initListener, enginePackage)
+    } else {
+        TextToSpeech(context.applicationContext, initListener)
     }.apply {
         setOnUtteranceProgressListener(
             object : UtteranceProgressListener() {
@@ -96,6 +116,15 @@ class AndroidTtsEngine(
                 pending.remove(utteranceId)?.resume(Unit)
             }
         }
+
+    /**
+     * AGENTS.md §4.8: "Enumerate with `TextToSpeech.getEngines()`, show
+     * the list in settings." [TextToSpeech.getEngines] is an instance
+     * method, not static, but it returns every engine installed on the
+     * device regardless of which one *this* instance is bound to — safe
+     * to call even while this instance's own init is still pending.
+     */
+    fun listEngines(): List<TextToSpeech.EngineInfo> = tts.engines
 
     override fun shutdown() {
         tts.stop()
