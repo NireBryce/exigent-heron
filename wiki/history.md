@@ -155,6 +155,44 @@ message carries, not as a running paraphrase of the log — see
   editor rather than a fourth nav destination, specifically to avoid
   needing to pass a picker result back across a screen boundary with no
   navigation library to do it.
+- **Phase 4's "templates" and "announce-only mode" bullets were already
+  done, from Phase 1** (2026-09-06): `BUILD_PLAN.md` lists both under
+  Phase 4, but `Rule.template`/`RuleEngine.render` and
+  `RuleAction.ANNOUNCE_ONLY` landed in Phase 1 and have been exposed in
+  the rule editor since Phase 3 — confirmed by reading both files
+  directly rather than assuming the phase list was still accurate.
+  Phase 4 didn't re-touch either; nothing here was re-implemented.
+- **`AppContainer.ttsEngine`/`speechQueue` became `var`s, with a
+  `rebuildTtsEngine` method, rather than reconstructing the whole
+  container** (2026-09-06, Phase 4): `AGENTS.md` §4.8 requires switching
+  the TTS engine to "take effect," but `AndroidTtsEngine` binds one
+  `TextToSpeech` instance to one engine package for its lifetime, and
+  `SpeechQueue` holds its `TtsEngine` by constructor reference — neither
+  can be told to change engines in place. Rebuilding just those two
+  (shutting the old engine down only once the new one is live) is the
+  smallest change that makes a settings-screen choice actually apply,
+  short of restarting the whole app. The container's first engine choice
+  is read synchronously (`runBlocking` on `settingsRepository.settings.first()`)
+  at construction time — a local Preferences-file read, not a network
+  call — since `App.onCreate()` has no later point to construct these
+  from before something might need to speak.
+- **`SpeechQueue`'s queue-collapse-on-burst subsumes its old DROP_OLDEST
+  regression test** (2026-09-06, Phase 4): implementing "drain whatever's
+  already buffered into one batch, collapse if >5" means the consumer no
+  longer looks at requests one at a time — it looks at the *channel's
+  current contents* before any of them reach the fake `TtsEngine`. That
+  removed the property the old overflow test depended on (gating one
+  item's `onSpeak()` to force the rest to overflow individually was only
+  reliable when processing was one-at-a-time); a burst large enough to
+  overflow the 32-item channel is now, deterministically, also large
+  enough to collapse, and the exact surviving count depends on how much
+  the real consumer drains concurrently with the test's sends rather than
+  being a fixed number. The old test was removed rather than forced to
+  pass with a flaky workaround — see `SpeechQueueTest.kt`'s own comment
+  where it used to be. `DROP_OLDEST` itself is unchanged (it's `Channel`'s
+  own guarantee); it's just no longer independently observable through
+  `SpeechQueue`'s output once collapse always fires first for a burst
+  that size.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned

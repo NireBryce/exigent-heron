@@ -14,7 +14,7 @@ against a spec file instead of the tree itself being the source of truth.
 
 ## What exists right now
 
-As of **2026-09-05** (Phase 3 complete except on-device verification, see
+As of **2026-09-06** (Phase 4 complete except on-device verification, see
 [status.md](status.md)), under `app/src/main/java/net/breadthcharge/exigentheron/`:
 
 - `App.kt` — `Application` subclass.
@@ -23,7 +23,12 @@ As of **2026-09-05** (Phase 3 complete except on-device verification, see
   `SettingsRepository`, `RuleEngineHolder` (rebuilds a `RuleEngine` from
   `ruleRepository.rules` on every emission — Phase 2's
   `phase2HardcodedRules` is gone, see [history.md](history.md)),
-  `SecretDetector`, `AudioFocusManager`, `AndroidTtsEngine`, `SpeechQueue`.
+  `SecretDetector`, `AudioFocusManager`, `OutputRouteGate`, `LockStateGate`.
+  `ttsEngine`/`speechQueue` are `var`s (not `val`) as of Phase 4:
+  `rebuildTtsEngine(enginePackage)` swaps in a fresh `AndroidTtsEngine` +
+  `SpeechQueue` pair so a settings-screen engine choice actually takes
+  effect (`AGENTS.md` §4.8) instead of being fixed for the container's
+  lifetime — see [history.md](history.md).
 - `SafeLog.kt` — the sole permitted entry point to `android.util.Log`
   (`AGENTS.md` §4.6). Logcat tag is `"ExigentHeron"`, not the class name —
   worth knowing before scoping an `adb logcat` (see
@@ -31,12 +36,17 @@ As of **2026-09-05** (Phase 3 complete except on-device verification, see
   [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md)).
   Exposes exactly `decision(pkg, ruleId, action)`, `lifecycle(msg)`,
   `error(msg, t?)` — no arbitrary-string overload, by design.
-- `ui/MainActivity.kt` — enable-access button (`AGENTS.md` §4.10) plus,
-  as of Phase 3, a manual `Screen` sealed interface (`Main` / `RuleList` /
-  `RuleEditor`) switched in a `when` — no navigation-compose dependency,
-  since one isn't in `AGENTS.md` §2's list and three screens don't need
-  one.
-- `ui/rules/` (new, Phase 3) — `RuleListScreen.kt` (list + enable toggle +
+- `ui/MainActivity.kt` — enable-access button (`AGENTS.md` §4.10), the
+  active TTS engine (`AGENTS.md` §4.8's "the user should never have to
+  wonder," Phase 4), plus a manual `Screen` sealed interface (`Main` /
+  `RuleList` / `RuleEditor` / `Settings`, the last added Phase 4) switched
+  in a `when` — no navigation-compose dependency, since one isn't in
+  `AGENTS.md` §2's list and four screens don't need one.
+- `ui/settings/SettingsScreen.kt` (new, Phase 4) — the headset-only,
+  don't-speak-while-locked, and speak-during-DND toggles, plus the engine
+  picker (`AndroidTtsEngine.listEngines()`) and a live ready/initializing/
+  error status line wired to `AppContainer.ttsEngineStatus`.
+- `ui/rules/` (Phase 3) — `RuleListScreen.kt` (list + enable toggle +
   delete, backed by `RuleListViewModel`), `RuleEditorScreen.kt` (form +
   save-time validation via `RuleValidator`, backed by
   `RuleEditorViewModel`; the app picker is a `Dialog` launched from inside
@@ -63,21 +73,41 @@ As of **2026-09-05** (Phase 3 complete except on-device verification, see
   is worth reading directly rather than summarized here — it documents a
   real, verified limitation of its own regex-timeout mitigation, and how
   Phase 3 closed most of it (see [history.md](history.md)).
-- `listener/` — `NotificationTtsListener.kt` (routing only, per §3),
-  `NotificationExtractor.kt` (the Android-facing half of §4.2's
+- `listener/` — `NotificationTtsListener.kt` (routing only, per §3; as of
+  Phase 4, `route()` also checks `outputRouteGate.allows()` and
+  `lockStateGate.allows()` right before `SpeechQueue.enqueue()`, per §3's
+  data-flow diagram, logging a `SafeLog.decision(..., action="suppress")`
+  on either gate's no — same convention `Decision.Suppress` already
+  used), `NotificationExtractor.kt` (the Android-facing half of §4.2's
   extraction), and `NotificationExtractionPolicy.kt` — a third file not
   in §3's tree, again see "Deviations": the pure, Android-import-free
   half of §4.2's drop conditions, split out specifically so it's
   JVM-testable without a device.
-- `data/` (new, Phase 3) — `RuleRepository.kt` (Preferences DataStore, one
-  JSON blob under `stringPreferencesKey("rules_json")`, thin wrapper over
-  `domain/RuleCodec.kt`) and `SettingsRepository.kt` (scaffold only — the
-  DataStore file exists and is held, no fields yet; Phase 4 gives it a
-  shape, see [history.md](history.md)).
+- `data/` — `RuleRepository.kt` (Preferences DataStore, one JSON blob
+  under `stringPreferencesKey("rules_json")`, thin wrapper over
+  `domain/RuleCodec.kt`) and `SettingsRepository.kt` (Phase 3 scaffold,
+  given real fields Phase 4: `Settings(headsetOnly, respectLockState,
+  allowDndOverride, ttsEnginePackage)`, one `booleanPreferencesKey`/
+  `stringPreferencesKey` each, exposed as `Flow<Settings>` plus per-field
+  setters — no round-trip JVM test, same reasoning as `RuleRepository`'s
+  lack of one: it's a thin DataStore wrapper with no logic of its own).
 - `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
-  impl, system default engine for now — see its own doc comment on why
-  engine selection waits for Phase 4), `AudioFocusManager.kt`,
-  `SpeechQueue.kt`. `OutputRouteGate.kt` doesn't exist yet — Phase 4.
+  impl; as of Phase 4 takes an optional `enginePackage` and uses it with
+  `TextToSpeech(context, listener, engineName)`, checks
+  `LANG_MISSING_DATA`/`LANG_NOT_SUPPORTED` after a successful init rather
+  than treating init-success alone as ready, and exposes `listEngines()`
+  for the settings picker), `AudioFocusManager.kt`, `SpeechQueue.kt`
+  (Phase 4: takes an `isBlockedByDnd` function reference alongside
+  `isInCall`, and its consumer now drains whatever else is already
+  buffered into a batch before deciding whether to speak it item-by-item
+  or collapse it to one "`<n>` new notifications." summary — `AGENTS.md`
+  §4.7's queue-collapse-on-burst), `OutputRouteGate.kt` (new, Phase 4 —
+  headset-only enforcement against `AudioManager.getDevices`),
+  `LockStateGate.kt` (new, Phase 4 — the separate don't-speak-while-locked
+  toggle against `KeyguardManager.isKeyguardLocked()`). Both gates take
+  their Android-facing checks as function references, the same pattern
+  `SpeechQueue`'s own constructor already used for `isInCall` — see each
+  file's own doc comment.
 
 Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
 
@@ -88,7 +118,9 @@ Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
   that duplication was the plan from the start, see its own comment.
 
 Under `app/src/test/java/net/breadthcharge/exigentheron/`: one test class
-per testable class above, 73 tests total — see [status.md](status.md) for
+per testable class above (Phase 4 added `OutputRouteGateTest.kt` and
+`LockStateGateTest.kt`; `SpeechQueueTest.kt` gained DND-skip and
+burst-collapse cases), 86 tests total — see [status.md](status.md) for
 the current pass count. `listener/NotificationExtractionPolicyTest.kt`
 and `speech/SpeechQueueTest.kt` are the first tests in this repo to
 exercise Android-facing (if Android-import-light or -free) code rather
