@@ -31,7 +31,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      # Pinned to a commit SHA, not @main: a floating branch ref means a
+      # compromised or force-pushed upstream runs arbitrary code in this
+      # repo's CI on the next PR, with no diff to review first. v22, as
+      # of 2026-09-06 -- bump deliberately (new SHA + comment), same
+      # policy libs.versions.toml already states for Gradle deps.
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: assembleDebug + testDebugUnitTest (nix develop)
         run: nix develop --command gradle assembleDebug testDebugUnitTest
