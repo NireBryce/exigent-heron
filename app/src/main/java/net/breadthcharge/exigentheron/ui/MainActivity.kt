@@ -3,7 +3,6 @@ package net.breadthcharge.exigentheron.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -19,6 +18,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -29,10 +29,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.flow.first
 import net.breadthcharge.exigentheron.App
+import net.breadthcharge.exigentheron.AppContainer
 import net.breadthcharge.exigentheron.data.RuleRepository
+import net.breadthcharge.exigentheron.data.Settings
 import net.breadthcharge.exigentheron.domain.Rule
 import net.breadthcharge.exigentheron.ui.rules.RuleEditorScreen
 import net.breadthcharge.exigentheron.ui.rules.RuleListScreen
+import net.breadthcharge.exigentheron.ui.settings.SettingsScreen
 
 /**
  * No navigation-compose dependency (AGENTS.md §2's list doesn't have
@@ -43,6 +46,7 @@ private sealed interface Screen {
     data object Main : Screen
     data object RuleList : Screen
     data class RuleEditor(val ruleId: String?) : Screen
+    data object Settings : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -66,7 +70,9 @@ class MainActivity : ComponentActivity() {
                         is Screen.Main -> Scaffold { innerPadding ->
                             MainScreen(
                                 granted = accessGranted.value,
+                                container = container,
                                 onManageRules = { screen = Screen.RuleList },
+                                onSettings = { screen = Screen.Settings },
                                 modifier = Modifier.padding(innerPadding),
                             )
                         }
@@ -97,6 +103,10 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        is Screen.Settings -> {
+                            BackHandler { screen = Screen.Main }
+                            SettingsScreen(container = container, onDone = { screen = Screen.Main })
+                        }
                     }
                 }
             }
@@ -121,8 +131,15 @@ private fun LoadRule(ruleRepository: RuleRepository, ruleId: String, onLoaded: (
 }
 
 @Composable
-private fun MainScreen(granted: Boolean, onManageRules: () -> Unit, modifier: Modifier = Modifier) {
+private fun MainScreen(
+    granted: Boolean,
+    container: AppContainer,
+    onManageRules: () -> Unit,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
+    val settings by container.settingsRepository.settings.collectAsState(initial = Settings())
     Column(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -130,14 +147,18 @@ private fun MainScreen(granted: Boolean, onManageRules: () -> Unit, modifier: Mo
     ) {
         Text(text = "exigent-heron")
         Text(text = if (granted) "Notification access: granted" else "Notification access: not granted")
+        // AGENTS.md §4.8: "Show the active engine on the main screen.
+        // The user should never have to wonder."
+        Text(text = "TTS engine: ${settings.ttsEnginePackage ?: "system default"}")
         if (!granted) {
             Button(onClick = {
-                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                context.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }) {
                 Text("Enable notification access")
             }
         }
         Button(onClick = onManageRules) { Text("Manage rules") }
+        Button(onClick = onSettings) { Text("Settings") }
     }
 }
 
