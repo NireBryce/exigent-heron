@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Custom classpath provider for fwcd.kotlin (kotlin-language-server).
+#
+# KLS's own built-in Gradle classpath resolver calls the legacy
+# `android.bootClasspath` API, which AGP's new-style extension
+# (ApplicationExtensionImpl$AgpDecorated, used since we're on AGP 9.x)
+# no longer exposes — so it always fails and KLS falls back to a
+# stdlib-only classpath, breaking Android/AndroidX resolution.
+# See wiki/traps-and-skills.md.
+#
+# KLS looks for an executable file at the project root named
+# `kls-classpath` (or `kls-classpath.sh` etc.) and, if found, uses its
+# stdout verbatim as the classpath instead of running its own resolver.
+# Output must be a single colon-separated list of jar/aar paths.
+set -euo pipefail
+shopt -s nullglob
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+app_cp="$(gradle -q :app:printKlsClasspath --init-script "$root/kls-classpath-init.gradle.kts" --no-configuration-cache)"
+
+android_jars=("${ANDROID_HOME:-}"/platforms/android-*/android.jar)
+android_jar="${android_jars[0]:-}"
+
+if [[ -n "$android_jar" ]]; then
+    echo "${app_cp}:${android_jar}"
+else
+    echo "${app_cp}"
+fi
