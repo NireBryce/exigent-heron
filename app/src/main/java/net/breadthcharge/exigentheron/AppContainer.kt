@@ -152,6 +152,7 @@ class AppContainer(private val appContext: Context) {
                 notificationManager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
         },
         isOutputRouteAllowed = outputRouteGate::allows,
+        truncationLengthSeconds = { currentSettings.truncationLengthSeconds },
         scope = scope,
     )
 
