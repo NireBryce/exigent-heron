@@ -177,13 +177,16 @@ one summary utterance"); the other two need a real device:
 ## Hardening-pass device matrix (Phase 5)
 
 `BUILD_PLAN.md` Phase 5 requires testing "on a locked device, in a call,
-and with a work profile present if available." **Unconfirmed as of
-2026-09-06** — no device was available the session that ran the rest of
-Phase 5 (see [`SECURITY.md`](../SECURITY.md) for everything that
-sandbox *could* verify: the logging grep, the release-injector check,
-and the merged release manifest, all clean). The exact repro steps for
-each of the three, tied to the real gate classes, live in `SECURITY.md`
-§4 rather than being duplicated here — when a device is actually used to
-run them, record the real outcome in both `SECURITY.md` (ticking the
-item, with what was observed) and this line (dated), not just one of the
-two.
+and with a work profile present if available." **Locked-device and
+in-call confirmed on the emulator as of 2026-09-07** (real
+`KeyguardManager`/`AudioManager` state, not a mock — see `SECURITY.md`
+§4 for exactly how); work-profile behavior confirmed there too, but only
+against a non-DPC secondary profile, not a fully provisioned enterprise
+one. **Still not a physical device** — no physical Android device has
+been used against this app at any point, so anything specific to real
+hardware (OEM battery killing, a real cellular radio, a real MDM
+enrollment) remains untested; see `SECURITY.md` §4's own caveats before
+treating this as done. The exact repro steps live in `SECURITY.md` §4
+rather than being duplicated here — when a physical device is actually
+used, record the real outcome in both `SECURITY.md` (updating the item,
+with what was observed) and this line (dated), not just one of the two.
