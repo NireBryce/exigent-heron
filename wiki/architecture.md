@@ -124,8 +124,9 @@ Under `app/src/debug/java/net/breadthcharge/exigentheron/`:
 Under `app/src/test/java/net/breadthcharge/exigentheron/`: one test class
 per testable class above (Phase 4 added `OutputRouteGateTest.kt` and
 `LockStateGateTest.kt`; `SpeechQueueTest.kt` gained DND-skip and
-burst-collapse cases), 86 tests total — see [status.md](status.md) for
-the current pass count. `listener/NotificationExtractionPolicyTest.kt`
+burst-collapse cases, then later the output-route re-check and
+`stopCurrent` cases — see `AGENTS.md` §4.7), 99 tests total as of
+**2026-09-07** — see [status.md](status.md) for the current pass count. `listener/NotificationExtractionPolicyTest.kt`
 and `speech/SpeechQueueTest.kt` are the first tests in this repo to
 exercise Android-facing (if Android-import-light or -free) code rather
 than pure `domain/` — see [traps-and-skills.md](traps-and-skills.md) for

@@ -96,7 +96,8 @@ com.<yourdomain>.notifreader/
 │   ├── TtsEngine.kt             # interface — makes SpeechQueue testable
 │   ├── AndroidTtsEngine.kt      # real impl wrapping android.speech.tts.TextToSpeech
 │   ├── AudioFocusManager.kt
-│   └── OutputRouteGate.kt       # headset-only enforcement
+│   ├── OutputRouteGate.kt       # headset-only enforcement
+│   └── AudioBecomingNoisyReceiver.kt  # stops a route change mid-utterance, not just between items
 │
 ├── data/
 │   ├── SettingsRepository.kt    # DataStore-backed, exposes Flow<Settings>
@@ -259,6 +260,8 @@ Single consumer over a `Channel<SpeechRequest>(capacity = 32, onBufferOverflow =
 - Respect `NotificationManager.getCurrentInterruptionFilter()` — do not speak under DND unless the user explicitly opts in.
 - Insert ~400ms silence between utterances via `playSilentUtterance`.
 - If the queue exceeds 5 pending items, collapse to a summary: "5 new notifications." Do not read a backlog.
+- Re-check `OutputRouteGate.allows()` here too, per utterance, not only once at enqueue time in `NotificationTtsListener` — a headset connected when a notification is posted can disconnect before a busy queue actually gets to it. Skip (do not speak) if it no longer allows.
+- Handle `AudioManager.ACTION_AUDIO_BECOMING_NOISY` (a route falling back mid-*playback*, e.g. headphones pulled while already speaking — the above re-check only ever sees the route between utterances, never during one). Stop the current utterance immediately via `TtsEngine.stop()`; the queue then continues normally into the same re-check above for whatever's next.
 
 `TtsEngine` is an interface. `AndroidTtsEngine` implements it. Tests use a fake that records calls. This is the only way to test queue behaviour without an emulator.
 
