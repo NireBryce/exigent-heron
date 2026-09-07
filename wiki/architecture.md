@@ -96,7 +96,9 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   setters — no round-trip JVM test, same reasoning as `RuleRepository`'s
   lack of one: it's a thin DataStore wrapper with no logic of its own;
   gained three more fields **2026-09-07** — `bluetoothDeviceControlEnabled`
-  plus two `stringSetPreferencesKey` address sets, see `AGENTS.md` §4.9),
+  plus two `stringSetPreferencesKey` address sets, see `AGENTS.md` §4.9;
+  gained a fourth, `truncationLengthSeconds: Int?`, the same day — null
+  by default (no limit), an `intPreferencesKey` when set),
   and `BluetoothDevices.kt` (`loadBondedBluetoothDevices` — reads
   `BluetoothAdapter.getBondedDevices()`, `BLUETOOTH_CONNECT`-gated,
   returns an empty list rather than throwing when it isn't granted).
@@ -110,7 +112,12 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   `isInCall`, and its consumer now drains whatever else is already
   buffered into a batch before deciding whether to speak it item-by-item
   or collapse it to one "`<n>` new notifications." summary — `AGENTS.md`
-  §4.7's queue-collapse-on-burst), `OutputRouteGate.kt` (new, Phase 4 —
+  §4.7's queue-collapse-on-burst; **2026-09-07**: when
+  `Settings.truncationLengthSeconds` is set, races `TtsEngine.speak()`
+  against a timeout of that many seconds and calls `TtsEngine.stop()`
+  explicitly on timeout — cancelling the coroutine alone wouldn't stop
+  the real `TextToSpeech` engine mid-utterance, only the wait on its
+  completion callback), `OutputRouteGate.kt` (new, Phase 4 —
   headset-only enforcement against `AudioManager.getDevices`),
   `LockStateGate.kt` (new, Phase 4 — the separate don't-speak-while-locked
   toggle against `KeyguardManager.isKeyguardLocked()`). Both gates take
