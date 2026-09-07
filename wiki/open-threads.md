@@ -77,18 +77,14 @@ section.
   alternative considered and rejected) and `RuleEngine.kt`'s own doc
   comment.
 - **`SafeLog.decision`'s `ruleId` parameter is always `null` in practice**
-  (2026-09-05): `NotificationTtsListener.route()` calls
-  `SafeLog.decision(pkg, ruleId = null, action = ...)` because
-  `Decision.Speak`/`AnnounceOnly` don't carry the id of the `Rule` that
-  produced them — only `Decision.Suppress.reason` embeds "rule `<id>`"
-  as unstructured text, which isn't something to parse back out (that's
-  exactly the kind of string-parsing-for-structured-data `SafeLog`'s own
-  design avoids elsewhere). Cheap to fix by giving `Decision` an optional
-  `ruleId: String?` — not done yet since it's cosmetic (logging
-  completeness, not a spec requirement) and would touch Phase 1's
-  already-tested `Decision`/`RuleEngine`/`SecretDetector` mid–Phase 2.
-  Worth doing whenever a UI phase wants to show which rule fired for a
-  given decision, if not before.
+  — resolved 2026-09-07: `Decision` (`domain/Decision.kt`) now carries a
+  common `ruleId: String?`, populated by `RuleEngine.toDecision`/the
+  match-timeout `Suppress` and threaded through `SecretDetector`'s
+  downgrades so a downgraded decision keeps the id of the rule that
+  originally matched. `NotificationTtsListener.route()` passes
+  `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
+  two cases covering the matched/unmatched sides of it. Listed here as a
+  closed thread.
 - **Phase 2's on-device acceptance criteria are unconfirmed** (see
   [status.md](status.md)): no device was available the session that
   built the listener/speech stack. Everything JVM-testable is tested and

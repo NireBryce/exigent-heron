@@ -37,7 +37,7 @@ class SecretDetector(
         // Hardcoded floor (AGENTS.md §4.5): cannot be disabled by the
         // keyword list above, and independent of proximity matching.
         if (decision is Decision.Speak && body != null && BARE_SIX_DIGIT_BODY.matches(body.trim())) {
-            return Decision.Suppress(reason = "bare 6-digit body")
+            return Decision.Suppress(reason = "bare 6-digit body", ruleId = decision.ruleId)
         }
 
         if (payload.visibility == VISIBILITY_PRIVATE || payload.visibility == VISIBILITY_SECRET) {
@@ -62,10 +62,10 @@ class SecretDetector(
 
     private fun downgrade(decision: Decision, payload: NotificationPayload, reason: String): Decision =
         when (decision) {
-            is Decision.Speak -> Decision.AnnounceOnly(announceOnlyText(payload))
+            is Decision.Speak -> Decision.AnnounceOnly(announceOnlyText(payload), ruleId = decision.ruleId)
             is Decision.AnnounceOnly ->
                 if (payload.body != null && decision.text.contains(payload.body)) {
-                    Decision.Suppress(reason = "$reason (announce text still contained it)")
+                    Decision.Suppress(reason = "$reason (announce text still contained it)", ruleId = decision.ruleId)
                 } else {
                     decision
                 }
