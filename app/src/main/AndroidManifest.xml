@@ -4,6 +4,19 @@
     <!-- No <uses-permission> here, ever, for INTERNET. See AGENTS.md §5/§0. -->
 
     <!--
+      This app's only runtime permission. Declared here as every
+      permission must be, but never requested at launch — only when the
+      user deliberately turns on the per-device Bluetooth allow/deny
+      feature in Settings (off by default: see
+      Settings.bluetoothDeviceControlEnabled's own doc comment). Grants
+      access to the paired-device list's names/addresses only; nothing
+      leaves the device either way (still no INTERNET, above). Does not
+      require or imply ACCESS_FINE_LOCATION — that's BLUETOOTH_SCAN,
+      which this app does not request.
+    -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!--
       A visibility declaration, not a permission grant: without it,
       PackageManager.queryIntentActivities in the installed-app picker
       (Phase 3) comes back empty on a real device under Android's

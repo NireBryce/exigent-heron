@@ -89,12 +89,17 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   JVM-testable without a device.
 - `data/` — `RuleRepository.kt` (Preferences DataStore, one JSON blob
   under `stringPreferencesKey("rules_json")`, thin wrapper over
-  `domain/RuleCodec.kt`) and `SettingsRepository.kt` (Phase 3 scaffold,
+  `domain/RuleCodec.kt`), `SettingsRepository.kt` (Phase 3 scaffold,
   given real fields Phase 4: `Settings(headsetOnly, respectLockState,
   allowDndOverride, ttsEnginePackage)`, one `booleanPreferencesKey`/
   `stringPreferencesKey` each, exposed as `Flow<Settings>` plus per-field
   setters — no round-trip JVM test, same reasoning as `RuleRepository`'s
-  lack of one: it's a thin DataStore wrapper with no logic of its own).
+  lack of one: it's a thin DataStore wrapper with no logic of its own;
+  gained three more fields **2026-09-07** — `bluetoothDeviceControlEnabled`
+  plus two `stringSetPreferencesKey` address sets, see `AGENTS.md` §4.9),
+  and `BluetoothDevices.kt` (`loadBondedBluetoothDevices` — reads
+  `BluetoothAdapter.getBondedDevices()`, `BLUETOOTH_CONNECT`-gated,
+  returns an empty list rather than throwing when it isn't granted).
 - `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
   impl; as of Phase 4 takes an optional `enginePackage` and uses it with
   `TextToSpeech(context, listener, engineName)`, checks
@@ -125,8 +130,10 @@ Under `app/src/test/java/net/breadthcharge/exigentheron/`: one test class
 per testable class above (Phase 4 added `OutputRouteGateTest.kt` and
 `LockStateGateTest.kt`; `SpeechQueueTest.kt` gained DND-skip and
 burst-collapse cases, then later the output-route re-check and
-`stopCurrent` cases — see `AGENTS.md` §4.7), 99 tests total as of
-**2026-09-07** — see [status.md](status.md) for the current pass count. `listener/NotificationExtractionPolicyTest.kt`
+`stopCurrent` cases; `OutputRouteGateTest.kt` later gained the
+per-device Bluetooth override cases — see `AGENTS.md` §4.9), 105 tests
+total as of **2026-09-07** — see [status.md](status.md) for the current
+pass count. `listener/NotificationExtractionPolicyTest.kt`
 and `speech/SpeechQueueTest.kt` are the first tests in this repo to
 exercise Android-facing (if Android-import-light or -free) code rather
 than pure `domain/` — see [traps-and-skills.md](traps-and-skills.md) for
@@ -176,6 +183,17 @@ hardening intent — it's a visibility declaration, not a permission grant,
 doesn't touch `INTERNET` or `QUERY_ALL_PACKAGES`, and §5's snippet predates
 Phase 3 needing to query other apps at all — but worth recording since §5
 itself doesn't mention it.
+
+**2026-09-07, a real permission addition, not just a visibility
+declaration this time**: `AndroidManifest.xml` gained
+`<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />`
+for the per-device Bluetooth allow/deny feature (`AGENTS.md` §4.9). This
+is this app's first and only runtime permission — everything else here
+has been genuinely zero-permission-request until now. Requested only
+when the user turns the feature on in Settings, not at launch; see
+`SettingsScreen.kt`'s permission-launcher wiring and
+`Settings.bluetoothDeviceControlEnabled`'s own doc comment for why it
+defaults off.
 
 If a real divergence from the spec tree happens later that *isn't* in
 this same spirit (a class that ends up somewhere other than its

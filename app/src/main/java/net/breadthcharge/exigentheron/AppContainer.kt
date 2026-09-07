@@ -1,9 +1,12 @@
 package net.breadthcharge.exigentheron
 
+import android.Manifest
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioManager
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,6 +81,31 @@ class AppContainer(private val appContext: Context) {
         connectedOutputTypes = {
             audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.toSet()
         },
+        bluetoothDeviceControlEnabled = { currentSettings.bluetoothDeviceControlEnabled },
+        // AudioDeviceInfo.getAddress() only returns a real MAC for a
+        // Bluetooth device — and only at all — with BLUETOOTH_CONNECT
+        // granted; re-checked here rather than assumed from the settings
+        // toggle above, since a user can revoke the permission from
+        // system settings without this app finding out except by asking
+        // again. Falls back to an empty set (⇒ plain type-based check,
+        // same as the feature being off) rather than crashing.
+        connectedBluetoothAddresses = {
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                    .filter { it.type in OutputRouteGate.BLUETOOTH_HEADSET_TYPES }
+                    .mapNotNull { it.address }
+                    .toSet()
+            } else {
+                emptySet()
+            }
+        },
+        // A lambda, deliberately, not `currentSettings::bluetoothDeviceDecision`
+        // — that would bind to whatever Settings instance existed at this
+        // line's *construction* time, not re-read `currentSettings` (a
+        // `get()`) on every call the way every other lambda here does.
+        bluetoothDeviceDecision = { address -> currentSettings.bluetoothDeviceDecision(address) },
     )
 
     val lockStateGate = LockStateGate(

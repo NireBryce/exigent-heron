@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import net.breadthcharge.exigentheron.speech.BluetoothDeviceDecision
 
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -16,6 +18,9 @@ private val HEADSET_ONLY_KEY = booleanPreferencesKey("headset_only")
 private val RESPECT_LOCK_STATE_KEY = booleanPreferencesKey("respect_lock_state")
 private val ALLOW_DND_OVERRIDE_KEY = booleanPreferencesKey("allow_dnd_override")
 private val TTS_ENGINE_PACKAGE_KEY = stringPreferencesKey("tts_engine_package")
+private val BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY = booleanPreferencesKey("bluetooth_device_control_enabled")
+private val ALLOWED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("allowed_bluetooth_addresses")
+private val DENIED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("denied_bluetooth_addresses")
 
 /**
  * The gates and toggles AGENTS.md §4.8/§4.9 actually ask for — nothing
@@ -30,13 +35,35 @@ private val TTS_ENGINE_PACKAGE_KEY = stringPreferencesKey("tts_engine_package")
  * [ttsEnginePackage] is null until the user picks one in settings;
  * AGENTS.md §4.8 is explicit that a null choice falls back to the
  * system default only as a *temporary* state, not a permanent silent one.
+ *
+ * [bluetoothDeviceControlEnabled] defaults **off** — this is the one
+ * setting in this class gated behind a runtime permission
+ * (`BLUETOOTH_CONNECT`), and this app requests zero runtime permissions
+ * otherwise (AGENTS.md §0/§5). Off by default means the permission
+ * prompt itself is never shown until the user deliberately opts into
+ * this feature from the settings screen, not on first launch.
+ * [allowedBluetoothAddresses]/[deniedBluetoothAddresses] are mutually
+ * exclusive by construction — [setBluetoothDeviceDecision] is the only
+ * way to write either, and it always removes an address from the other
+ * set first, so a device can never end up in both at once. Empty
+ * ("unset") is every device's default state, meaning
+ * [OutputRouteGate]'s plain type-based check as if this feature were off.
  */
 data class Settings(
     val headsetOnly: Boolean = true,
     val respectLockState: Boolean = true,
     val allowDndOverride: Boolean = false,
     val ttsEnginePackage: String? = null,
-)
+    val bluetoothDeviceControlEnabled: Boolean = false,
+    val allowedBluetoothAddresses: Set<String> = emptySet(),
+    val deniedBluetoothAddresses: Set<String> = emptySet(),
+) {
+    fun bluetoothDeviceDecision(address: String): BluetoothDeviceDecision = when (address) {
+        in allowedBluetoothAddresses -> BluetoothDeviceDecision.ALLOWED
+        in deniedBluetoothAddresses -> BluetoothDeviceDecision.DENIED
+        else -> BluetoothDeviceDecision.UNSET
+    }
+}
 
 /**
  * DataStore-backed persistence for [Settings] (AGENTS.md §2: Preferences
@@ -53,6 +80,9 @@ class SettingsRepository(context: Context) {
             respectLockState = prefs[RESPECT_LOCK_STATE_KEY] ?: true,
             allowDndOverride = prefs[ALLOW_DND_OVERRIDE_KEY] ?: false,
             ttsEnginePackage = prefs[TTS_ENGINE_PACKAGE_KEY],
+            bluetoothDeviceControlEnabled = prefs[BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY] ?: false,
+            allowedBluetoothAddresses = prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
+            deniedBluetoothAddresses = prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
         )
     }
 
@@ -71,6 +101,27 @@ class SettingsRepository(context: Context) {
     suspend fun setTtsEnginePackage(packageName: String?) {
         dataStore.edit {
             if (packageName == null) it.remove(TTS_ENGINE_PACKAGE_KEY) else it[TTS_ENGINE_PACKAGE_KEY] = packageName
+        }
+    }
+
+    suspend fun setBluetoothDeviceControlEnabled(enabled: Boolean) {
+        dataStore.edit { it[BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY] = enabled }
+    }
+
+    /**
+     * The only way to change either Bluetooth address set — always
+     * removes [address] from *both* first, then adds it back to
+     * whichever one [decision] asks for (neither, for
+     * [BluetoothDeviceDecision.UNSET]). This is what makes "in both
+     * lists at once" structurally unreachable rather than a state the
+     * UI has to avoid on its own.
+     */
+    suspend fun setBluetoothDeviceDecision(address: String, decision: BluetoothDeviceDecision) {
+        dataStore.edit { prefs ->
+            val allowed = (prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet()) - address
+            val denied = (prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet()) - address
+            prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.ALLOWED) allowed + address else allowed
+            prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.DENIED) denied + address else denied
         }
     }
 }

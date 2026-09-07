@@ -101,7 +101,8 @@ com.<yourdomain>.notifreader/
 │
 ├── data/
 │   ├── SettingsRepository.kt    # DataStore-backed, exposes Flow<Settings>
-│   └── RuleRepository.kt
+│   ├── RuleRepository.kt
+│   └── BluetoothDevices.kt      # loads the bonded-device list; BLUETOOTH_CONNECT-gated
 │
 └── ui/
     ├── MainActivity.kt
@@ -280,6 +281,8 @@ Rationale: the default should not be broadcasting private messages to a room. Le
 
 Add a separate "don't speak while locked" toggle, also defaulted on, checking `KeyguardManager.isKeyguardLocked()`.
 
+**Per-device Bluetooth override, off by default.** `TYPE_BLUETOOTH_A2DP` is Android's generic Bluetooth-audio-sink type — a car stereo and a TV soundbar report it exactly the same as real headphones, so the type check above can't tell them apart. A separate "Per-device Bluetooth control" toggle (`Settings.bluetoothDeviceControlEnabled`, default **off**) lets the user Allow or Deny individual paired devices by address, listed from `BluetoothAdapter.getBondedDevices()`. Allow/Deny are mutually exclusive by construction (`SettingsRepository.setBluetoothDeviceDecision` always clears the other set first) — there is no UI state where a device is in both. An unset device falls back to the plain type check, identical to this feature being off. This is the one exception to this app otherwise requesting zero runtime permissions (`BLUETOOTH_CONNECT`, needed to read the paired-device list's names/addresses at all) — requested only when the user turns this toggle on, never at launch. A wired headset connection always qualifies on its own regardless of what this override decides for a Bluetooth device connected alongside it.
+
 ### 4.10 Listener lifecycle
 
 - Implement `onListenerConnected()` / `onListenerDisconnected()`. The system rebinds unpredictably; on disconnect, log lifecycle and reset TTS state.
@@ -315,7 +318,7 @@ Add a separate "don't speak while locked" toggle, also defaulted on, checking `K
 - The listener service is the **only** component exported without being the launcher activity, and the `android:permission` attribute is what stops other apps binding it. Do not remove it.
 - Every other service, receiver, and provider: `android:exported="false"`.
 - **Do not create a `BroadcastReceiver` that accepts text to speak.** It is a convenient testing shortcut and it gives every app on the device a voice. For testing, use the debug-variant injector in [BUILD_PLAN.md](BUILD_PLAN.md) Phase 1.
-- No `INTERNET` permission in any manifest, including debug.
+- No `INTERNET` permission in any manifest, including debug. `BLUETOOTH_CONNECT` (§4.9's per-device Bluetooth override) is this app's one runtime-permission exception — declared in the manifest as every permission must be, but never requested except when the user turns that specific feature on.
 - `data_extraction_rules.xml` should exclude everything.
 - Release build: `isMinifyEnabled = true`, `isShrinkResources = true`.
 - Signing config reads from `local.properties` or env vars. **Never commit a keystore or password.** Add `*.jks`, `*.keystore`, `local.properties` to `.gitignore` in the first commit.
