@@ -44,6 +44,7 @@ file, so it holds real procedural content instead of just links.
 | run or test the app on an emulator or device | [testing.md](testing.md), skill [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md) |
 | check whether a bug or decision is already tracked | [open-threads.md](open-threads.md), skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md) |
 | propose filing a bug found in passing | skill [`propose-issue`](../.claude/skills/propose-issue/SKILL.md) |
+| fix something small while already editing a file, without scope creep | skill [`boyscouting`](../.claude/skills/boyscouting/SKILL.md) (a deliberate repo-wide sweep instead: [`boyscouting-all`](../.claude/skills/boyscouting-all/SKILL.md)) |
 | avoid a mistake this repo has already made once | [traps-and-skills.md](traps-and-skills.md) |
 | keep this wiki honest after a change | skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) |
 
