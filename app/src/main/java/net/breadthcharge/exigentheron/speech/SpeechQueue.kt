@@ -23,20 +23,33 @@ private const val BURST_COLLAPSE_THRESHOLD = 5
  * dropping the *oldest* pending item on overflow rather than blocking
  * notification delivery or growing without bound.
  *
- * Takes [requestAudioFocus]/[abandonAudioFocus]/[isInCall]/[isBlockedByDnd]
- * as function references rather than an [AudioFocusManager],
- * `AudioManager`, or `NotificationManager` directly —
+ * Takes [requestAudioFocus]/[abandonAudioFocus]/[isInCall]/[isBlockedByDnd]/
+ * [isOutputRouteAllowed] as function references rather than an
+ * [AudioFocusManager], `AudioManager`, or `NotificationManager` directly —
  * `AudioFocusManager`'s constructor touches a real `Context`
  * immediately, which makes it, and anything holding one, uninstantiable
  * in a JVM test. This keeps [TtsEngine] as the *only* real dependency
  * (per AGENTS.md §4.7: "the only way to test queue behaviour without an
  * emulator"), while still letting a JVM test substitute the audio-focus,
- * in-call, and DND behavior too, with plain lambdas instead of a second
- * fake class. `AppContainer` wires the real ones:
+ * in-call, DND, and output-route behavior too, with plain lambdas instead
+ * of a second fake class. `AppContainer` wires the real ones:
  * `audioFocusManager::requestFocus` / `::abandonFocus`, an
- * `AudioManager.mode` check, and a check combining
+ * `AudioManager.mode` check, a check combining
  * `NotificationManager.getCurrentInterruptionFilter()` with the
- * settings-backed DND-override toggle.
+ * settings-backed DND-override toggle, and `outputRouteGate::allows`.
+ *
+ * **[isOutputRouteAllowed] is re-checked here, per utterance, not just
+ * once at enqueue time.** `NotificationTtsListener.route()` already
+ * checks `OutputRouteGate.allows()` before ever calling [enqueue] — that
+ * alone leaves a real gap: a headset connected at enqueue time can
+ * disconnect before this queue actually gets to that item (a burst still
+ * draining, TTS still speaking the previous one), and without a second
+ * check here the fallback would be the device speaker, exactly what the
+ * headset-only setting exists to prevent. This closes that gap for every
+ * *queued* item; it does not by itself stop a route change that happens
+ * *while* an utterance is already playing — see [stopCurrent] for that
+ * half, wired to `AudioManager.ACTION_AUDIO_BECOMING_NOISY` by
+ * `AppContainer`.
  */
 @OptIn(ExperimentalCoroutinesApi::class) // Channel.isEmpty, used below
 class SpeechQueue(
@@ -45,6 +58,7 @@ class SpeechQueue(
     private val abandonAudioFocus: () -> Unit,
     private val isInCall: () -> Boolean,
     private val isBlockedByDnd: () -> Boolean,
+    private val isOutputRouteAllowed: () -> Boolean,
     scope: CoroutineScope,
 ) {
     private val channel = Channel<SpeechRequest>(
@@ -59,6 +73,25 @@ class SpeechQueue(
 
     fun enqueue(request: SpeechRequest) {
         channel.trySend(request)
+    }
+
+    /**
+     * Halts whatever utterance is playing *right now*, immediately —
+     * for the one case [isOutputRouteAllowed]'s per-item re-check can't
+     * reach: a route disconnecting mid-utterance rather than between
+     * items. `AppContainer` calls this from an
+     * `AudioManager.ACTION_AUDIO_BECOMING_NOISY` receiver, Android's own
+     * signal that the active route is about to fall back to a less
+     * private one *during playback* (headphones pulled, Bluetooth
+     * dropping) — the standard place apps stop/pause on exactly this.
+     * [TtsEngine.stop] unblocks whichever `speak()`/`silence()` call was
+     * suspended waiting on it, so [consume] moves on to the next queued
+     * item (if any) normally — which then goes through the same
+     * [isOutputRouteAllowed] check above and gets skipped too if the
+     * route is still bad.
+     */
+    fun stopCurrent() {
+        ttsEngine.stop()
     }
 
     private suspend fun consume() {
@@ -100,15 +133,22 @@ class SpeechQueue(
     }
 
     private suspend fun speakOne(request: SpeechRequest) {
-        // Checked first, deliberately, so a call in progress — or DND —
-        // never even requests focus for an utterance it's about to skip
-        // anyway.
+        // Checked first, deliberately, so a call in progress — DND, or a
+        // route that no longer qualifies — never even requests focus for
+        // an utterance it's about to skip anyway.
         if (isInCall()) {
             SafeLog.lifecycle("speech skipped: device in call")
             return
         }
         if (isBlockedByDnd()) {
             SafeLog.lifecycle("speech skipped: DND")
+            return
+        }
+        // Re-checked here, not trusted from whatever NotificationTtsListener
+        // saw at enqueue time — see this class's own doc comment on
+        // [isOutputRouteAllowed] for why that's a real gap otherwise.
+        if (!isOutputRouteAllowed()) {
+            SafeLog.lifecycle("speech skipped: output route")
             return
         }
         if (!holdingFocus) {

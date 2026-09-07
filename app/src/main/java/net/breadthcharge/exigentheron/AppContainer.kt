@@ -19,6 +19,7 @@ import net.breadthcharge.exigentheron.domain.Deduplicator
 import net.breadthcharge.exigentheron.domain.RuleEngineHolder
 import net.breadthcharge.exigentheron.domain.SecretDetector
 import net.breadthcharge.exigentheron.speech.AndroidTtsEngine
+import net.breadthcharge.exigentheron.speech.AudioBecomingNoisyReceiver
 import net.breadthcharge.exigentheron.speech.AudioFocusManager
 import net.breadthcharge.exigentheron.speech.LockStateGate
 import net.breadthcharge.exigentheron.speech.OutputRouteGate
@@ -96,6 +97,17 @@ class AppContainer(private val appContext: Context) {
     var speechQueue: SpeechQueue = createSpeechQueue(ttsEngine)
         private set
 
+    // See AudioBecomingNoisyReceiver's own doc comment: this is the
+    // mid-utterance half of the output-route gate, distinct from
+    // isOutputRouteAllowed above (which only ever sees the route
+    // between utterances, never a change during one already playing).
+    // `speechQueue` is read here as a property, not captured as a local
+    // val, so this keeps calling the *current* queue's stopCurrent()
+    // across a rebuildTtsEngine() swap, not a stale reference to the one
+    // that existed when this receiver was constructed.
+    private val audioBecomingNoisyReceiver =
+        AudioBecomingNoisyReceiver(appContext) { speechQueue.stopCurrent() }
+
     private fun createTtsEngine(enginePackage: String?): AndroidTtsEngine =
         AndroidTtsEngine(appContext, enginePackage) { status -> ttsStatus.value = status }
 
@@ -111,6 +123,7 @@ class AppContainer(private val appContext: Context) {
             !currentSettings.allowDndOverride &&
                 notificationManager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
         },
+        isOutputRouteAllowed = outputRouteGate::allows,
         scope = scope,
     )
 

@@ -105,25 +105,26 @@ section.
   directly) but not yet by having actually run the app.
   [testing.md](testing.md) has the steps.
 
-- **Phase 4's on-device acceptance criteria are unconfirmed** (see
-  [status.md](status.md)), same reason: no device available this session.
-  "Headset-only blocks speech with no headset connected" and "engine
-  picker switching takes effect" are true by code review only; "ten
-  notifications in five seconds collapse to one summary" is covered
-  directly by a passing JVM unit test (`SpeechQueueTest`), which is as
-  much of this criterion as doesn't need a device.
-  [testing.md](testing.md) has the on-device steps for all three.
+- **Phase 4's on-device acceptance criteria**: "headset-only blocks
+  speech with no headset connected" was verified 2026-09-07 on the `nix
+  develop` emulator (see [status.md](status.md)) — still not a physical
+  device. "Engine picker switching takes effect" remains true by code
+  review only, not yet exercised. "Ten notifications in five seconds
+  collapse to one summary" is covered directly by a passing JVM unit
+  test (`SpeechQueueTest`), which is as much of this criterion as
+  doesn't need a device. [testing.md](testing.md) has the on-device
+  steps for what's left.
 
-- **Phase 5's on-device matrix is unconfirmed** (see
-  [status.md](status.md)): no device available this session. The
-  locked-device and in-call checks are true by code review plus JVM
-  tests of the pure gate/skip logic (`LockStateGateTest`,
-  `SpeechQueueTest`'s in-call skip case) but not by having run them
-  against a real `KeyguardManager`/`AudioManager` state; the
-  work-profile check has no specific behavior to verify beyond "installs
-  and behaves normally," per `SECURITY.md` §4's own reasoning for why
-  there's no feature to test there. `SECURITY.md` §4 has the exact
-  repro steps.
+- **Phase 5's on-device matrix**: locked-device and in-call were
+  verified 2026-09-07 on the emulator against real
+  `KeyguardManager`/`AudioManager` state (see [status.md](status.md));
+  work-profile was checked too, but only against a non-DPC secondary
+  profile, not a fully provisioned enterprise one — `SECURITY.md` §4's
+  own reasoning for why there's no more specific feature to test there
+  still applies. **Still not a physical device** for any of the three —
+  OEM battery-killing, a real cellular radio, and real MDM enrollment
+  remain untested. `SECURITY.md` §4 has the exact repro steps and every
+  caveat on what an emulator can and can't prove here.
 
 ## Not applicable yet
 

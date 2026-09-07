@@ -12,5 +12,15 @@ interface TtsEngine {
     /** Suspends until the silence finishes playing. */
     suspend fun silence(durationMillis: Long, utteranceId: String)
 
+    /**
+     * Stops whatever utterance is currently playing, if any, and unblocks
+     * whichever [speak]/[silence] call is suspended waiting on it — the
+     * engine itself stays usable afterward (unlike [shutdown]). See
+     * [SpeechQueue]'s `stopCurrent` doc comment for why this exists:
+     * closing the gap between a route disconnecting *mid-utterance* and
+     * the next queued item's gate re-check.
+     */
+    fun stop()
+
     fun shutdown()
 }

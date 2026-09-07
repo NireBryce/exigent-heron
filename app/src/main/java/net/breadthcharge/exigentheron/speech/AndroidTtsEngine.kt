@@ -80,6 +80,12 @@ class AndroidTtsEngine(
                     SafeLog.error("TTS utterance error: id=$utteranceId code=$errorCode")
                     resumePending(utteranceId)
                 }
+
+                // Fired by tts.stop() below for whatever utterance was
+                // mid-flight — without this, stop()'s caller would hang
+                // forever awaiting a done/error callback that stop()
+                // itself guarantees will never come.
+                override fun onStop(utteranceId: String?, interrupted: Boolean) = resumePending(utteranceId)
             },
         )
     }
@@ -125,6 +131,10 @@ class AndroidTtsEngine(
      * to call even while this instance's own init is still pending.
      */
     fun listEngines(): List<TextToSpeech.EngineInfo> = tts.engines
+
+    override fun stop() {
+        tts.stop()
+    }
 
     override fun shutdown() {
         tts.stop()

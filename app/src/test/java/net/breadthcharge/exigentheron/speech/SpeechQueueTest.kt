@@ -24,9 +24,16 @@ import org.junit.Test
  */
 class SpeechQueueTest {
 
-    /** Records calls; [onSpeak] lets a test hold the consumer at a known point. */
+    /**
+     * Records calls; [onSpeak] lets a test hold the consumer at a known
+     * point, and [onStop] lets a test simulate the engine actually
+     * interrupting whatever [onSpeak] is suspended in — real
+     * `AndroidTtsEngine.stop()` does this via `TextToSpeech.stop()`
+     * firing `onStop` on the pending utterance's continuation.
+     */
     private class FakeTtsEngine(
         private val onSpeak: suspend (text: String) -> Unit = {},
+        private val onStop: () -> Unit = {},
     ) : TtsEngine {
         val speakCalls = CopyOnWriteArrayList<String>()
         val silenceCalls = CopyOnWriteArrayList<Long>()
@@ -39,6 +46,8 @@ class SpeechQueueTest {
         override suspend fun silence(durationMillis: Long, utteranceId: String) {
             silenceCalls += durationMillis
         }
+
+        override fun stop() = onStop()
 
         override fun shutdown() = Unit
     }
@@ -67,7 +76,7 @@ class SpeechQueueTest {
     fun `a single request is spoken, then a silence gap`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
 
         queue.enqueue(request("hello"))
         awaitCount(fake.speakCalls, 1)
@@ -82,7 +91,7 @@ class SpeechQueueTest {
     fun `requests are spoken in order`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
 
         queue.enqueue(request("first"))
         queue.enqueue(request("second"))
@@ -98,7 +107,7 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { true }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { true }, { false }, { true }, scope)
 
         queue.enqueue(request("should not be heard"))
         // No speak() will ever come; wait on something that does happen
@@ -117,7 +126,7 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { true }, scope)
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { true }, { true }, scope)
 
         queue.enqueue(request("should not be heard"))
         withTimeout(5.seconds) {
@@ -136,7 +145,7 @@ class SpeechQueueTest {
         // Gate the first speak() so all three enqueues land as one
         // burst in the channel before the consumer processes any of it.
         val fake = FakeTtsEngine(onSpeak = { text -> if (text == "one") releaseFirst.await() })
-        val queue = SpeechQueue(fake, { requestCalls.incrementAndGet(); true }, {}, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { requestCalls.incrementAndGet(); true }, {}, { false }, { false }, { true }, scope)
 
         queue.enqueue(request("one"))
         queue.enqueue(request("two"))
@@ -153,7 +162,7 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val abandonCalls = AtomicInteger()
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, { true }, scope)
 
         queue.enqueue(request("only one"))
         withTimeout(5.seconds) {
@@ -188,7 +197,7 @@ class SpeechQueueTest {
         // on this test's own thread, and none of these ten calls yields
         // — same assumption the "requests are spoken in order" test
         // above already relies on for its (smaller, ungated) burst.
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
 
         for (i in 1..10) queue.enqueue(request(i.toString()))
         awaitCount(fake.speakCalls, 1)
@@ -204,12 +213,80 @@ class SpeechQueueTest {
     fun `5 or fewer pending items are read individually, not collapsed`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, scope)
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
 
         for (i in 1..5) queue.enqueue(request(i.toString()))
         awaitCount(fake.speakCalls, 5)
 
         assertThat(fake.speakCalls).containsExactly("1", "2", "3", "4", "5").inOrder()
+        scope.shutdown()
+    }
+
+    @Test
+    fun `output route disallowed skips speaking entirely`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob())
+        val fake = FakeTtsEngine()
+        val abandonCalls = AtomicInteger()
+        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, { false }, scope)
+
+        queue.enqueue(request("should not be heard"))
+        withTimeout(5.seconds) {
+            while (abandonCalls.get() < 1) kotlinx.coroutines.yield()
+        }
+
+        assertThat(fake.speakCalls).isEmpty()
+        scope.shutdown()
+    }
+
+    @Test
+    fun `output route is re-checked per item, not just once at construction`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob())
+        val fake = FakeTtsEngine()
+        // A plain var, not a fixed lambda result — the whole point being
+        // tested is that SpeechQueue reads this fresh for every item,
+        // the same way AppContainer's real outputRouteGate::allows
+        // reflects whatever's connected *now*, not at construction time.
+        var routeAllowed = true
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { routeAllowed }, scope)
+
+        queue.enqueue(request("while connected"))
+        awaitCount(fake.speakCalls, 1)
+
+        // Simulate a headset disconnecting between items (not mid-utterance
+        // — that's stopCurrent's job below) before the next item is due.
+        routeAllowed = false
+        queue.enqueue(request("after disconnect"))
+
+        // Give an (incorrect) second speak() call a moment to show up
+        // before asserting there's still only one.
+        withTimeout(2.seconds) { kotlinx.coroutines.delay(200) }
+        assertThat(fake.speakCalls).containsExactly("while connected")
+        scope.shutdown()
+    }
+
+    @Test
+    fun `stopCurrent interrupts the in-flight utterance and the queue continues after`() = runBlocking {
+        val scope = CoroutineScope(SupervisorJob())
+        val started = CompletableDeferred<Unit>()
+        val stopSignal = CompletableDeferred<Unit>()
+        val fake = FakeTtsEngine(
+            onSpeak = { text -> if (text == "one") { started.complete(Unit); stopSignal.await() } },
+            onStop = { stopSignal.complete(Unit) },
+        )
+        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+
+        queue.enqueue(request("one"))
+        queue.enqueue(request("two"))
+        started.await() // "one" is now suspended inside onSpeak, as if mid-utterance.
+
+        queue.stopCurrent()
+        awaitCount(fake.speakCalls, 2)
+
+        // "one" still counts as spoken (interrupted, not silently
+        // dropped — TtsEngine.stop's own contract) and "two" proves the
+        // consumer loop resumed normally afterward rather than getting
+        // stuck on the interrupted item.
+        assertThat(fake.speakCalls).containsExactly("one", "two").inOrder()
         scope.shutdown()
     }
 }

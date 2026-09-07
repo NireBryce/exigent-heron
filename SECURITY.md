@@ -379,16 +379,20 @@ managed profile via an actual DPC app remains untested.
   24 actionable tasks: 24 executed
   ```
 
-  86 tests, 0 failures, 0 errors, 0 skipped across 14 test classes
-  (counted from the JUnit XML under
+  86 tests at the time this was first run. **Re-run 2026-09-07**, after
+  `rule-editor-validation` (`RuleFormValidatorTest`, merged since) and
+  the output-route re-check/`stopCurrent` work above (three new
+  `SpeechQueueTest` cases): 99 tests, 0 failures, 0 errors, 0 skipped
+  across 15 test classes (counted from the JUnit XML under
   `app/build/test-results/testDebugUnitTest/`):
   `InterruptibleCharSequenceTest` (3), `DeduplicatorTest` (6),
-  `ContentHashTest` (3), `SpeechQueueTest` (8),
+  `ContentHashTest` (3), `SpeechQueueTest` (11),
   `NotificationPayloadTest` (1), `OutputRouteGateTest` (8),
   `TextSanitizerTest` (6), `NotificationExtractionPolicyTest` (7),
-  `RuleValidatorTest` (6), `SecretDetectorTest` (13), `RuleCodecTest` (8),
-  `RuleEngineTest` (11), `LockStateGateTest` (3), `RuleEngineHolderTest`
-  (3). All of `domain/`'s pure classes (`NotificationPayload`,
+  `RuleValidatorTest` (6), `RuleFormValidatorTest` (10),
+  `SecretDetectorTest` (13), `RuleCodecTest` (8), `RuleEngineTest` (11),
+  `LockStateGateTest` (3), `RuleEngineHolderTest` (3). All of `domain/`'s
+  pure classes (`NotificationPayload`,
   `Deduplicator`, `RuleEngine`, `SecretDetector`, `RuleValidator`,
   `RuleCodec`, `RuleEngineHolder`, `TextSanitizer`, `ContentHash`,
   `InterruptibleCharSequence`) have a dedicated test class; the two
