@@ -234,50 +234,99 @@ No violations found; no fix needed for this item.
 
 ## 4. Locked-device / in-call / work-profile tests (`BUILD_PLAN.md` Phase 5)
 
-**[ ] Not run this session — needs a physical device.** No emulator or
-device is attached to this sandbox (`adb` itself isn't installed here).
-Manual steps for whoever has a device, referencing the actual gates in
-this codebase rather than a generic script:
+**[x] Run 2026-09-07, on the `nix develop` emulator (`flake.nix`), not a
+physical device — see the caveat below each result for exactly what that
+does and doesn't prove.** Session setup: booted the `dev` AVD (API 37.0,
+`google_apis` x86_64) headless under KVM, `gradle installDebug`'d the
+debug build, granted notification-listener access via `adb shell cmd
+notification allow_listener`, and added a single `enabled=true,
+packageNames={} (all apps), action=SPEAK, priority=0` rule through the
+app's own "Manage rules" UI (screenshot-driven, via `uiautomator dump`
+for exact tap coordinates) so every posted notification would reach the
+gates under test. Notifications were posted with `adb shell cmd
+notification post`, and the codebase's actual `SafeLog` decision/lifecycle
+lines (`listener/NotificationTtsListener.kt`, `speech/SpeechQueue.kt`)
+watched via `adb logcat -s ExigentHeron:*` — not a hearing test, but the
+same code path a spoken/silent notification actually goes through.
 
-**Locked-device test** (`speech/LockStateGate.kt`, wired in
-`AppContainer.lockStateGate`, checked in
-`listener/NotificationTtsListener.kt`'s `route()` before
-`SpeechQueue.enqueue()`):
-1. Confirm Settings → "Don't speak while locked" is on (defaulted on).
-2. Lock the device (power button / timeout).
-3. Trigger a notification from an allowlisted app.
-4. Confirm nothing is spoken. Unlock and trigger another; confirm it now
-   speaks. `LockStateGateTest.kt` already covers the pure decision logic
-   (`respectLockState() && isKeyguardLocked()` ⇒ suppress) on the JVM —
-   this step is only to confirm `KeyguardManager.isKeyguardLocked()`
-   itself reports correctly on a real locked device, which no JVM test
-   can do.
+One confounder found and worth recording: `headsetOnly` defaults to
+`true` (`SettingsRepository.kt`), and with no headset attached to the
+emulator every notification was suppressed by `OutputRouteGate`
+regardless of lock/call state until that setting was turned off in the
+app's own Settings screen. Left off for the rest of this session's
+testing; `respectLockState` was left at its default (`true`).
 
-**In-call test** (the `isInCall` check built into
-`AppContainer.createSpeechQueue`, consumed by `SpeechQueue`):
-1. Start or receive a phone call (or a VoIP call that puts
-   `AudioManager.mode` into `MODE_IN_COMMUNICATION`).
-2. While the call is active, trigger a notification from an allowlisted
-   app.
-3. Confirm nothing is spoken during the call, and that a notification
-   triggered immediately after hanging up does speak. `SpeechQueueTest.kt`
-   covers the pure skip-when-`isInCall`-is-true logic already; this step
-   confirms `AudioManager.mode` actually reports `MODE_IN_CALL`/
-   `MODE_IN_COMMUNICATION` during a real call on real hardware.
+**Locked-device test — genuinely verified, not approximated.**
+`speech/LockStateGate.kt` (wired in `AppContainer.lockStateGate`, checked
+in `listener/NotificationTtsListener.kt`'s `route()` before
+`SpeechQueue.enqueue()`) calls the real `KeyguardManager.isKeyguardLocked()`
+on the emulator's real Android framework — this isn't a stub. A fresh AVD
+has no lock-screen credential configured, which makes `isKeyguardLocked()`
+report `false` even after the power button; a real credential
+(`adb shell locksettings set-pin 1234`) was needed to make the keyguard
+engage for real. With that in place:
+- Unlocked, notification posted → `ExigentHeron: decision
+  pkg=com.android.shell rule=none action=AnnounceOnly` (enqueued;
+  `AnnounceOnly` rather than `Speak` because `cmd notification post`
+  defaults to `VISIBILITY_PRIVATE`, which `SecretDetector` downgrades —
+  expected, unrelated to the lock gate).
+- Locked (`dumpsys window` confirmed `isKeyguardShowing=true`, `dumpsys
+  trust` confirmed `deviceLocked=1`), same notification → `action=suppress`.
+- Unlocked again (PIN entry via `adb shell input`, confirmed
+  `deviceLocked=0`) → `action=AnnounceOnly` again.
 
-**Work-profile test:** `AGENTS.md` doesn't specify any work-profile-
-specific behavior beyond "this should still work" — there's no separate
-work-profile code path to verify, so there's no feature to invent a test
-for here. Honest manual step: on a device with a work profile
-provisioned, confirm the app installs into the personal profile, the
-notification-listener grant flow in `MainActivity` completes normally,
-notifications from personal-profile apps are read as they are on any
-other device, and the app doesn't crash or misbehave due to the work
-profile's presence (e.g. `PackageManager.queryIntentActivities` in the
-installed-app picker still returning a sane list rather than erroring on
-cross-profile visibility rules). No claim beyond "installs and behaves
-normally with a work profile present" is being tested, because no more
-specific claim exists in the spec to test.
+`LockStateGateTest.kt` already covered the pure decision logic
+(`respectLockState() && isKeyguardLocked()` ⇒ suppress) on the JVM; this
+closes the one gap no JVM test can — that `KeyguardManager.isKeyguardLocked()`
+itself reports true/false correctly against real keyguard state, not a
+mocked one.
+
+**In-call test — genuinely verified, not approximated.** The `isInCall`
+check built into `AppContainer.createSpeechQueue` (consumed by
+`SpeechQueue`) reads the real `AudioManager.mode`. The emulator's
+telephony console genuinely drives the real Android telephony/audio
+stack, not a fake: `adb emu gsm call <number>` first put the device into
+`CALL_STATE_RINGING` / `AudioManager.MODE_RINGTONE` (mode `1`) — which
+`isInCall` does *not* treat as in-call, matching its check being
+specifically `MODE_IN_CALL`/`MODE_IN_COMMUNICATION`, not "any call
+activity." Actually answering the call (`adb shell input keyevent
+KEYCODE_CALL`) moved it to `CALL_STATE_OFFHOOK` / `AudioManager.MODE_IN_CALL`
+(mode `2`), confirmed via `dumpsys telephony.registry` and `dumpsys
+audio`. With the call answered and active:
+- Notification posted → `decision ... action=AnnounceOnly` followed by
+  `ExigentHeron: speech skipped: device in call` (the `SafeLog.lifecycle`
+  line in `SpeechQueue.kt`) — the notification reached the queue but was
+  held back specifically by the in-call check.
+- `adb emu gsm cancel <number>` ended the call (`mCallState=0`, `mMode=0`);
+  a notification posted immediately after → `action=AnnounceOnly` with no
+  "skipped" line, i.e. it enqueued normally.
+
+`SpeechQueueTest.kt` already covered the pure skip-when-`isInCall`-is-true
+logic on the JVM; this closes the same gap as above for
+`AudioManager.mode` specifically, on what is at least a real telephony
+stack answering a real (simulated) call — not a real cellular radio, but
+not a mock either.
+
+**Work-profile test — approximated, not a full replication.**
+`AGENTS.md` doesn't specify any work-profile-specific behavior beyond
+"this should still work" — there's no separate work-profile code path to
+verify, so there's no feature to invent a test for here. What was
+actually run: `adb shell pm create-user --profileOf 0 --managed WorkTest`
++ `adb shell am start-user` created and started a genuine Android
+secondary/managed-profile user (`UserInfo{10:WorkTest:1020}`) — this
+exercises the real `PackageManager` cross-profile visibility rules the
+concern is about, but **without a Device Policy Controller app**, so it
+is not a fully provisioned enterprise work profile (no admin policies, no
+badge, none of what a real MDM enrollment adds). With that profile
+running: the personal-profile app kept running without crashing or
+losing its Settings state, and opening the rule editor's "Choose apps"
+picker (`PackageManager.queryIntentActivities`, the exact call this
+item's original concern named) returned a normal, non-crashing,
+non-duplicated app list — no cross-profile bleed, no error. Profile
+removed afterward (`adb shell pm remove-user 10`) so it doesn't linger
+on the shared `dev` AVD. No claim beyond "installs and behaves normally
+with a (non-DPC) secondary profile present" is being made — a real
+managed profile via an actual DPC app remains untested.
 
 ---
 
@@ -296,8 +345,10 @@ specific claim exists in the spec to test.
   body") and the `VISIBILITY_PRIVATE`/`VISIBILITY_SECRET` downgrade.
 - **Never speaks when the headset gate or lock gate says no** — covered
   structurally in §3/§4 above (`OutputRouteGateTest.kt` 8 tests,
-  `LockStateGateTest.kt` 3 tests, both passing on the JVM); the on-device
-  half is §4's pending item.
+  `LockStateGateTest.kt` 3 tests, both passing on the JVM); the
+  device-side half (real `KeyguardManager`/`AudioManager` state, not a
+  mock) is verified on the emulator in §4 as of 2026-09-07 — still not a
+  physical device, see that section's own caveats.
 - **Survives a day without being killed, or fails visibly if the OEM
   kills it** — cannot be verified from this sandbox at all: it requires
   real elapsed time on real hardware, which no build task or unit test
