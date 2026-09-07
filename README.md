@@ -4,6 +4,15 @@ personal android tts utility, huge wip
 See [AGENTS.md](AGENTS.md) for the actual build spec, and
 [BUILD_PLAN.md](BUILD_PLAN.md) for the phase-by-phase build order.
 
+## LLM co-programming
+
+Most of this codebase — implementation, tests, and the `wiki/` — is
+written by LLM coding agents under human direction and review, not
+hand-written line by line. `AGENTS.md` is the standing spec given to
+whichever agent is working; `wiki/history.md` records decisions made
+along the way, and `wiki/traps-and-skills.md` records mistakes actually
+made and caught.
+
 ## Dev environment
 
 ```
