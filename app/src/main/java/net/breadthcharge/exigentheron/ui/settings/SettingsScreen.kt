@@ -1,6 +1,10 @@
 package net.breadthcharge.exigentheron.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.speech.tts.TextToSpeech
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,26 +34,70 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.breadthcharge.exigentheron.AppContainer
+import net.breadthcharge.exigentheron.data.BondedBluetoothDevice
 import net.breadthcharge.exigentheron.data.Settings
+import net.breadthcharge.exigentheron.data.loadBondedBluetoothDevices
+import net.breadthcharge.exigentheron.speech.BluetoothDeviceDecision
 import net.breadthcharge.exigentheron.speech.TtsEngineStatus
 
 /**
  * AGENTS.md §4.8/§4.9: the headset-only, lock-state, and DND-override
  * toggles, plus the engine picker with a visible active engine and
- * init/language error — all in one screen since there are only the four
- * of them (AGENTS.md §0's YAGNI: no tabs or sections for a screen this
- * small).
+ * init/language error, plus the per-device Bluetooth allow/deny list —
+ * all in one screen since there still aren't enough sections to justify
+ * tabs (AGENTS.md §0's YAGNI).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val settings by container.settingsRepository.settings.collectAsState(initial = Settings())
     val ttsStatus by container.ttsEngineStatus.collectAsState()
     val scope = rememberCoroutineScope()
     var showEnginePicker by remember { mutableStateOf(false) }
+
+    var bluetoothPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val requestBluetoothPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        bluetoothPermissionGranted = granted
+        // Only ever turns the feature *on* here, and only on an actual
+        // grant — a denial leaves bluetoothDeviceControlEnabled exactly
+        // where it already was (off, since this launcher is only ever
+        // triggered from turning the toggle on in the first place).
+        if (granted) scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(true) }
+    }
+    // The permission can be revoked from system settings without this
+    // screen finding out except by asking again — if that leaves
+    // "enabled" true with no permission behind it, correct it here
+    // rather than leaving a setting that reads as on but does nothing
+    // (OutputRouteGate itself already degrades safely either way).
+    LaunchedEffect(bluetoothPermissionGranted, settings.bluetoothDeviceControlEnabled) {
+        if (settings.bluetoothDeviceControlEnabled && !bluetoothPermissionGranted) {
+            container.settingsRepository.setBluetoothDeviceControlEnabled(false)
+        }
+    }
+
+    var bondedDevices by remember { mutableStateOf<List<BondedBluetoothDevice>>(emptyList()) }
+    LaunchedEffect(settings.bluetoothDeviceControlEnabled, bluetoothPermissionGranted) {
+        bondedDevices = if (settings.bluetoothDeviceControlEnabled && bluetoothPermissionGranted) {
+            withContext(Dispatchers.IO) { loadBondedBluetoothDevices(context) }
+        } else {
+            emptyList()
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -77,6 +126,50 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
                 checked = settings.allowDndOverride,
                 onCheckedChange = { scope.launch { container.settingsRepository.setAllowDndOverride(it) } },
             )
+
+            SettingToggle(
+                label = "Per-device Bluetooth control",
+                checked = settings.bluetoothDeviceControlEnabled,
+                onCheckedChange = { enable ->
+                    if (!enable) {
+                        scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(false) }
+                    } else if (bluetoothPermissionGranted) {
+                        scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(true) }
+                    } else {
+                        requestBluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                    }
+                },
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            Text(
+                "Allow or deny speech for specific paired Bluetooth devices, separately " +
+                    "from \"Headset only\" above — Android can't otherwise tell a real " +
+                    "headset apart from a car stereo or TV soundbar; they report the same " +
+                    "type. Needs access to your paired device list (names and addresses " +
+                    "only — nothing leaves this device either way).",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (settings.bluetoothDeviceControlEnabled && bluetoothPermissionGranted) {
+                if (bondedDevices.isEmpty()) {
+                    Text(
+                        "No paired devices.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                } else {
+                    for (device in bondedDevices) {
+                        BluetoothDeviceRow(
+                            device = device,
+                            decision = settings.bluetoothDeviceDecision(device.address),
+                            onDecision = { decision ->
+                                scope.launch {
+                                    container.settingsRepository.setBluetoothDeviceDecision(device.address, decision)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
 
             Text("TTS engine", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
             Text(
@@ -115,10 +208,62 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
 }
 
 @Composable
-private fun SettingToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+private fun SettingToggle(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
         Switch(checked = checked, onCheckedChange = onCheckedChange)
         Text(label, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/**
+ * Allow/Deny as two independent-looking buttons that are never actually
+ * independent: tapping the one already selected resets to
+ * [BluetoothDeviceDecision.UNSET], tapping the other switches straight
+ * to it — [SettingsRepository.setBluetoothDeviceDecision][net.breadthcharge.exigentheron.data.SettingsRepository.setBluetoothDeviceDecision]
+ * is the only way either gets written, and it always clears the other
+ * set first. There is deliberately no third "are you sure" state for
+ * "both on at once" — that combination is unreachable by construction,
+ * not merely disallowed at save time.
+ */
+@Composable
+private fun BluetoothDeviceRow(
+    device: BondedBluetoothDevice,
+    decision: BluetoothDeviceDecision,
+    onDecision: (BluetoothDeviceDecision) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(device.name)
+            Text(device.address, style = MaterialTheme.typography.bodySmall)
+        }
+        TextButton(
+            onClick = {
+                onDecision(if (decision == BluetoothDeviceDecision.ALLOWED) BluetoothDeviceDecision.UNSET else BluetoothDeviceDecision.ALLOWED)
+            },
+        ) {
+            Text(
+                "Allow",
+                color = if (decision == BluetoothDeviceDecision.ALLOWED) MaterialTheme.colorScheme.primary else Color.Unspecified,
+            )
+        }
+        TextButton(
+            onClick = {
+                onDecision(if (decision == BluetoothDeviceDecision.DENIED) BluetoothDeviceDecision.UNSET else BluetoothDeviceDecision.DENIED)
+            },
+        ) {
+            Text(
+                "Deny",
+                color = if (decision == BluetoothDeviceDecision.DENIED) MaterialTheme.colorScheme.error else Color.Unspecified,
+            )
+        }
     }
 }
 

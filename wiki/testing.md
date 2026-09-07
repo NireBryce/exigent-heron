@@ -40,7 +40,7 @@ Needs `/dev/kvm` access (e.g. being in the `kvm` group) for reasonable
 boot times.
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
-`app/src/test` — as of **2026-09-07** that's 99 tests, all passing; see
+`app/src/test` — as of **2026-09-07** that's 105 tests, all passing; see
 [status.md](status.md) for the current count rather than trusting this
 number as it ages. A couple of the `speech/` and
 `listener/` tests exercise real background coroutines with real time —
