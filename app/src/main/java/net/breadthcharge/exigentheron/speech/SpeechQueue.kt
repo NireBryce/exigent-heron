@@ -7,8 +7,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import net.breadthcharge.exigentheron.SafeLog
 import net.breadthcharge.exigentheron.domain.SpeechRequest
+import kotlin.time.Duration.Companion.seconds
 
 private const val QUEUE_CAPACITY = 32
 private const val INTER_UTTERANCE_SILENCE_MILLIS = 400L
@@ -50,6 +52,15 @@ private const val BURST_COLLAPSE_THRESHOLD = 5
  * *while* an utterance is already playing — see [stopCurrent] for that
  * half, wired to `AudioManager.ACTION_AUDIO_BECOMING_NOISY` by
  * `AppContainer`.
+ *
+ * [truncationLengthSeconds] is read fresh per utterance, same as every
+ * other settings-backed lambda here. A non-null value races
+ * [TtsEngine.speak] against a timeout of that many seconds; on timeout
+ * [TtsEngine.stop] is called explicitly rather than relying on the
+ * timeout's coroutine cancellation to do it — cancelling the suspended
+ * `speak()` call only stops *waiting* for the engine's completion
+ * callback, it does not stop the real `TextToSpeech` from continuing to
+ * play the rest of the utterance underneath.
  */
 @OptIn(ExperimentalCoroutinesApi::class) // Channel.isEmpty, used below
 class SpeechQueue(
@@ -60,6 +71,7 @@ class SpeechQueue(
     private val isBlockedByDnd: () -> Boolean,
     private val isOutputRouteAllowed: () -> Boolean,
     scope: CoroutineScope,
+    private val truncationLengthSeconds: () -> Int? = { null },
 ) {
     private val channel = Channel<SpeechRequest>(
         capacity = QUEUE_CAPACITY,
@@ -154,7 +166,15 @@ class SpeechQueue(
         if (!holdingFocus) {
             holdingFocus = requestAudioFocus()
         }
-        ttsEngine.speak(request.text, request.utteranceId)
+        val limitSeconds = truncationLengthSeconds()
+        if (limitSeconds != null) {
+            val finished = withTimeoutOrNull(limitSeconds.seconds) {
+                ttsEngine.speak(request.text, request.utteranceId)
+            }
+            if (finished == null) ttsEngine.stop()
+        } else {
+            ttsEngine.speak(request.text, request.utteranceId)
+        }
         ttsEngine.silence(INTER_UTTERANCE_SILENCE_MILLIS, "${request.utteranceId}-silence")
     }
 }

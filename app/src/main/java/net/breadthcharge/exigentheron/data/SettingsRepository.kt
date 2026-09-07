@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,6 +22,7 @@ private val TTS_ENGINE_PACKAGE_KEY = stringPreferencesKey("tts_engine_package")
 private val BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY = booleanPreferencesKey("bluetooth_device_control_enabled")
 private val ALLOWED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("allowed_bluetooth_addresses")
 private val DENIED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("denied_bluetooth_addresses")
+private val TRUNCATION_LENGTH_SECONDS_KEY = intPreferencesKey("truncation_length_seconds")
 
 /**
  * The gates and toggles AGENTS.md §4.8/§4.9 actually ask for — nothing
@@ -48,6 +50,16 @@ private val DENIED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("denied_blu
  * set first, so a device can never end up in both at once. Empty
  * ("unset") is every device's default state, meaning
  * [OutputRouteGate]'s plain type-based check as if this feature were off.
+ *
+ * [truncationLengthSeconds] is null ("no limit") by default, per
+ * AGENTS.md §4.7's silence-over-guessing stance — cutting a notification
+ * off mid-sentence needs the user to opt in, not a default that could
+ * drop the important half of a message the user never asked to have
+ * shortened. When set, [SpeechQueue] stops an utterance's audio once it
+ * has been playing this long, however far through the text it's gotten
+ * — it caps *playback time*, not character count, since speech rate
+ * varies by engine/voice/locale and a char-count cap couldn't promise
+ * the same number of seconds two engines would actually take to say it.
  */
 data class Settings(
     val headsetOnly: Boolean = true,
@@ -57,6 +69,7 @@ data class Settings(
     val bluetoothDeviceControlEnabled: Boolean = false,
     val allowedBluetoothAddresses: Set<String> = emptySet(),
     val deniedBluetoothAddresses: Set<String> = emptySet(),
+    val truncationLengthSeconds: Int? = null,
 ) {
     fun bluetoothDeviceDecision(address: String): BluetoothDeviceDecision = when (address) {
         in allowedBluetoothAddresses -> BluetoothDeviceDecision.ALLOWED
@@ -83,6 +96,7 @@ class SettingsRepository(context: Context) {
             bluetoothDeviceControlEnabled = prefs[BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY] ?: false,
             allowedBluetoothAddresses = prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
             deniedBluetoothAddresses = prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
+            truncationLengthSeconds = prefs[TRUNCATION_LENGTH_SECONDS_KEY],
         )
     }
 
@@ -106,6 +120,13 @@ class SettingsRepository(context: Context) {
 
     suspend fun setBluetoothDeviceControlEnabled(enabled: Boolean) {
         dataStore.edit { it[BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY] = enabled }
+    }
+
+    /** Null (or non-positive, treated the same as null) clears the limit — see [Settings.truncationLengthSeconds]. */
+    suspend fun setTruncationLengthSeconds(seconds: Int?) {
+        dataStore.edit {
+            if (seconds == null || seconds <= 0) it.remove(TRUNCATION_LENGTH_SECONDS_KEY) else it[TRUNCATION_LENGTH_SECONDS_KEY] = seconds
+        }
     }
 
     /**

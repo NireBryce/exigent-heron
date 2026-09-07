@@ -16,13 +16,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -170,6 +173,29 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
                     }
                 }
             }
+
+            Text("Speech length", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
+            Text(
+                "Stop speaking a notification after this many seconds, even mid-sentence. " +
+                    "Leave blank for no limit.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            var truncationInput by remember(settings.truncationLengthSeconds) {
+                mutableStateOf(settings.truncationLengthSeconds?.toString() ?: "")
+            }
+            OutlinedTextField(
+                value = truncationInput,
+                onValueChange = { input ->
+                    truncationInput = input
+                    val seconds = input.toIntOrNull()
+                    if (input.isEmpty() || seconds != null) {
+                        scope.launch { container.settingsRepository.setTruncationLengthSeconds(seconds) }
+                    }
+                },
+                label = { Text("Max seconds") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.padding(top = 8.dp),
+            )
 
             Text("TTS engine", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
             Text(
