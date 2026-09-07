@@ -9,6 +9,7 @@
 - [Once there's a rule editor to test (Phase 3+)](#once-theres-a-rule-editor-to-test-phase-3)
 - [Once there's a settings screen to test (Phase 4+)](#once-theres-a-settings-screen-to-test-phase-4)
 - [Hardening-pass device matrix (Phase 5)](#hardening-pass-device-matrix-phase-5)
+- [Detecting an OEM kill (issue #27)](#detecting-an-oem-kill-issue-27)
 
 How to actually build, install, and exercise this app — as opposed to
 [architecture.md](architecture.md), which describes the code. The one page
@@ -190,3 +191,43 @@ treating this as done. The exact repro steps live in `SECURITY.md` §4
 rather than being duplicated here — when a physical device is actually
 used, record the real outcome in both `SECURITY.md` (updating the item,
 with what was observed) and this line (dated), not just one of the two.
+
+## Detecting an OEM kill (issue #27)
+
+`NotificationTtsListener.onListenerConnected`/`onListenerDisconnected`
+already log via `SafeLog.lifecycle` (see
+[architecture.md](architecture.md)) — `onListenerDisconnected` is the
+standard `NotificationListenerService` callback that fires whenever the
+OS unbinds the service, whether that's a deliberate unbind (the user
+revoking notification access) or an OEM kill. Android doesn't expose
+which; there's nothing more specific to log until it does.
+
+No code change is needed to *detect* a kill — this is purely a "run it
+for a day on real hardware and read the log" task (issue #27 tracks the
+underlying "does Android actually keep this alive" question; this is
+the concrete repro for it):
+
+1. Install the debug build on a physical device (not the `nix develop`
+   emulator — see the Phase 5 matrix above for why that specifically
+   doesn't exercise real OEM battery-optimization behavior), grant
+   notification access, add at least one enabled rule so the listener
+   has a reason to stay bound.
+2. Leave the device alone, unplugged from a debugger, for a full day of
+   normal use.
+3. Pull the log and look for a `listener disconnected` line with no
+   `listener connected` following it soon after (a deliberate rebind
+   reconnects almost immediately; a kill either doesn't reconnect at all
+   or only reconnects on the next notification/reboot):
+
+   ```sh
+   adb logcat -s ExigentHeron -d | grep -i listener
+   ```
+
+4. If a kill shows up: per `AGENTS.md` §8, the fix is **not** a
+   wakelock, a foreground-service notification, or any other
+   keep-alive trick — walk the user to that OEM's battery-optimization
+   exemption screen for this app (Settings → Apps → exigent-heron →
+   Battery → Unrestricted; Samsung and Xiaomi are the usual culprits)
+   and document it as the fix. Record the actual outcome (killed or
+   not, which OEM/device) on issue #27 rather than leaving it as an
+   open question indefinitely.
