@@ -239,4 +239,10 @@ Kotlin 2.4.10 (`gradle/libs.versions.toml`) — so metadata emitted by the
 newer compiler is unreadable by KLS's older one. It doesn't block the
 classpath resolution `kls-classpath` provides and isn't something a
 project-side fix addresses; it clears only once `fwcd.kotlin` ships with
-an embedded compiler at or above the project's Kotlin version.
+an embedded compiler at or above the project's Kotlin version. This
+matches an open, unresolved upstream bug —
+[fwcd/kotlin-language-server#609](https://github.com/fwcd/kotlin-language-server/issues/609)
+— with no workaround as of 2026-09-07; 0.2.36 (installed here) is still
+the extension's latest published release, so there is no newer build to
+pick up a fix from yet. Tracked locally as
+[exigent-heron#24](https://github.com/NireBryce/exigent-heron/issues/24).
