@@ -57,16 +57,13 @@ section.
   considered and left for the user to decide on separately, not added
   here.
 - **`kotlinx-coroutines-core` is imported directly in `RuleEngine.kt`**
-  (`Dispatchers`, `withContext`, `withTimeoutOrNull` — needed for
-  `AGENTS.md` §4.4's timeout requirement) but isn't in §2's explicit
-  dependency list, which names `kotlinx-coroutines-test` as test-only. It
-  compiles and runs today because `androidx.lifecycle:lifecycle-runtime-ktx`
-  and Compose runtime both already pull it in transitively — not a new
-  dependency added, just an existing one used directly from `domain/`
-  code. Fine as long as that transitive graph holds; worth an explicit
-  `implementation(libs.kotlinx.coroutines.core)` line if that ever feels
-  fragile, rather than leaving `domain/`'s only non-Kotlin-stdlib import
-  resting on something no build file actually declares.
+  — resolved 2026-09-07: `gradle/libs.versions.toml` now declares
+  `kotlinx-coroutines-core` explicitly (sharing a `kotlinxCoroutines`
+  version ref with `-test`, since the two need to stay in lockstep) and
+  `app/build.gradle.kts` has an `implementation(libs.kotlinx.coroutines.core)`
+  line. `domain/`'s only non-Kotlin-stdlib import no longer rests on a
+  transitive graph nothing in this repo's build files actually names.
+  Listed here as a closed thread.
 - **`RuleEngine`'s backreference-regex gap** — resolved 2026-09-05, Phase
   3: `RuleValidator` now rejects backreferences outright at rule-save
   time (and defensively in `RuleEngine.compileOrNull`), and matching runs

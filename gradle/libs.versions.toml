@@ -10,7 +10,11 @@ composeBom = "2026.08.00"
 datastorePreferences = "1.2.0"
 kotlinxSerializationJson = "1.9.0"
 junit = "4.13.2"
-kotlinxCoroutinesTest = "1.10.2"
+# Shared by both the -core and -test artifacts below: they need to stay
+# in lockstep, and this used to be only kotlinxCoroutinesTest even
+# though -core was already in use (see kotlinx-coroutines-core's own
+# comment).
+kotlinxCoroutines = "1.10.2"
 truth = "1.4.5"
 
 [libraries]
@@ -25,7 +29,15 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+# Explicit now (wiki/open-threads.md): RuleEngine.kt imports Dispatchers/
+# withContext/withTimeoutOrNull directly from domain/ code, not just
+# tests, but until this line existed it compiled only because
+# androidx.lifecycle-runtime-ktx and Compose runtime happen to pull the
+# same artifact in transitively. Declaring it here means domain/'s only
+# non-Kotlin-stdlib import no longer rests on a dependency graph nothing
+# in this file actually names.
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 
 [plugins]
