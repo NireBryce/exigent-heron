@@ -89,7 +89,7 @@ class RuleEngine(
 
             if (matched == null) {
                 onRuleFailure(candidate.rule.id, "regex match timed out")
-                return Decision.Suppress(reason = "rule ${candidate.rule.id} timed out")
+                return Decision.Suppress(reason = "rule ${candidate.rule.id} timed out", ruleId = candidate.rule.id)
             }
             if (matched) return toDecision(candidate.rule, payload)
         }
@@ -120,9 +120,9 @@ class RuleEngine(
     private fun toDecision(rule: Rule, payload: NotificationPayload): Decision {
         val text = render(rule.template, payload)
         return when (rule.action) {
-            RuleAction.SPEAK -> Decision.Speak(text)
-            RuleAction.ANNOUNCE_ONLY -> Decision.AnnounceOnly(text)
-            RuleAction.SUPPRESS -> Decision.Suppress(reason = "rule ${rule.id}")
+            RuleAction.SPEAK -> Decision.Speak(text, ruleId = rule.id)
+            RuleAction.ANNOUNCE_ONLY -> Decision.AnnounceOnly(text, ruleId = rule.id)
+            RuleAction.SUPPRESS -> Decision.Suppress(reason = "rule ${rule.id}", ruleId = rule.id)
         }
     }
 

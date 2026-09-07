@@ -57,7 +57,7 @@ class NotificationTtsListener : NotificationListenerService() {
             is Decision.Speak -> decision.text
             is Decision.AnnounceOnly -> decision.text
             is Decision.Suppress -> {
-                SafeLog.decision(payload.packageName, ruleId = null, action = "suppress")
+                SafeLog.decision(payload.packageName, ruleId = decision.ruleId, action = "suppress")
                 return
             }
         }
@@ -65,11 +65,11 @@ class NotificationTtsListener : NotificationListenerService() {
         // data-flow diagram — a rule/secret-scan decision to speak can
         // still be dropped here by the headset-only or lock-state gate.
         if (!container.outputRouteGate.allows() || !container.lockStateGate.allows()) {
-            SafeLog.decision(payload.packageName, ruleId = null, action = "suppress")
+            SafeLog.decision(payload.packageName, ruleId = decision.ruleId, action = "suppress")
             return
         }
 
-        SafeLog.decision(payload.packageName, ruleId = null, action = decision::class.simpleName.orEmpty())
+        SafeLog.decision(payload.packageName, ruleId = decision.ruleId, action = decision::class.simpleName.orEmpty())
         container.speechQueue.enqueue(SpeechRequest(text = text, utteranceId = UUID.randomUUID().toString()))
     }
 }

@@ -57,16 +57,13 @@ section.
   considered and left for the user to decide on separately, not added
   here.
 - **`kotlinx-coroutines-core` is imported directly in `RuleEngine.kt`**
-  (`Dispatchers`, `withContext`, `withTimeoutOrNull` — needed for
-  `AGENTS.md` §4.4's timeout requirement) but isn't in §2's explicit
-  dependency list, which names `kotlinx-coroutines-test` as test-only. It
-  compiles and runs today because `androidx.lifecycle:lifecycle-runtime-ktx`
-  and Compose runtime both already pull it in transitively — not a new
-  dependency added, just an existing one used directly from `domain/`
-  code. Fine as long as that transitive graph holds; worth an explicit
-  `implementation(libs.kotlinx.coroutines.core)` line if that ever feels
-  fragile, rather than leaving `domain/`'s only non-Kotlin-stdlib import
-  resting on something no build file actually declares.
+  — resolved 2026-09-07: `gradle/libs.versions.toml` now declares
+  `kotlinx-coroutines-core` explicitly (sharing a `kotlinxCoroutines`
+  version ref with `-test`, since the two need to stay in lockstep) and
+  `app/build.gradle.kts` has an `implementation(libs.kotlinx.coroutines.core)`
+  line. `domain/`'s only non-Kotlin-stdlib import no longer rests on a
+  transitive graph nothing in this repo's build files actually names.
+  Listed here as a closed thread.
 - **`RuleEngine`'s backreference-regex gap** — resolved 2026-09-05, Phase
   3: `RuleValidator` now rejects backreferences outright at rule-save
   time (and defensively in `RuleEngine.compileOrNull`), and matching runs
@@ -77,18 +74,14 @@ section.
   alternative considered and rejected) and `RuleEngine.kt`'s own doc
   comment.
 - **`SafeLog.decision`'s `ruleId` parameter is always `null` in practice**
-  (2026-09-05): `NotificationTtsListener.route()` calls
-  `SafeLog.decision(pkg, ruleId = null, action = ...)` because
-  `Decision.Speak`/`AnnounceOnly` don't carry the id of the `Rule` that
-  produced them — only `Decision.Suppress.reason` embeds "rule `<id>`"
-  as unstructured text, which isn't something to parse back out (that's
-  exactly the kind of string-parsing-for-structured-data `SafeLog`'s own
-  design avoids elsewhere). Cheap to fix by giving `Decision` an optional
-  `ruleId: String?` — not done yet since it's cosmetic (logging
-  completeness, not a spec requirement) and would touch Phase 1's
-  already-tested `Decision`/`RuleEngine`/`SecretDetector` mid–Phase 2.
-  Worth doing whenever a UI phase wants to show which rule fired for a
-  given decision, if not before.
+  — resolved 2026-09-07: `Decision` (`domain/Decision.kt`) now carries a
+  common `ruleId: String?`, populated by `RuleEngine.toDecision`/the
+  match-timeout `Suppress` and threaded through `SecretDetector`'s
+  downgrades so a downgraded decision keeps the id of the rule that
+  originally matched. `NotificationTtsListener.route()` passes
+  `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
+  two cases covering the matched/unmatched sides of it. Listed here as a
+  closed thread.
 - **Phase 2's on-device acceptance criteria are unconfirmed** (see
   [status.md](status.md)): no device was available the session that
   built the listener/speech stack. Everything JVM-testable is tested and

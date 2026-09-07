@@ -108,6 +108,20 @@ class RuleEngineTest {
     }
 
     @Test
+    fun `a matching rule's id is carried on the Decision it produces`(): Unit = runBlocking {
+        val engine = RuleEngine(rules = listOf(rule(id = "the-rule-id")))
+
+        assertThat(engine.evaluate(payload()).ruleId).isEqualTo("the-rule-id")
+    }
+
+    @Test
+    fun `no matching rule leaves the Decision's ruleId null`(): Unit = runBlocking {
+        val engine = RuleEngine(rules = emptyList())
+
+        assertThat(engine.evaluate(payload()).ruleId).isNull()
+    }
+
+    @Test
     fun `ANNOUNCE_ONLY and SUPPRESS actions produce the matching Decision type`(): Unit = runBlocking {
         val announceEngine = RuleEngine(rules = listOf(rule(id = "r1", action = RuleAction.ANNOUNCE_ONLY)))
         val suppressEngine = RuleEngine(rules = listOf(rule(id = "r1", action = RuleAction.SUPPRESS)))
