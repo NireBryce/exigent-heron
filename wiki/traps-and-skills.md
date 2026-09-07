@@ -8,6 +8,7 @@
 - [scope.cancel() without join() let one test's coroutine bleed into the next](#scopecancel-without-join-let-one-tests-coroutine-bleed-into-the-next)
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 - [git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits](#git-reset---hard-meant-for-a-throwaway-test-commit-wiped-real-uncommitted-edits)
+- [fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API](#fwcdkotlins-gradle-classpath-resolver-breaks-on-agp-9s-new-extension-api)
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
@@ -163,3 +164,79 @@ command in general rather than a question about the actual, current
 state of the tree it was about to run against. No existing skill states
 this as its own rule; worth folding into a future skill on running
 destructive git commands mid-task if this pattern recurs.
+
+## fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API
+
+**2026-09-06.** The Kotlin extension's LSP (`fwcd.kotlin`) reported
+"unresolved references" on every AndroidX/Compose import in
+`SettingsRepository.kt`, with hover/autocomplete otherwise appearing to
+work. The VS Code-side environment turned out to be fine (JDK 21 and the
+Nix-built Android SDK were both correctly on `JAVA_HOME`/`ANDROID_HOME`
+once VS Code itself was launched from a `direnv`-loaded terminal rather
+than a desktop launcher — a separate, real issue along the way, since
+`mkhl.direnv` only feeds new terminals/tasks it creates, not the
+already-running extension host's `process.env`). The actual resolver
+failure was hiding one layer down: KLS caches its resolved classpath in
+a per-workspace SQLite database
+(`~/.config/Code/User/workspaceStorage/<hash>/fwcd.kotlin/kls_database.db`)
+and only recomputes it when the build files change, so a broken result
+computed once (e.g. while `JAVA_HOME` was still missing) gets replayed
+forever, silently, with no indication in the visible log that anything
+is stale. Deleting that file forced a fresh resolution, which surfaced
+the real error in the Kotlin extension's own gradle daemon log
+(`~/.gradle/daemon/*/daemon-*.out.log`, not the "Kotlin Language Server"
+output channel, which never shows the underlying Gradle failure):
+
+```
+Execution failed for task ':app:kotlinLSPProjectDeps'
+> Could not find method getBootClasspath() for arguments []
+  on object of type com.android.build.gradle.internal.dsl.ApplicationExtensionImpl$AgpDecorated.
+```
+
+KLS's built-in Gradle resolver calls the legacy `android.bootClasspath`
+getter to find `android.jar`; AGP's new-style extension (in use here
+since we're on AGP 9.3.0, this project's plugins block, no
+`org.jetbrains.kotlin.android` — AGP 9 has built-in Kotlin support) no
+longer exposes it under that name, so the task always throws and KLS
+falls back to a stdlib-only classpath. Separately, this project also had
+no `gradle/wrapper/gradle-wrapper.properties` committed (by design, per
+`flake.nix` — no `gradlew` script/jar either), which meant tooling built
+on the Gradle Tooling API (`vscjava.vscode-gradle`, and KLS's own
+resolver) fell back to *their own* bundled default Gradle version
+(9.2.0) instead of the Nix-pinned one (9.7.1) — too old for AGP 9.3.0
+(needs ≥9.5.0), and a second, independent build failure until fixed.
+Fixed with two changes, neither of which reintroduces a runnable
+`./gradlew`: (1) `gradle/wrapper/gradle-wrapper.properties` committed
+with just the version metadata, so Tooling-API clients discover the
+right distribution; (2) a `kls-classpath` script at the project root —
+KLS's documented escape hatch for supplying a classpath directly,
+bypassing its own resolver entirely — that resolves `:app`'s
+`debugCompileClasspath` via a throwaway `--init-script`
+(`kls-classpath-init.gradle.kts`) instead of `android.bootClasspath`,
+and appends `android.jar` found by globbing
+`$ANDROID_HOME/platforms/android-*/android.jar` (the Nix-built SDK names
+the directory `android-37.0`, not `android-37`, for `compileSdk = 37`).
+
+**General form:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) — a cache that
+silently replays a stale result on failure (rather than surfacing the
+failure) turns "fix the underlying cause" into "also remember to clear
+the cache," and the log channel a tool advertises isn't necessarily
+where its real errors land; worth checking a tool's on-disk daemon/cache
+logs directly whenever its own visible output looks suspiciously clean
+right up to the point of failure.
+
+**Known residual caveat (2026-09-07):** once KLS can see the real
+classpath, it surfaces a second, separate limitation: a
+"`class kotlin.properties.ReadOnlyProperty was compiled with an
+incompatible version of Kotlin`"-style diagnostic on delegate-shaped
+usages (e.g. `preferencesDataStore` in `SettingsRepository.kt`). This is
+a genuine Kotlin-metadata version skew, not a leftover of the classpath
+bug: KLS's own installed language server
+(`~/.config/Code/User/globalStorage/fwcd.kotlin/langServerInstall/server/lib/kotlin-compiler-2.1.0.jar`)
+embeds Kotlin 2.1.0 for its analysis, while this project builds with
+Kotlin 2.4.10 (`gradle/libs.versions.toml`) — so metadata emitted by the
+newer compiler is unreadable by KLS's older one. It doesn't block the
+classpath resolution `kls-classpath` provides and isn't something a
+project-side fix addresses; it clears only once `fwcd.kotlin` ships with
+an embedded compiler at or above the project's Kotlin version.

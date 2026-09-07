@@ -33,5 +33,6 @@
     "editorBracketHighlight.foreground5": "#97c26c",
     "editorBracketHighlight.foreground6": "#abb2c0",
     "editorBracketHighlight.unexpectedBracket.foreground": "#de7842"
-  }
+  },
+  "nixEnvSelector.suggestion": false
 }
