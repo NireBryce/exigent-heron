@@ -44,7 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: DeterminateSystems/nix-installer-action@main
+      # Pinned to a commit SHA, not @main: a floating branch ref on a
+      # third-party action means a compromised or force-pushed upstream
+      # runs arbitrary code in this repo's CI on the next PR, with no
+      # diff to review first. v22 as of 2026-09-08 — bump deliberately
+      # (new SHA + comment), the same policy libs.versions.toml already
+      # states for Gradle dependencies.
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
 
       - name: assembleDebug + testDebugUnitTest (nix develop)
         run: nix develop --command gradle assembleDebug testDebugUnitTest

@@ -1,0 +1,62 @@
+# CodeQL static analysis (Kotlin/Java). Free here because this repo is
+# public (checked 2026-09-08, `gh repo view --json visibility`) — CodeQL
+# needs Advanced Security, which is a paid add-on for private repos only.
+#
+# Separate from check.yml on purpose. check.yml is the fast gate every PR
+# waits on (~6 min); this one runs a second full build for CodeQL's
+# benefit and has no business slowing that down. They do overlap: both
+# run `nix develop --command gradle assembleDebug`, because a compiled
+# language gives CodeQL nothing to analyze without a real build.
+#
+# build-mode: manual, not autobuild — autobuild looks for a committed
+# `gradlew` and runs it. This repo deliberately has none (see flake.nix:
+# `gradle` comes from the Nix dev shell), so autobuild would fail before
+# reaching a build at all. Driving the same command check.yml already
+# uses gets CodeQL the same visibility without a second build path to
+# keep in sync.
+#
+# nix-installer-action is SHA-pinned for the reason check.yml's own pin
+# explains. actions/checkout and github/codeql-action stay on major-version
+# tags, matching check.yml — they're first-party GitHub actions, and this
+# workflow isn't the place to change that convention for the repo.
+
+name: codeql
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, offset from update-flake-lock.yml's Monday 09:00 UTC run so
+    # the two don't contend for the same runner minute.
+    - cron: '30 4 * * 3'
+
+# security-events:write is what `analyze` needs to post findings to the
+# repo's code-scanning tab; contents:read is the actual default, spelled
+# out because naming any `permissions:` key drops every other one to none.
+# Same reasoning as check.yml's block.
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: CodeQL (java-kotlin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+
+      - name: build (nix develop) — gives CodeQL compiled code to analyze
+        run: nix develop --command gradle assembleDebug
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"
