@@ -100,8 +100,8 @@ built; #28 is about *character*-length limits in `TextToSpeech`.
   `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
   two cases covering the matched/unmatched sides of it. Listed here as a
   closed thread.
-- **`AGENTS.md` §4.5's user-editable OTP keyword list is not built**
-  — resolved 2026-09-08: `Settings` now carries `otpKeywords: Set<String>? = null`,
+- **`AGENTS.md` §4.5's user-editable OTP keyword list** — noticed
+  2026-09-08 while rewriting `AGENTS.md`, resolved the same day: `Settings` now carries `otpKeywords: Set<String>? = null`,
   backed by `OTP_KEYWORDS_KEY` in `SettingsRepository` (with a setter).
   `SecretDetectorHolder` mirrors `RuleEngineHolder` and rebuilds a
   `SecretDetector` on every `settings.otpKeywords` emission (null = use

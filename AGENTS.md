@@ -119,7 +119,7 @@ Downgrade when the body matches an OTP shape: a 4–8 digit run within ~40 chara
 
 Four realistic test strings required: a bank OTP, a delivery code, a normal message containing a year, one containing a price.
 
-The keyword list is user-editable in settings, shipping with sensible defaults on. A user who never opens the settings screen is unaffected; one who edits gets a real copy of the defaults to work from. Store null in DataStore meaning "use `SecretDetector.DEFAULT_OTP_KEYWORDS`". An emptied list is visible in the UI — a short warning line shows the state — and is a legitimate user choice; keyword-proximity detection is off, but the hardcoded floor still holds.
+The keyword list is **user-editable in settings and ships with sensible defaults on**. A user who never opens that screen is unaffected; one who edits gets the defaults as a starting list rather than a user list layered over an invisible built-in one. Emptying it is a legitimate choice, not an error — keyword-proximity detection is then off and the floor above is all that remains, so the UI must show that state rather than let it be silent.
 
 ### 4.6 Logging
 
