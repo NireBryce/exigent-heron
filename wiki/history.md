@@ -205,6 +205,20 @@ message carries, not as a running paraphrase of the log — see
   now does both, returning parsed field values alongside the error set
   so `save()` stays a thin caller. `RuleFormValidatorTest` covers all
   four fields individually and in combination (86 → 96 tests).
+- **Project license: Apache-2.0** (2026-09-07): the repo sat public on
+  GitHub with no LICENSE file — legally "all rights reserved" despite the
+  visibility; nobody but the owner had any reuse rights. Chose Apache-2.0
+  over MIT for the express patent grant and the explicit default
+  contribution terms (a PR lands under the license without extra
+  paperwork), and because it is the license every shipped runtime
+  dependency already carries, so the tree speaks one license.
+  `THIRD_PARTY_NOTICES.md` at the root records what the APK ships with —
+  relevant because `app/build.gradle.kts` strips the
+  `META-INF/{AL2.0,LGPL2.1}` license files the dependencies ship with
+  (the standard template exclusion, fine while the app is sideloaded for
+  personal use; the notices file is what closes that gap if the APK is
+  ever distributed). JUnit is the one non-Apache dependency (EPL-1.0) and
+  is test-only, never shipped.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned
