@@ -4,6 +4,7 @@ _Last modified: 2026-09-08_
 
 ## Contents
 
+- [A wiki table that mirrored the issue tracker, stale within the hour](#a-wiki-table-that-mirrored-the-issue-tracker-stale-within-the-hour)
 - [Stale `./gradlew` references in AGENTS.md](#stale-gradlew-references-in-agentsmd)
 - [A logcat tag guessed from a class name instead of read from the source](#a-logcat-tag-guessed-from-a-class-name-instead-of-read-from-the-source)
 - [A ReDoS test that passed for the wrong reason](#a-redos-test-that-passed-for-the-wrong-reason)
@@ -18,6 +19,38 @@ skill that holds the general form of the lesson. Adapted from
 nixos-configs' own `traps-and-skills.md` — same idea (specific incident
 here, reusable rule in the skill), same requirement that an entry be a
 real, dated thing that happened, not a hypothetical.
+
+## A wiki table that mirrored the issue tracker, stale within the hour
+
+**2026-09-08.** `open-threads.md`'s "Tracked as GitHub issues" section
+had said *"None yet"* since 2026-09-05. That went false on 2026-09-07,
+when the first issues were filed, and nothing noticed for a day — on the
+page whose entire job is tracking what's tracked.
+
+The fix made it worse in a more interesting way: it was replaced with a
+table of all seven open issues, number, title and label. Two issues in
+that table were closed roughly an hour later, by CI work landing in the
+same session. The section's own new text even said "it is a snapshot,
+not a mirror" — while being a mirror.
+
+**The lesson isn't "remember to update the table."** It's that a table
+of open issues is state owned by a system outside this repo, so no
+discipline applied inside the repo can hold it true, and
+`check_wiki.py` can't check it either — it has no idea what the tracker
+says. The shape was wrong, not the diligence.
+
+What replaced it: the `gh issue list` command to get the live answer,
+plus only the thing `gh` *can't* tell you — which issue corresponds to
+which thread on that page. That's the general form of
+[styleguide.md](styleguide.md)'s "index over restatement" applied to
+state rather than to prose: link to the authority, keep only what the
+authority doesn't know.
+
+**See also:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) — the same
+discipline stated generally. Its "dated status snapshot" guidance covers
+a fact that goes stale slowly; this is the sharper case where the fact
+is owned elsewhere and can change with no commit here at all.
 
 ## Stale `./gradlew` references in AGENTS.md
 

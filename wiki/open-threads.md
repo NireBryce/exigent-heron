@@ -21,28 +21,35 @@ skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md).
 
 ## Tracked as GitHub issues
 
-Seven open as of **2026-09-08** (`gh issue list --repo
-NireBryce/exigent-heron --state all`). This section said "None yet"
-until then — true when written on 2026-09-05, false from 2026-09-07 when
-the first ones were filed, and nothing caught it: exactly the rot skill
-[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) exists for, on
-the page whose whole job is tracking what's tracked. Re-derive this list
-from `gh` rather than trusting it; it is a snapshot, not a mirror.
+**This page does not list them.** Run:
 
-| # | Title | Label |
-|---|---|---|
-| [#31](https://github.com/NireBryce/exigent-heron/issues/31) | Pin third-party GitHub Actions to a commit SHA instead of `@main` | enhancement |
-| [#30](https://github.com/NireBryce/exigent-heron/issues/30) | Add CodeQL SAST scanning to CI | enhancement |
-| [#29](https://github.com/NireBryce/exigent-heron/issues/29) | Run outstanding on-device acceptance criteria on a physical device | enhancement |
-| [#28](https://github.com/NireBryce/exigent-heron/issues/28) | Check that long notifications are not cut off before/during TTS | — |
-| [#27](https://github.com/NireBryce/exigent-heron/issues/27) | Check whether Android keeps `NotificationTtsListener` alive | — |
-| [#24](https://github.com/NireBryce/exigent-heron/issues/24) | fwcd.kotlin (KLS) false "incompatible version of Kotlin" errors | documentation |
-| [#9](https://github.com/NireBryce/exigent-heron/issues/9) | Separate library from app so other applications can use it | — |
+```sh
+gh issue list --repo NireBryce/exigent-heron --state all
+```
 
-#29 and #27 are the tracked forms of the on-device and OEM-kill threads
-below; #28 is adjacent to, but not the same as, `AGENTS.md` §4.7's
-utterance *time* cap (`Settings.truncationLengthSeconds`) — that one is
-built; #28 is about *character*-length limits in `TextToSpeech`.
+That is deliberate, and it is the second thing this section got wrong.
+It said "None yet" from 2026-09-05, which went false on 2026-09-07 when
+the first issues were filed and stayed false until **2026-09-08**. The
+fix that day was a table of all seven open issues — which was itself
+stale within the hour, when #30 and #31 were closed by the CI-hardening
+work in the same session. A table of open issues is a *mirror* of state
+that changes without touching this repo at all, so nothing here can keep
+it true; `check_wiki.py` can't check it either, since it has no idea
+what the tracker says. Both failures were the same mistake at different
+sizes. See [traps-and-skills.md](traps-and-skills.md).
+
+What belongs here instead is the cross-reference `gh` can't give you —
+which tracked issue corresponds to which thread below:
+
+- **#29** (on-device acceptance criteria) and **#27** (whether an OEM
+  kills the listener) are the tracked forms of the on-device and
+  OEM-kill threads below.
+- **#28** (long notifications cut off) is adjacent to, but not the same
+  as, `AGENTS.md` §4.7's utterance *time* cap
+  (`Settings.truncationLengthSeconds`) — that one is built; #28 is about
+  *character*-length limits in `TextToSpeech`.
+- **#30** (CodeQL) and **#31** (SHA-pinning actions) were closed
+  2026-09-08 — see the CI entry below.
 
 ## Left open right now
 
