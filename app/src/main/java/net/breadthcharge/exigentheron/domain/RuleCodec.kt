@@ -21,7 +21,7 @@ object RuleCodec {
         if (json.isNullOrBlank()) return emptyList()
         return try {
             Json.decodeFromString(json)
-        } catch (e: SerializationException) {
+        } catch (_: SerializationException) {
             emptyList()
         }
     }

@@ -108,7 +108,7 @@ class RuleEngine(
             val titleOk = candidate.titleRegex?.containsMatchIn(title) ?: true
             val bodyOk = candidate.bodyRegex?.containsMatchIn(body) ?: true
             titleOk && bodyOk
-        } catch (e: InterruptedMatchException) {
+        } catch (_: InterruptedMatchException) {
             false
         }
 
