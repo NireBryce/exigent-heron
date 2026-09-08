@@ -27,6 +27,9 @@ class SecretDetectorHolder(
         }
     }
 
-    suspend fun scan(decision: Decision, payload: NotificationPayload): Decision =
+    // Not `suspend`, unlike [RuleEngineHolder.evaluate]: that one has to be,
+    // because [RuleEngine.evaluate] suspends inside §4.4's regex timeout.
+    // [SecretDetector.scan] has no suspension point, so neither does this.
+    fun scan(decision: Decision, payload: NotificationPayload): Decision =
         detector.value.scan(decision, payload)
 }
