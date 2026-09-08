@@ -106,7 +106,7 @@ Sort rules by `priority` descending, first enabled match wins. **Default-deny** 
 Regex safety, since user-authored patterns run against attacker-controlled text:
 - Compile once at load and cache, not per notification.
 - Cap input length at 2000 chars before matching; truncate beyond that, don't reject.
-- Bound matching by a 100ms timeout; on timeout, suppress and mark the rule as failing in the UI. Catastrophic backtracking on a crafted message otherwise ANRs the app. `java.util.regex` has no cooperative cancellation, so a bare `withTimeoutOrNull` is *not* sufficient — `RuleEngine.kt`'s doc comment has what actually closes this and why `RuleValidator` rejects backreferences outright.
+- Bound matching by a 100ms timeout; on timeout, suppress and mark the rule as failing in the UI. **The UI half is not built** as of **2026-09-08**: `RuleEngine` reports both a compile failure and a match timeout through its `onRuleFailure` callback, but `AppContainer` wires that to `SafeLog.error` only, so a failing rule shows up in logcat and nowhere the user will see it. Still a requirement, not a dropped one — [wiki/open-threads.md](wiki/open-threads.md) tracks it. Catastrophic backtracking on a crafted message otherwise ANRs the app. `java.util.regex` has no cooperative cancellation, so a bare `withTimeoutOrNull` is *not* sufficient — `RuleEngine.kt`'s doc comment has what actually closes this and why `RuleValidator` rejects backreferences outright.
 - Catch `PatternSyntaxException` at rule-save time and show the error in the editor.
 
 ### 4.5 SecretDetector
@@ -160,7 +160,7 @@ This is the one exception to this app otherwise requesting zero runtime permissi
 
 ### 4.10 Listener lifecycle
 
-- Implement `onListenerConnected()`/`onListenerDisconnected()`; the system rebinds unpredictably. On disconnect, log lifecycle and reset TTS state.
+- Implement `onListenerConnected()`/`onListenerDisconnected()`; the system rebinds unpredictably. On disconnect, log lifecycle and reset TTS state. **The reset is not built** as of **2026-09-08**: `NotificationTtsListener.onListenerDisconnected` logs the lifecycle line and does nothing else, so an utterance in flight when access is revoked keeps playing. Still a requirement — [wiki/open-threads.md](wiki/open-threads.md) tracks it.
 - Detect access via `NotificationManagerCompat.getEnabledListenerPackages()`; show a clear enable-flow when it isn't granted.
 - **Never call `cancelNotification()`.** Silently suppressing a user's alerts is a safety problem.
 
