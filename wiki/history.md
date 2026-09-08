@@ -23,6 +23,34 @@ message carries, not as a running paraphrase of the log — see
   in — noted here rather than silently, since a future reader diffing the
   spec's tree against the real one would otherwise wonder whether it was
   intentional.
+- **`AGENTS.md` rewritten from a build spec into a standing contract**
+  (2026-09-08): it opened with "Read this whole document before writing a
+  single file," worked in phases, and told an agent what to build — all
+  addressed to someone starting from nothing, which stopped being the
+  audience once all six phases were verified. It now states what the app
+  must keep satisfying instead. Three constraints shaped the rewrite:
+  **(1)** its section numbers are cited from ~50 other files (Kotlin doc
+  comments, CI, both hooks, `SECURITY.md`, every wiki page — ~230
+  citations), so §0–§8 and §4.1–§4.10 are stable by policy now, stated in
+  the file itself: add, don't renumber. **(2)** Several files quote its
+  sentences verbatim (`AndroidTtsEngine` on §4.8's "do not silently
+  accept the system default", CI on §4.6's grep, the signing guard on
+  §5's "Never commit a keystore or password", `architecture.md` on
+  §4.1's "a stable hash of title+body"), so those phrases were preserved
+  word-for-word rather than paraphrased. **(3)** It is always in an
+  agent's context, so the rewrite cut for size: ~21.4KB to ~18KB, taken
+  almost entirely from text that duplicated the code it described (the
+  `NotificationPayload` and `Rule` declarations, `SafeLog`'s signatures,
+  the OTP keyword list, §5's manifest XML) and from phase narration that
+  [status.md](status.md) already held. What was *not* cut: the rules
+  themselves, and the short rationale attached to a rule that exists to
+  stop someone helpfully reversing it. §4 is still 47% of the file and
+  is close to irreducible at that.
+  The rewrite also surfaced two spec/code disagreements, both recorded
+  rather than quietly resolved: §4.5's user-editable OTP pattern list is
+  specified but not built (see [open-threads.md](open-threads.md)), and
+  `Settings.truncationLengthSeconds` had shipped with no spec section at
+  all — now folded into §4.7.
 - **`AGENTS.md` §3 and `architecture.md` swapped roles** (2026-09-08):
   §3 used to carry a target package tree and a data-flow diagram, and
   [architecture.md](architecture.md) tracked how far the real tree had
