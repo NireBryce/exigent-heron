@@ -10,7 +10,7 @@ data class InstalledApp(val label: String, val packageName: String)
  * Launchable apps only (matches the `<queries>` declaration in
  * `AndroidManifest.xml` — package-visibility rules on API 30+ otherwise
  * hide everything but this app itself from `PackageManager`). No icons:
- * AGENTS.md §2 has no image-loading dependency and doesn't want one.
+ * No app icons loaded (no image library dependency).
  *
  * Blocking (`PackageManager` calls) — call from a background dispatcher.
  */

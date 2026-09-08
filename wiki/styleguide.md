@@ -12,7 +12,7 @@ _Last modified: 2026-09-08_
 - [See also](#see-also)
 
 How this wiki is organized and written. Read this before adding a page or
-reorganizing links. Adapted from nixos-configs' `wiki/styleguide.md`,
+reorganizing links. Adapted from NireBryce/nixos-configs' `wiki/styleguide.md`,
 collapsed from that repo's multi-tier hierarchy (cross-cutting pages,
 per-category pages, a usage tier, an escape-hatch subdirectory) down to
 what a single-module app actually needs: one flat tier, plus one page
@@ -23,7 +23,7 @@ here it's just [testing.md](testing.md).
 
 **`wiki/*.md`**, flat, no subdirectories yet. Every page in
 [README.md](README.md)'s own Pages list. If a page ever grows a
-deep-dive that doesn't belong in its summary (nixos-configs did this once,
+deep-dive that doesn't belong in its summary (NireBryce/nixos-configs did this once,
 for `shell-config` → `blesh.md`/`carapace.md`), the pattern to copy then
 is: the page becomes `wiki/<name>/README.md`, and each deep-dive gets its
 own sibling file named after its subject. Don't reach for that until an
@@ -57,7 +57,7 @@ actual deep-dive exists to justify it.
   exists and is shaped right, but — like every other date claim in this
   repo — can't check that it's still *true*; that's on the editor, the
   same discipline skill `wiki-sync` already asks for everywhere else on a
-  page. (Adapted from nixos-configs' own `wiki/styleguide.md`.)
+  page. (Adapted from NireBryce/nixos-configs' own `wiki/styleguide.md`.)
 - **Every page opens with a `## Contents`** — a bullet list of section
   links, one per `##` heading, right after the title and before any intro
   prose. Each link's target is GitHub's own heading-slug algorithm applied
@@ -76,7 +76,7 @@ actual deep-dive exists to justify it.
   that argue a fact instead of linking to it, that fact probably belongs
   in the linked file's own header comment instead.
 - **Two pages are exceptions.** [testing.md](testing.md), the same way
-  nixos-configs' `homelab/` usage pages are: it documents *doing*
+  NireBryce/nixos-configs' `homelab/` usage pages are: it documents *doing*
   something (building, installing, exercising the app on a device) where
   the real source is the act itself, not a file to link to. It's allowed
   to hold real procedural content, not just links. And, as of
@@ -106,7 +106,7 @@ actual deep-dive exists to justify it.
 - Verify a link resolves before leaving it. `wiki/scripts/check_wiki.py
   links` catches a broken file target mechanically; `anchors` catches a
   broken `#fragment`. Both run as part of `check`. (This goes further than
-  nixos-configs' own script, whose `wiki/styleguide.md` says outright
+  NireBryce/nixos-configs' own script, whose `wiki/styleguide.md` says outright
   "there's no automated check for this" for a file target — only for
   `#fragment` anchors and the `## Contents` block. `links` here is a real,
   working check (`check_wiki.py`'s `check_links`), not a copied claim that
@@ -120,7 +120,7 @@ renamed heading, an unknown skill name, or a phase's claimed status
 disagreeing with what's actually in `app/src/main/java`. They do **not**
 catch a fact that's simply become untrue in prose (a claim about what a
 class does, a "why" that no longer applies) — that's a human/agent
-judgment call. (nixos-configs' own script draws a version of this same
+judgment call. (NireBryce/nixos-configs' own script draws a version of this same
 line — mechanical checks are structural, not prose-aware, there too — but
 its actual check set differs, per the note above; don't read this as the
 two scripts checking identical things.) The rule for everything the script

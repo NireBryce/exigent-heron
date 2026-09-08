@@ -15,7 +15,7 @@ next to code you're already changing. Not: a defect worth its own tracking
 (`wiki-sync`), or a deliberate broad tidy-up pass (`boyscouting-all`, or
 just say what you're doing and do it as the actual task).
 
-Copied from `~/nixos-configs`' skill of the same name (2026-09-07) and
+Copied from NireBryce/nixos-configs' skill of the same name (2026-09-07) and
 adapted below — see "What's different here."
 
 ## The rule
@@ -91,18 +91,18 @@ honestly-labeled is what keeps this useful instead of becoming the thing
 
 ## What's different here
 
-Adapted from nixos-configs, not copied verbatim:
+Adapted from NireBryce/nixos-configs, not copied verbatim:
 
 - **`ship` → `submit-a-pr`.** This repo's landing skill is
   `submit-a-pr`, not `ship` — same one-branch-one-PR discipline, different
   name and a few procedural differences (see that skill's own "Why, and
   what this deliberately does differently").
-- **No `trim-docs` here.** nixos-configs' version cross-references a
+- **No `trim-docs` here.** NireBryce/nixos-configs' version cross-references a
   dedicated conciseness-pass skill this repo doesn't have; a deliberate
   wiki/skill trim here is just its own scoped task, described as such.
 - **§0's hard bans are called out explicitly** (no new dependency, no
   content logging, no `INTERNET`) as automatically disqualifying, because
-  this repo has bright-line rules nixos-configs' equivalent doesn't — a
+  this repo has bright-line rules NireBryce/nixos-configs' equivalent doesn't — a
   "small" fix that trips one of those isn't a judgment call the way an
   opinion-only rename is.
 

@@ -24,7 +24,7 @@ it. This repo (`NireBryce/exigent-heron`) has GitHub issues enabled with a
 real label set but starts with zero issues filed — no backlog yet, which
 is exactly why a check-first habit matters from the start rather than
 being retrofitted after the first duplicate investigation actually
-happens. (Adapted from nixos-configs' `investigate-bug` skill, which
+happens. (Adapted from NireBryce/nixos-configs' `investigate-bug` skill, which
 exists there because that exact thing happened — a bug re-diagnosed for
 hours before anyone checked it was already written up two days earlier.)
 

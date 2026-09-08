@@ -170,7 +170,7 @@ of listing them here is which ones repay reading directly.
   claimed phase status against the real tree, since nothing about
   `gradle build` reads prose.
 
-Both the spec and this wiki lean on a sibling `nixos-configs` repo as
+Both the spec and this wiki lean on a sibling `NireBryce/nixos-configs` repo as
 their model — the wiki structure, the git-guard hook, `check_wiki.py`,
 and several skills are adaptations of its equivalents, each with its
 deliberate differences documented in place rather than silently applied.

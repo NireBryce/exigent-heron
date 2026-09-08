@@ -34,7 +34,7 @@ import net.breadthcharge.exigentheron.speech.TtsEngineStatus
 /**
  * Manual DI container: constructs and holds this app's singletons.
  *
- * No Hilt, no framework — see AGENTS.md §2.
+ * Manual constructor injection for three singletons — no Hilt (200+ lines of ceremony for ~3 objects).
  */
 class AppContainer(private val appContext: Context) {
 
@@ -164,14 +164,11 @@ class AppContainer(private val appContext: Context) {
     )
 
     /**
-     * AGENTS.md §4.8: "switching takes effect" — `AndroidTtsEngine`
-     * binds its `TextToSpeech` to one engine package for its whole
-     * lifetime, so taking a new choice means constructing a fresh
-     * engine (and, since [SpeechQueue] holds its `TtsEngine` by
-     * constructor reference too, a fresh queue on top of it) rather than
-     * mutating the old one in place. The old engine is shut down only
-     * after the new one is live, so nothing in flight is left stranded
-     * mid-utterance without a queue to belong to.
+     * Engine changes take effect immediately on the next notification.
+     * `TextToSpeech` binding to an engine package is permanent for its lifetime, so a new
+     * choice means constructing fresh engine + queue objects rather than patching the old ones.
+     * The old engine shuts down only after the new one is live, so utterances in flight
+     * stay attached to a queue.
      */
     fun rebuildTtsEngine(enginePackage: String?) {
         val old = ttsEngine

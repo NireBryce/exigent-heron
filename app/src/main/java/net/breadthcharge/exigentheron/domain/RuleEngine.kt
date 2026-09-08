@@ -9,9 +9,9 @@ private const val MAX_MATCH_INPUT_LENGTH = 2000
 private val MATCH_TIMEOUT = 100.milliseconds
 
 /**
- * PURE. No Android imports — see AGENTS.md §3.
+ * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
- * Rules are compiled once at construction (AGENTS.md §4.4), not per
+ * Rules are compiled once at construction (cached regex patterns), not per
  * notification. Sorted by [Rule.priority] descending; first enabled,
  * matching rule wins. Default-deny: nothing matching produces
  * [Decision.Suppress] — an app that isn't allowlisted by some rule
@@ -20,21 +20,16 @@ private val MATCH_TIMEOUT = 100.milliseconds
  * A rule whose regex fails to compile, or whose regex times out
  * against a real notification, is never allowed to crash evaluation —
  * both are reported through [onRuleFailure] (for a future settings
- * screen to surface, per AGENTS.md §4.4's "mark the rule as failing in
- * the UI") and treated as that rule not matching.
+ * screen to surface and treated as that rule not matching).
  *
- * **A caveat worth knowing, not just assuming away:** AGENTS.md §4.4
- * asks for `withTimeoutOrNull(100.milliseconds)` around matching to
- * stop catastrophic regex backtracking from ANRing the app. `java.util.regex`
- * (which `kotlin.text.Regex` wraps) has no cooperative-cancellation
- * checks of its own, verified directly — interrupting a thread
- * mid-match does nothing by default (see `wiki/history.md`). [matches]
- * closes that gap rather than just living with it: matching runs inside
- * [runInterruptible] (which does call `Thread.interrupt()` on
- * cancellation) against an [InterruptibleCharSequence] wrapping the
- * input, so an interrupt now actually aborts a runaway match — no
- * `Dispatchers.Default` thread keeps burning after `evaluate()` has
- * already returned `Suppress` and moved on.
+ * **Why not just use `withTimeoutOrNull`?** Regex matching has no cooperative-cancellation
+ * checks built in: `java.util.regex` (wrapped by `kotlin.text.Regex`) won't abort just because
+ * `Thread.interrupt()` was called. A bare timeout only abandons the caller; the thread keeps
+ * burning CPU on catastrophic backtracking. [matches] closes this gap by wrapping input in
+ * [InterruptibleCharSequence] (which checks `Thread.interrupted()` on every character read).
+ * Matching runs inside [runInterruptible] (which does call `Thread.interrupt()` on cancellation),
+ * so an interrupt now actually stops a runaway match — no `Dispatchers.Default` thread keeps
+ * burning after `evaluate()` has already returned and moved on.
  *
  * The textbook "crafted message" scenario the spec describes is
  * narrower than it sounds anyway, verified rather than assumed: OpenJDK

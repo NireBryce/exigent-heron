@@ -2,8 +2,8 @@ package net.breadthcharge.exigentheron.domain
 
 /**
  * PURE. No Android imports. The output of [RuleEngine.evaluate], then
- * possibly downgraded (never upgraded) by [SecretDetector.scan] — see
- * AGENTS.md §3's data-flow diagram.
+ * possibly downgraded (never upgraded) by [SecretDetector.scan]. The decision is threaded through the
+ * pipeline: extract → dedup → rule engine → secret detector → output gate → lock gate → speech queue.
  *
  * [ruleId] is the id of the [Rule] that produced this decision, or
  * `null` when none did (the default-deny "no matching rule" case, or a

@@ -3,7 +3,7 @@ package net.breadthcharge.exigentheron.domain
 /**
  * What `NotificationTtsListener` hands to `SpeechQueue` after a
  * [Decision] resolves to [Decision.Speak] or [Decision.AnnounceOnly] —
- * see AGENTS.md §3's data-flow diagram. A [Decision.Suppress] never
+ * created when the pipeline resolves to [Decision.Speak] or [Decision.AnnounceOnly]; [Decision.Suppress]
  * becomes one of these at all.
  */
 data class SpeechRequest(

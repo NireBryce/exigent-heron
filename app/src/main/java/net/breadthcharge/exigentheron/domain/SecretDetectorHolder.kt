@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * PURE (in the AGENTS.md §3 sense — `Flow`/`CoroutineScope` are
- * coroutines, not Android). No Android imports.
+ * PURE (domain/ sense — `Flow`/`CoroutineScope` are kotlinx.coroutines, not Android Framework).
+ * No Android imports.
  *
  * Keeps a live [SecretDetector] rebuilt from whatever [otpKeywords]
  * currently emits, so a keyword edit (via settings UI) takes effect on
@@ -28,7 +28,7 @@ class SecretDetectorHolder(
     }
 
     // Not `suspend`, unlike [RuleEngineHolder.evaluate]: that one has to be,
-    // because [RuleEngine.evaluate] suspends inside §4.4's regex timeout.
+    // because [RuleEngine.evaluate] suspends inside the regex match timeout (to stop catastrophic backtracking).
     // [SecretDetector.scan] has no suspension point, so neither does this.
     fun scan(decision: Decision, payload: NotificationPayload): Decision =
         detector.value.scan(decision, payload)

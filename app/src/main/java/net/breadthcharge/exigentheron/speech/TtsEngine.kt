@@ -1,9 +1,8 @@
 package net.breadthcharge.exigentheron.speech
 
 /**
- * Interface over the real TTS engine — see AGENTS.md §4.7. Exists so
- * [SpeechQueue] is testable with a fake that records calls instead of a
- * real `android.speech.tts.TextToSpeech`, which needs a device/emulator.
+ * Interface over `android.speech.tts.TextToSpeech` so [SpeechQueue] is testable
+ * with a fake that records calls instead of needing a real device/emulator.
  */
 interface TtsEngine {
     /** Suspends until this utterance completes (or fails — see [AndroidTtsEngine]). */

@@ -52,11 +52,9 @@ import net.breadthcharge.exigentheron.speech.BluetoothDeviceDecision
 import net.breadthcharge.exigentheron.speech.TtsEngineStatus
 
 /**
- * AGENTS.md §4.5/§4.8/§4.9: the headset-only, lock-state, and DND-override
- * toggles, plus the engine picker with a visible active engine and
- * init/language error, plus the per-device Bluetooth allow/deny list,
- * plus the OTP keyword list editor — all in one screen since there still
- * aren't enough sections to justify tabs (AGENTS.md §0's YAGNI).
+ * Headset-only gate, lock-state gate, DND-override toggle, TTS engine picker (with error display),
+ * per-device Bluetooth allow/deny list, and OTP keyword editor — all in one screen.
+ * Three sections don't justify tabs; simpler is better.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

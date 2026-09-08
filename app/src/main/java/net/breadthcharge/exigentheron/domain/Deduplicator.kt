@@ -1,11 +1,11 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE (clock injected). No Android imports — see AGENTS.md §3.
+ * PURE (clock injected). No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * Apps repost notifications constantly (progress updates, read
  * receipts, reactions); reading each repost aloud is the #1 quality
- * complaint this app exists to fix — see AGENTS.md §4.3.
+ * complaint this app exists to fix (apps repost constantly on progress updates, read receipts, reactions).
  *
  * Keyed on `packageName + ":" + contentHash`, **not** [NotificationPayload.key]
  * — the key stays constant across reposts of the same conversation, so

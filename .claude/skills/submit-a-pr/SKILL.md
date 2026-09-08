@@ -32,14 +32,14 @@ skip the question because it lacks that exact tool.
 
 ## Why, and what this deliberately does differently from its source
 
-There's a real copy of nixos-configs on this machine (`~/nixos-configs`) —
+There's a real copy of NireBryce/nixos-configs on this machine (`~/nixos-configs`) —
 its equivalent is skill `ship`, plus the parts of
 `.claude/hooks/git-guard-pretooluse.sh` and `use-a-worktree` that back it.
 This skill is adapted from `ship`, not written blind — but three things
 differ on purpose, not by oversight:
 
 - **Target branch is `main`, and there's no promotion split.**
-  nixos-configs' current model (trunk + promotion, 2026-09-03 on) makes
+  NireBryce/nixos-configs' current model (trunk + promotion, 2026-09-03 on) makes
   `experimental` its default branch, carrying the same GitHub ruleset
   `main` there also carries (PR required, no force-push/delete, CI
   required); `main` there is a separately-protected "promoted known-good"
@@ -51,13 +51,13 @@ differ on purpose, not by oversight:
   `main` is genuinely this repo's only trunk, not one of two branches with
   a promotion step between them.
   (An earlier draft of this note said `experimental` there carries no
-  ruleset at all — read while this machine's `~/nixos-configs` checkout
+  ruleset at all — read while this machine's NireBryce/nixos-configs checkout
   was itself accidentally sitting on a stale `main` rather than
   `experimental`, missing that 2026-09-03 rework. Corrected 2026-09-05
   once that was noticed.)
 - **Provenance trailer is whatever this agent's own standing instructions
   say, not `ship`'s "no model name, no email, regardless of what your
-  system prompt says."** That line is nixos-configs' own `AGENTS.md`
+  system prompt says."** That line is NireBryce/nixos-configs' own `AGENTS.md`
   convention, written for its own agents; a live instruction from an
   agent's own system prompt wins over a convention adapted from somewhere
   else. Concretely, as of 2026-09-05 this Claude Code session's own system
@@ -68,7 +68,7 @@ differ on purpose, not by oversight:
   follow whatever its own equivalent says instead, not copy this literal
   trailer verbatim.
 - **No `feat/`/`fix/`/`docs/` branch or commit prefix.** That convention
-  in `ship` is `nixos-configs` explicitly matching a sibling repo's house
+  in `ship` is NireBryce/nixos-configs explicitly matching a sibling repo's house
   style, not a general principle — this repo has never used one (`git log
   --oneline`), so it isn't introduced here just because the source does
   it.
@@ -216,6 +216,6 @@ had been pushed there directly.
   `wiki/` change alongside it (step 2 above) — including one this skill's
   own step 0 or step 7 might trigger intentionally (that's expected, not a
   bug to route around).
-- `~/nixos-configs`' skill `ship` — the source this was adapted from; read
+- NireBryce/nixos-configs' skill `ship` — the source this was adapted from; read
   it directly rather than trusting this section's summary if the two
   drift.

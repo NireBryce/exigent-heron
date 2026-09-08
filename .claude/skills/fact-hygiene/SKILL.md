@@ -60,7 +60,7 @@ read that section closely enough to notice the contradiction. Nobody had
 re-run those exact commands against the actual repo since the decision
 that broke them.
 
-This is the same mechanism nixos-configs' own version of this skill
+This is the same mechanism NireBryce/nixos-configs' own version of this skill
 documents for its wiki (a removed host's name surviving in comments that
 had no reason to be touched by the commit that removed it) — it isn't
 specific to wikis, or to this one incident. Anything phrased as settled —

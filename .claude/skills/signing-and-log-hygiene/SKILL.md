@@ -31,7 +31,7 @@ further. A Claude session quoting either one into the conversation
 transcript is exactly that: a real signing password, or a real
 notification's title/body from Elly's own phone, now sitting in a place
 neither AGENTS.md rule was written to allow. The risk isn't hypothetical —
-it's the same class of accident nixos-configs' `secrets-hygiene` skill
+it's the same class of accident NireBryce/nixos-configs' `secrets-hygiene` skill
 documents for its own secrets (a bare `sops -d` printing an entire secrets
 file when only an exit code was needed): a command that answers the
 question you actually had ("is this set?", "did the app leak?") by

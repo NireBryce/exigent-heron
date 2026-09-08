@@ -1,9 +1,8 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports — see AGENTS.md §3. Runs after [RuleEngine]
- * and can only downgrade a [Decision], never upgrade one — see
- * AGENTS.md §4.5.
+ * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * Runs after [RuleEngine] and can only downgrade a [Decision], never upgrade one.
  *
  * **Downgrade semantics, spelled out because the spec states the rule
  * but not the mechanics:** downgrading [Decision.Speak] to
@@ -39,7 +38,7 @@ class SecretDetector(
 
         val body = payload.body
 
-        // Hardcoded floor (AGENTS.md §4.5): cannot be disabled by the
+        // Hardcoded floor: never speak a bare 6-digit number. Cannot be disabled by the
         // keyword list above, and independent of proximity matching.
         if (decision is Decision.Speak && body != null && BARE_SIX_DIGIT_BODY.matches(body.trim())) {
             return Decision.Suppress(reason = "bare 6-digit body", ruleId = decision.ruleId)
@@ -85,17 +84,16 @@ class SecretDetector(
     }
 
     // Non-private only so DEFAULT_OTP_KEYWORDS can reach AppContainer,
-    // SettingsScreen and SecretDetectorHolder (AGENTS.md §4.5's editable
-    // list). Everything else here, the hardcoded floor's own regex above
-    // all, stays private — the floor is not user-configurable.
+    // SettingsScreen and SecretDetectorHolder (the editable keyword list).
+    // Everything else here, the hardcoded floor's own regex above all, stays private
+    // — the floor is not user-configurable.
     companion object {
         private const val PROXIMITY_WINDOW = 40
 
         // Mirrors android.app.Notification.VISIBILITY_PRIVATE / VISIBILITY_SECRET
-        // (0 / -1). Domain stays Android-import-free (AGENTS.md §3);
-        // NotificationExtractor (Phase 2) passes the real platform constant
-        // straight through as an Int, so these values must track the
-        // framework's, not be reinvented.
+        // (0 / -1). These constants must stay in sync — NotificationExtractor (Phase 2)
+        // passes the real platform value straight through as an Int, so these must track
+        // the framework's values, not be reinvented.
         private const val VISIBILITY_PRIVATE = 0
         private const val VISIBILITY_SECRET = -1
 
