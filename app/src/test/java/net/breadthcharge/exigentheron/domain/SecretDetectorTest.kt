@@ -162,4 +162,31 @@ class SecretDetectorTest {
 
         assertThat(result).isInstanceOf(Decision.AnnounceOnly::class.java)
     }
+
+    @Test
+    fun `empty keyword list disables keyword-proximity detection`() {
+        val detector = SecretDetector(keywords = emptyList())
+        val p = payload(body = "Your verification code is 483921.")
+
+        val result = detector.scan(Decision.Speak(p.body!!), p)
+
+        // Empty keyword list means no OTP-proximity match, so the default
+        // detector would downgrade this. But with keywords=empty, the
+        // keyword-proximity logic is off. The hardcoded floor (§4.5) still
+        // applies, but this is a 6-digit run inside a longer sentence, so
+        // even that doesn't fire — result is unchanged.
+        assertThat(result).isInstanceOf(Decision.Speak::class.java)
+    }
+
+    @Test
+    fun `hardcoded floor still suppresses bare 6-digit body even with empty keyword list`() {
+        val detector = SecretDetector(keywords = emptyList())
+        val p = payload(body = "482913")
+
+        val result = detector.scan(Decision.Speak(p.body!!), p)
+
+        // The floor ("never speak a bare 6-digit body") is independent of
+        // the keyword list — user cannot disable it.
+        assertThat(result).isEqualTo(Decision.Suppress(reason = "bare 6-digit body"))
+    }
 }
