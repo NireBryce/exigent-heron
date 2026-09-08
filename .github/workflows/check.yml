@@ -70,6 +70,28 @@ jobs:
             exit 1
           fi
 
+      # AGENTS.md §3's "critical structural rule": domain/ has zero
+      # Android imports, which is what lets the rule engine, secret
+      # detector, and deduplicator be tested on a plain JVM with no
+      # emulator. Enforced here for the same reason as the Log check
+      # above -- it's the boundary the whole test strategy rests on, and
+      # until this step existed nothing but review stopped an
+      # `import android.foo` from quietly landing in it.
+      #
+      # Anchored to `^import android\.` deliberately: kotlinx.coroutines
+      # is a plain JVM library and is legal in domain/ (RuleEngine and
+      # both holders use it), so a bare 'android' substring match would
+      # be wrong. Only the Android framework is the boundary.
+      - name: assert domain/ has no Android imports
+        run: |
+          domain=app/src/main/java/net/breadthcharge/exigentheron/domain
+          hits=$(grep -rln '^import android\.' "$domain" --include='*.kt' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::AGENTS.md §3 requires domain/ to have zero Android imports; found some in:"
+            echo "$hits"
+            exit 1
+          fi
+
       # Android Lint, built into AGP already in use here -- no new
       # dependency to add or ask about, just a task nothing was running.
       # Both variants: lintRelease needs no signing config (lint only
