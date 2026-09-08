@@ -2,7 +2,7 @@ package net.breadthcharge.exigentheron.domain
 
 /**
  * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric. Constructed by
- * `NotificationExtractor` (Phase 2, Android-facing) from a
+ * [NotificationExtractor] (Android-facing) from a
  * `StatusBarNotification`.
  *
  * [toString] is overridden deliberately — the generated data-class `toString()` would include [title]

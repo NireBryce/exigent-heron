@@ -3,9 +3,8 @@ package net.breadthcharge.exigentheron.domain
 import kotlinx.serialization.Serializable
 
 /**
- * PURE. No Android imports. User-authored, persisted via
- * `RuleRepository` (Phase 3) as JSON through DataStore — see AGENTS.md
- * §2.
+ * PURE. No Android imports. User-authored, persisted as JSON through
+ * DataStore via [RuleRepository].
  */
 @Serializable
 data class Rule(

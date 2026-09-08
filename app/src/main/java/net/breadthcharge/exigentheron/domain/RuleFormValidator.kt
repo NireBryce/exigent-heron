@@ -10,11 +10,10 @@ package net.breadthcharge.exigentheron.domain
  * stays thin, and the actual decision is unit-testable on the JVM
  * without a real `ViewModel`.
  *
- * Phase 3's acceptance criteria: "invalid regex shows an error at save
- * time rather than crashing later" — [RuleValidator] supplies the per-pattern
- * half of that; this adds the two form-only checks (an empty app
- * selection, a non-numeric priority) that were never regex-shaped to
- * begin with.
+ * Invalid regex is caught at save time as an error, not allowed to crash later.
+ * [RuleValidator] supplies the per-pattern check; this adds the two form-only
+ * checks (an empty app selection, a non-numeric priority) that were never
+ * regex-shaped to begin with.
  */
 object RuleFormValidator {
 

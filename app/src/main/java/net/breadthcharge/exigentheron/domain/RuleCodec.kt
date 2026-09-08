@@ -8,8 +8,8 @@ import kotlinx.serialization.json.Json
 /**
  * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
- * The part of "RuleRepository" (Phase 3, `data/`) worth unit-testing on
- * its own: JSON shape and list-editing, independent of DataStore/Context.
+ * The JSON and list-editing logic of RuleRepository, extracted so it's
+ * unit-testable on the JVM independent of DataStore/Context.
  * `data.RuleRepository` is a thin wrapper calling straight into this.
  */
 object RuleCodec {

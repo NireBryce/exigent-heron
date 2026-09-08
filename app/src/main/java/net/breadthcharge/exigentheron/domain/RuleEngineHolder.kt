@@ -10,8 +10,8 @@ import kotlinx.coroutines.launch
  * No Android imports.
  *
  * Keeps a live [RuleEngine] rebuilt from whatever [rules] currently
- * emits, so a rule edit (Phase 3: `data.RuleRepository`) takes effect on
- * the next notification instead of requiring an app restart.
+ * emits, so a rule edit takes effect on the next notification instead
+ * of requiring an app restart.
  * Reconstructing a [RuleEngine] is cheap — just regex compilation over
  * ~30 rules are typical (a small dataset for a single-user sideload) — so rebuilding on every emission needs no
  * debouncing.

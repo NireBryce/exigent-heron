@@ -6,7 +6,7 @@ import net.breadthcharge.exigentheron.domain.contentHashOf
 /**
  * Synthetic [NotificationPayload]s for exercising the domain pipeline
  * (`Deduplicator` → `RuleEngine` → `SecretDetector`) without a device or
- * a real `NotificationListenerService` binding — Phase 1's own injector.
+ * a real `NotificationListenerService` binding.
  *
  * `debug/` source set only. If you're reading this from `app/src/main`,
  * something is wrong — it must not exist in a release build.
