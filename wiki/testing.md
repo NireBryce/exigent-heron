@@ -26,7 +26,7 @@ No `gradlew` in this repo — use the `gradle` on `PATH` inside the Nix dev
 shell (`flake.nix`'s own shellHook says this too):
 
 ```sh
-nix develop --command gradle assembleDebug
+just build                                  # or: gradle assembleDebug
 nix develop --command gradle installDebug   # needs a running emulator/device
 ```
 
@@ -50,8 +50,16 @@ point of them, per `AGENTS.md` §3: they cover what a JVM test
 structurally cannot reach, which is framework facts and wiring.
 
 ```sh
-nix develop --command gradle connectedDebugAndroidTest
+just test-instrumented          # or: gradle connectedDebugAndroidTest
 ```
+
+`just` recipes are the shortest path to any of this — see
+[`.justfile`](../.justfile) for the whole list, and
+[`scripts/test.sh`](../scripts/test.sh) for what they run. The device
+recipes handle the emulator themselves: they boot a headless one when
+none is attached, wait for `sys.boot_completed` rather than for `adb
+devices` to merely list something, and stop only an emulator they
+started. A device you were already using is left alone.
 
 **19 tests, 0 failures, 0 skipped, verified 2026-09-08** on the
 `nix develop` emulator (`dev`, API 37, `google_apis` x86_64) — still not
@@ -84,7 +92,7 @@ notifications through the platform, and reads back `SafeLog.decision`
 lines. **Verified 2026-09-08**: passes on the emulator, run three times.
 
 ```sh
-nix develop --command ./scripts/listener-acceptance.sh
+just test-acceptance            # or: ./scripts/listener-acceptance.sh
 ```
 
 It asserts on decision lines only — a package, a rule id, an action,
