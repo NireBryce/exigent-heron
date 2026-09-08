@@ -154,11 +154,10 @@ class RuleEngineTest {
         // backreference disables OpenJDK's backtracking memoization
         // (JDK-6328855) and is genuinely exponential (measured 24 chars
         // ≈ 277ms, 26 ≈ 1.1s, 28 ≈ 4.5s, doubling roughly every 2 chars)
-        // — to exercise evaluate()'s withTimeoutOrNull path. Phase 3
-        // closed that specific gap by rejecting backreferences in
-        // RuleValidator at rule-compile-time instead of letting them run
-        // at all, so the pattern below now fails here, before matching
-        // ever starts — see RuleEngine's doc comment. The interruption
+        // — to exercise evaluate()'s withTimeoutOrNull path. Backreferences are
+        // rejected by RuleValidator at rule-compile-time instead of letting them
+        // match at all, so the pattern below fails here, before matching ever starts
+        // — see RuleEngine's doc comment. The interruption
         // mechanism itself (InterruptibleCharSequence + runInterruptible)
         // is covered separately in InterruptibleCharSequenceTest, since
         // OpenJDK's memoization otherwise makes a genuinely slow

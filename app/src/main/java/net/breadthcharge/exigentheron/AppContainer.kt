@@ -48,8 +48,7 @@ class AppContainer(private val appContext: Context) {
     // A live snapshot of settings, read synchronously below and kept
     // current for the gates/SpeechQueue lambdas — see currentSettings.
     // Blocking on the first value at container-construction time (App's
-    // onCreate, main thread) is the "simplest, correct" option the
-    // Phase 4 note calls for: DataStore's first emission
+    // onCreate, main thread): DataStore's first emission
     // is a local Preferences-file read with no network involved, and
     // AndroidTtsEngine/SpeechQueue both need a real value to construct
     // with, not a value that arrives later.
@@ -60,10 +59,9 @@ class AppContainer(private val appContext: Context) {
         scope.launch { settingsRepository.settings.collect { settingsState.value = it } }
     }
 
-    // Rebuilt from ruleRepository.rules on every change (Phase 3) — a
-    // rule edit takes effect on the next notification, not on next app
-    // restart. Phase 2's phase2HardcodedRules is gone: this repo's
-    // rules, empty by default, are the real rule set now.
+    // Rebuilt from ruleRepository.rules on every change — a rule edit
+    // takes effect on the next notification, not on app restart. Rules
+    // are loaded from the repository, empty by default, not hard-coded.
     val ruleEngine = RuleEngineHolder(
         rules = ruleRepository.rules,
         scope = scope,

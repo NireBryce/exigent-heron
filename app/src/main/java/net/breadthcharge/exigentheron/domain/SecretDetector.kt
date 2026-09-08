@@ -91,7 +91,7 @@ class SecretDetector(
         private const val PROXIMITY_WINDOW = 40
 
         // Mirrors android.app.Notification.VISIBILITY_PRIVATE / VISIBILITY_SECRET
-        // (0 / -1). These constants must stay in sync — NotificationExtractor (Phase 2)
+        // (0 / -1). These constants must stay in sync — NotificationExtractor
         // passes the real platform value straight through as an Int, so these must track
         // the framework's values, not be reinvented.
         private const val VISIBILITY_PRIVATE = 0

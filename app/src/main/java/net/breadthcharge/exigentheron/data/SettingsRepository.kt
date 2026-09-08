@@ -27,7 +27,7 @@ private val OTP_KEYWORDS_KEY = stringSetPreferencesKey("otp_keywords")
 
 /**
  * The TTS engine picker, output gates, and override toggles — exactly what the spec asks for,
- * nothing more (built incrementally from Phase 3 onward).
+ * nothing more.
  *
  * [headsetOnly] and [respectLockState] default **on** (never broadcast to a room/locked screen by default).
  * [allowDndOverride] defaults **off** (user must explicitly opt into speaking under DND).
