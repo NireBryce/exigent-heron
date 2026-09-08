@@ -50,6 +50,10 @@ which tracked issue corresponds to which thread below:
   *character*-length limits in `TextToSpeech`.
 - **#30** (CodeQL) and **#31** (SHA-pinning actions) were closed
   2026-09-08 — see the CI entry below.
+- **#48** (a failing rule reaches only logcat, `AGENTS.md` §4.4) and
+  **#49** (`onListenerDisconnected` doesn't reset TTS state, §4.10) are
+  the tracked forms of the two §4-audit threads below, both filed
+  **2026-09-08**.
 
 ## Left open right now
 

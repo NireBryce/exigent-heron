@@ -13,7 +13,7 @@ a manifest — and you notice an actual defect along the way: a command in
 Not something you were asked to look into (fix that directly and say so),
 and not a style opinion (no failure scenario, no issue).
 
-## This repo has no bug-tracking convention yet — a filed issue is the first one
+## A filed issue is the only durable record a bug gets here
 
 Unlike a repo with an established lessons-learned log or wiki, the only
 record a bug gets here right now is whatever a fix commit's message says,
@@ -23,11 +23,20 @@ Neither of those makes a bug discoverable or trackable once the session
 that noticed it ends. Filing a GitHub issue adds that: a real backlog
 entry with a status, not a fact buried in git history.
 
-Checked 2026-09-05: `NireBryce/exigent-heron` has issues enabled with a
-real label set (`bug`, `documentation`, `enhancement`, `accessibility`,
-`question`, `duplicate`, `invalid`, `wontfix`, `help wanted`, `good first
-issue`) but zero issues filed — there's no backlog yet, so one bug going
-unfiled is easy to lose entirely.
+`NireBryce/exigent-heron` has issues enabled with a real label set
+(`bug`, `documentation`, `enhancement`, `accessibility`, `question`,
+`duplicate`, `invalid`, `wontfix`, `help wanted`, `good first issue`).
+
+This paragraph used to add "but zero issues filed — there's no backlog
+yet," checked 2026-09-05. That went false on 2026-09-07 when the first
+issues were filed, and was still here on **2026-09-08**. Don't replace it
+with a fresh count: a tally of open issues is a mirror of state that
+changes without touching this repo at all, which is the exact mistake
+[`wiki/open-threads.md`](../../../wiki/open-threads.md) made twice and
+now refuses to repeat. Run `gh issue list --repo NireBryce/exigent-heron
+--state all` for the real number. What matters here doesn't depend on it:
+a bug nobody files is a bug that lives only in a commit message or a code
+comment, and stops being findable once the session that noticed it ends.
 
 ## This never extends to a third-party repo
 
