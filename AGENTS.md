@@ -119,7 +119,7 @@ Downgrade when the body matches an OTP shape: a 4–8 digit run within ~40 chara
 
 Four realistic test strings required: a bank OTP, a delivery code, a normal message containing a year, one containing a price.
 
-> **Not built as of 2026-09-08:** this section also requires the patterns be "a user-editable list in settings, shipping with sensible defaults on." `SecretDetector` takes `keywords` as a constructor parameter — the seam exists — but no `Settings` field or UI reaches it. Defaults and the floor *do* hold, so this is a missing feature, not a hole. See [wiki/open-threads.md](wiki/open-threads.md).
+The keyword list is user-editable in settings, shipping with sensible defaults on. A user who never opens the settings screen is unaffected; one who edits gets a real copy of the defaults to work from. Store null in DataStore meaning "use `SecretDetector.DEFAULT_OTP_KEYWORDS`". An emptied list is visible in the UI — a short warning line shows the state — and is a legitimate user choice; keyword-proximity detection is off, but the hardcoded floor still holds.
 
 ### 4.6 Logging
 

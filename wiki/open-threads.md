@@ -1,6 +1,6 @@
 # Open threads
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 ## Contents
 
@@ -100,17 +100,17 @@ built; #28 is about *character*-length limits in `TextToSpeech`.
   `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
   two cases covering the matched/unmatched sides of it. Listed here as a
   closed thread.
-- **`AGENTS.md` §4.5's user-editable OTP pattern list is not built**
-  (noticed 2026-09-08, while rewriting `AGENTS.md`). §4.5 requires the
-  OTP keyword patterns be "a user-editable list in settings, but ship
-  with sensible defaults on." `SecretDetector` takes `keywords` as a
-  constructor parameter, so the seam is there, but `AppContainer`
-  constructs it with the default list and no `Settings` field or UI
-  reaches it. The shipped defaults and the hardcoded
-  never-speak-a-bare-6-digit-body floor both hold, so this is a missing
-  feature rather than a hole in the secret handling — which is why it's
-  recorded here and marked inline in §4.5 rather than treated as a
-  §0-level violation.
+- **`AGENTS.md` §4.5's user-editable OTP keyword list is not built**
+  — resolved 2026-09-08: `Settings` now carries `otpKeywords: Set<String>? = null`,
+  backed by `OTP_KEYWORDS_KEY` in `SettingsRepository` (with a setter).
+  `SecretDetectorHolder` mirrors `RuleEngineHolder` and rebuilds a
+  `SecretDetector` on every `settings.otpKeywords` emission (null = use
+  defaults). Wired in `AppContainer` and called from `NotificationTtsListener`.
+  `SettingsScreen` shows the keyword list, allows add/remove, and a "reset
+  to defaults" button; empty list shows a warning (keyword detection off,
+  floor still holds). `SecretDetectorTest` gained cases for empty list and
+  hardcoded-floor-with-empty-list; `SecretDetectorHolderTest` verifies
+  rebuild-on-emission. Listed here as a closed thread.
 - **Phase 2's on-device acceptance criteria are unconfirmed** (see
   [status.md](status.md)): no device was available the session that
   built the listener/speech stack. Everything JVM-testable is tested and
