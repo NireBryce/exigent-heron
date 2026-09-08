@@ -9,20 +9,20 @@ _Last modified: 2026-09-08_
 - [Keeping this from rotting](#keeping-this-from-rotting)
 
 A small index over what's actually happened while building this app, as
-distinct from what `AGENTS.md` specifies should be built. Adapted from the
+distinct from what `AGENTS.md` requires of it. Adapted from the
 nixos-configs repo's own wiki (same link-layer idea, same style rules),
 sized down from a multi-host NixOS fleet to one Gradle module.
 
-**Why a separate layer at all, on a repo this small:** `AGENTS.md` is a
-spec — it says what each phase should do and what "done" means for it. It
-deliberately doesn't track *whether that's actually true right now* (a
-phase marked "done" in prose the day it's written can go stale the moment
-a later change touches the same code, the same way nixos-configs' own
-wiki documents a "Status as of `<date>`" line rotting — see the
+**Why a separate layer at all, on a repo this small:** `AGENTS.md` states
+requirements — the constraints and per-component contracts the app has to
+keep satisfying. It deliberately doesn't track *whether that's actually
+true right now* (a claim written the day it's true can go stale the
+moment a later change touches the same code, the same way nixos-configs'
+own wiki documents a "Status as of `<date>`" line rotting — see the
 `fact-hygiene` skill). This wiki is where that current-state tracking
-lives instead, plus the things a build spec has no natural home for:
-decisions made while actually implementing it, mistakes hit along the
-way, open questions, and how to actually run the thing.
+lives instead, plus the things a requirements document has no natural
+home for: decisions made while actually implementing it, mistakes hit
+along the way, open questions, and how to actually run the thing.
 
 **Not a replacement for `AGENTS.md`.** `AGENTS.md` is still the
 agent-facing entry point and the one document worth reading cold before

@@ -21,12 +21,28 @@ skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md).
 
 ## Tracked as GitHub issues
 
-None yet — `NireBryce/exigent-heron` has issues enabled with a real label
-set (checked 2026-09-05, see skill
-[`propose-issue`](../.claude/skills/propose-issue/SKILL.md)) but nothing
-filed. Nothing below has been promoted to an issue; it's all still at the
-"noticed, not yet worth a round-trip" stage per that skill's Calibrate
-section.
+Seven open as of **2026-09-08** (`gh issue list --repo
+NireBryce/exigent-heron --state all`). This section said "None yet"
+until then — true when written on 2026-09-05, false from 2026-09-07 when
+the first ones were filed, and nothing caught it: exactly the rot skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) exists for, on
+the page whose whole job is tracking what's tracked. Re-derive this list
+from `gh` rather than trusting it; it is a snapshot, not a mirror.
+
+| # | Title | Label |
+|---|---|---|
+| [#31](https://github.com/NireBryce/exigent-heron/issues/31) | Pin third-party GitHub Actions to a commit SHA instead of `@main` | enhancement |
+| [#30](https://github.com/NireBryce/exigent-heron/issues/30) | Add CodeQL SAST scanning to CI | enhancement |
+| [#29](https://github.com/NireBryce/exigent-heron/issues/29) | Run outstanding on-device acceptance criteria on a physical device | enhancement |
+| [#28](https://github.com/NireBryce/exigent-heron/issues/28) | Check that long notifications are not cut off before/during TTS | — |
+| [#27](https://github.com/NireBryce/exigent-heron/issues/27) | Check whether Android keeps `NotificationTtsListener` alive | — |
+| [#24](https://github.com/NireBryce/exigent-heron/issues/24) | fwcd.kotlin (KLS) false "incompatible version of Kotlin" errors | documentation |
+| [#9](https://github.com/NireBryce/exigent-heron/issues/9) | Separate library from app so other applications can use it | — |
+
+#29 and #27 are the tracked forms of the on-device and OEM-kill threads
+below; #28 is adjacent to, but not the same as, `AGENTS.md` §4.7's
+utterance *time* cap (`Settings.truncationLengthSeconds`) — that one is
+built; #28 is about *character*-length limits in `TextToSpeech`.
 
 ## Left open right now
 
@@ -84,6 +100,17 @@ section.
   `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
   two cases covering the matched/unmatched sides of it. Listed here as a
   closed thread.
+- **`AGENTS.md` §4.5's user-editable OTP pattern list is not built**
+  (noticed 2026-09-08, while rewriting `AGENTS.md`). §4.5 requires the
+  OTP keyword patterns be "a user-editable list in settings, but ship
+  with sensible defaults on." `SecretDetector` takes `keywords` as a
+  constructor parameter, so the seam is there, but `AppContainer`
+  constructs it with the default list and no `Settings` field or UI
+  reaches it. The shipped defaults and the hardcoded
+  never-speak-a-bare-6-digit-body floor both hold, so this is a missing
+  feature rather than a hole in the secret handling — which is why it's
+  recorded here and marked inline in §4.5 rather than treated as a
+  §0-level violation.
 - **Phase 2's on-device acceptance criteria are unconfirmed** (see
   [status.md](status.md)): no device was available the session that
   built the listener/speech stack. Everything JVM-testable is tested and

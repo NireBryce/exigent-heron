@@ -49,13 +49,16 @@ the APK actually ships with.
 Two layers, deliberately not merged, because they answer different
 questions and go stale at different rates:
 
-- [`AGENTS.md`](../AGENTS.md) — the standing spec: *what* to build, in
-  numbered sections (§4.1–§4.10 are the per-component specs everything
-  else cites), plus §6's phase rule (build and install at each boundary,
-  don't start phase N+1 before N's criteria pass). Written as an
-  instruction to whichever agent is working, including its own §0
-  instruction to say when it looks wrong rather than build around it
-  silently.
+- [`AGENTS.md`](../AGENTS.md) — the standing contract: the constraints
+  and per-component requirements the app must keep satisfying, in
+  numbered sections (§4.1–§4.10 are the per-component contracts
+  everything else cites). Rewritten from a build spec into that on
+  **2026-09-08**, once all six phases were done — see
+  [history.md](history.md). Written as an instruction to whichever agent
+  is working, including its own §0 instruction to say when it looks
+  wrong rather than build around it silently. Its section numbers are
+  cited from ~50 files, so they are stable by policy: add, don't
+  renumber.
 - `wiki/` — what's *actually true right now*, which the spec alone
   doesn't track. [README.md](README.md) explains why that's a separate
   layer at all; [status.md](status.md) holds the phase table (all six
