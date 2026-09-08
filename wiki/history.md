@@ -23,6 +23,23 @@ message carries, not as a running paraphrase of the log — see
   in — noted here rather than silently, since a future reader diffing the
   spec's tree against the real one would otherwise wonder whether it was
   intentional.
+- **The same test race was diagnosed and fixed twice, independently**
+  (noticed 2026-09-08): `SpeechQueueTest`'s burst-collapse test raced its
+  own consumer — the producer's `enqueue()` doesn't suspend, but the
+  consumer runs on `Dispatchers.Default` and could receive and batch the
+  first few items while the remaining sends were still happening, so a
+  batch of ≤5 got spoken item-by-item instead of collapsed. It was fixed
+  on the `ci-hardening` branch on 2026-09-06 (commit `6acca26`, gating on
+  a `"gate"` utterance) and again on `main` as `456f174` (gating on a
+  `"primer"` utterance) — the same technique, different names, neither
+  aware of the other, because the branch was never merged. Only the
+  `main` one is live; the branch's copy became a merge conflict that
+  existed solely to be discarded. The reason this went unnoticed for two
+  days is that nothing tracked the open PR: `open-threads.md` said "no
+  issues filed" at the time, and an open branch with real work in it had
+  no entry anywhere. Recorded as the argument for
+  [open-threads.md](open-threads.md) listing open *PRs*, not just issues,
+  if this happens twice.
 - **`AGENTS.md` rewritten from a build spec into a standing contract**
   (2026-09-08): it opened with "Read this whole document before writing a
   single file," worked in phases, and told an agent what to build — all

@@ -70,10 +70,11 @@ built; #28 is about *character*-length limits in `TextToSpeech`.
   when this landed (four dependency-version-bump suggestions already
   handled by `update-flake-lock`'s review process, `ObsoleteSdkInt` on
   `mipmap-anydpi-v26`, `MonochromeLauncherIcon`) were left as-is — cosmetic,
-  not worth a round-trip on their own; CodeQL's own SAST scanning and
-  pinning the `@main`-referenced third-party actions to a commit SHA were
-  considered and left for the user to decide on separately, not added
-  here.
+  not worth a round-trip on their own. CodeQL's own SAST scanning and
+  pinning the `@main`-referenced third-party actions were considered and
+  left for the user to decide on separately at that point; both were
+  filed as issues #30/#31 on 2026-09-07 and **both landed 2026-09-08** —
+  see the entry below.
 - **`kotlinx-coroutines-core` is imported directly in `RuleEngine.kt`**
   — resolved 2026-09-07: `gradle/libs.versions.toml` now declares
   `kotlinx-coroutines-core` explicitly (sharing a `kotlinxCoroutines`
@@ -100,6 +101,26 @@ built; #28 is about *character*-length limits in `TextToSpeech`.
   `decision.ruleId` instead of a hardcoded `null`. `RuleEngineTest` gained
   two cases covering the matched/unmatched sides of it. Listed here as a
   closed thread.
+- **Third-party actions pinned to a SHA, and CodeQL added** (issues
+  #31 and #30) — resolved 2026-09-08. The three `@main` refs
+  (`DeterminateSystems/nix-installer-action` in both `check.yml` and
+  `update-flake-lock.yml`, `DeterminateSystems/update-flake-lock` in the
+  latter) now pin to the commit SHA behind their current release tag,
+  with the tag in a trailing comment; bump deliberately, the same policy
+  `libs.versions.toml` states for Gradle deps. `update-flake-lock.yml`
+  mattered most of the three — it holds `contents:write` and
+  `pull-requests:write`. `actions/checkout` and `github/codeql-action`
+  were deliberately **left on major-version tags**: they're first-party
+  GitHub actions, and `actions/checkout` is on `v4` here while `v7` is
+  current, so SHA-pinning it would have smuggled a version bump into a
+  security change. New `.github/workflows/codeql.yml` runs CodeQL over
+  `java-kotlin` with `build-mode: manual` — autobuild looks for a
+  committed `gradlew`, which this repo deliberately doesn't have.
+  Verified with `actionlint` across all three workflows.
+  Much of this was first worked out on the `ci-hardening` branch
+  (PR #17, 2026-09-06); it was re-derived against current `main` rather
+  than rebased, since that branch's other commit had been overtaken —
+  see [history.md](history.md).
 - **`AGENTS.md` §4.5's user-editable OTP keyword list** — noticed
   2026-09-08 while rewriting `AGENTS.md`, resolved the same day: `Settings` now carries `otpKeywords: Set<String>? = null`,
   backed by `OTP_KEYWORDS_KEY` in `SettingsRepository` (with a setter).
