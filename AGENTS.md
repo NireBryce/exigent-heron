@@ -47,7 +47,7 @@ Decided. Do not relitigate them in code.
 | Build | Gradle Kotlin DSL, `libs.versions.toml` | No `kotlin-android` plugin — AGP 9's Kotlin support is built in and applying it on top is a hard error |
 | minSdk / targetSdk | 31 / latest stable | 31 cuts a lot of compat branching. You are the only user. |
 
-**Dependency list. This is the whole list:** `core-ktx`; `lifecycle-runtime-ktx` + `lifecycle-viewmodel-compose`; `activity-compose`; Compose BOM + `material3`, `ui`, `ui-tooling-preview`; `datastore-preferences`; `kotlinx-serialization-json`; `kotlinx-coroutines-core` (explicit since 2026-09-07 — `domain/RuleEngine.kt` imports it directly and it previously rode in transitively). Test only: `junit`, `kotlinx-coroutines-test`, `truth`.
+**Dependency list. This is the whole list:** `core-ktx`; `lifecycle-runtime-ktx` + `lifecycle-viewmodel-compose`; `activity-compose`; Compose BOM + `material3`, `ui`, `ui-tooling-preview`; `datastore-preferences`; `kotlinx-serialization-json`; `kotlinx-coroutines-core` (explicit since 2026-09-07 — `domain/RuleEngine.kt` imports it directly and it previously rode in transitively). Test only: `junit`, `kotlinx-coroutines-test`, `truth`. Instrumented tests only (`app/src/androidTest/`, added 2026-09-08): `androidx.test.ext:junit` and `androidx.test:runner` — a device-side JUnit4 runner and `ApplicationProvider`, nothing more. No Espresso (no UI test yet) and no Robolectric (§3).
 
 No image loading library. No networking library. No Timber — use `android.util.Log` behind a wrapper (§4.6).
 
