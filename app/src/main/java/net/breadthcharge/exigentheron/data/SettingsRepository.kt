@@ -41,13 +41,16 @@ private val OTP_KEYWORDS_KEY = stringSetPreferencesKey("otp_keywords")
  * way to write either, and it always removes an address from the other
  * set first, so a device can never end up in both at once. Empty
  * ("unset") is every device's default state, meaning
- * [OutputRouteGate]'s plain type-based check as if this feature were off.
+ * [OutputRouteGate][net.breadthcharge.exigentheron.speech.OutputRouteGate]'s
+ * plain type-based check as if this feature were off.
  *
  * [truncationLengthSeconds] is null ("no limit") by default (users must opt into truncation,
- * not have their messages cut mid-sentence by default). When set, [SpeechQueue] stops playback
+ * not have their messages cut mid-sentence by default). When set,
+ * [SpeechQueue][net.breadthcharge.exigentheron.speech.SpeechQueue] stops playback
  * after this many seconds (caps *playback* time, not character count, since speech rates vary).
  *
- * [otpKeywords] is null by default (use [SecretDetector.DEFAULT_OTP_KEYWORDS]).
+ * [otpKeywords] is null by default (use
+ * [SecretDetector.DEFAULT_OTP_KEYWORDS][net.breadthcharge.exigentheron.domain.SecretDetector.DEFAULT_OTP_KEYWORDS]).
  * When edited, users get a real copy of the defaults to modify, not an invisible built-in list.
  */
 data class Settings(
@@ -136,7 +139,11 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    /** Null (or empty, converted to null) reverts to [SecretDetector.DEFAULT_OTP_KEYWORDS] — see [Settings.otpKeywords]. */
+    /**
+     * Null (or empty, converted to null) reverts to
+     * [SecretDetector.DEFAULT_OTP_KEYWORDS][net.breadthcharge.exigentheron.domain.SecretDetector.DEFAULT_OTP_KEYWORDS]
+     * — see [Settings.otpKeywords].
+     */
     suspend fun setOtpKeywords(keywords: Set<String>?) {
         dataStore.edit {
             if (keywords == null || keywords.isEmpty()) it.remove(OTP_KEYWORDS_KEY) else it[OTP_KEYWORDS_KEY] = keywords

@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * PURE. No Android imports. User-authored, persisted as JSON through
- * DataStore via [RuleRepository].
+ * DataStore via [RuleRepository][net.breadthcharge.exigentheron.data.RuleRepository].
  */
 @Serializable
 data class Rule(

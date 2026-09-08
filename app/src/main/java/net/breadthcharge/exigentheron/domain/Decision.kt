@@ -8,7 +8,8 @@ package net.breadthcharge.exigentheron.domain
  * [ruleId] is the id of the [Rule] that produced this decision, or
  * `null` when none did (the default-deny "no matching rule" case, or a
  * gate suppressing a decision that never involved a rule id in the
- * first place). Threaded through so [SafeLog.decision]'s `ruleId`
+ * first place). Threaded through so
+ * [SafeLog.decision][net.breadthcharge.exigentheron.SafeLog.decision]'s `ruleId`
  * parameter — always `null` in practice before this — can log which
  * rule actually fired, per `wiki/open-threads.md`'s note on it.
  */
