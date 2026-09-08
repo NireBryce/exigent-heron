@@ -1,5 +1,7 @@
 # Wiki
 
+_Last modified: 2026-09-08_
+
 ## Contents
 
 - [Common tasks](#common-tasks)

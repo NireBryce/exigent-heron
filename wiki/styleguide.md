@@ -1,5 +1,7 @@
 # Wiki style guide
 
+_Last modified: 2026-09-08_
+
 ## Contents
 
 - [Shape](#shape)
@@ -36,6 +38,26 @@ actual deep-dive exists to justify it.
 
 ## Content shape
 
+- **Every page opens with a `_Last modified: YYYY-MM-DD_` line**, right
+  after the title and before `## Contents`:
+
+  ```
+  # Page title
+
+  _Last modified: 2026-09-08_
+
+  ## Contents
+  ```
+
+  Absolute date, same rule as below — the point is a reader can tell at a
+  glance how stale a page might be without opening `git log`. **Whoever
+  edits a page's actual content bumps this line to today in the same
+  change**; a purely mechanical touch (a `gen-contents` run, a typo fix)
+  doesn't need to. `wiki/scripts/check_wiki.py dates` checks that the line
+  exists and is shaped right, but — like every other date claim in this
+  repo — can't check that it's still *true*; that's on the editor, the
+  same discipline skill `wiki-sync` already asks for everywhere else on a
+  page. (Adapted from nixos-configs' own `wiki/styleguide.md`.)
 - **Every page opens with a `## Contents`** — a bullet list of section
   links, one per `##` heading, right after the title and before any intro
   prose. Each link's target is GitHub's own heading-slug algorithm applied
