@@ -14,8 +14,8 @@
 - Do not add analytics, crash reporting, or telemetry of any kind.
 - Do not request the `INTERNET` permission. If something appears to need it, stop and ask.
 - Work in phases (§6). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
-- Commit at each phase boundary with a message describing what now works — as a series of granular commits (one per logical unit of work: the pure domain layer, the Android-facing data layer, UI, wiki-sync, etc.), not one big commit for the whole phase. Skill `submit-a-pr` covers landing that series together via a single PR.
-- Land every change — a phase-boundary commit included — via a branch and a pull request, never a direct commit, merge, or push to `main`. This applies to whichever agent is doing the work, not Claude Code specifically. Skill `submit-a-pr` (`.claude/skills/submit-a-pr/SKILL.md`, plain markdown — readable directly by any agent, not only one with a harness that loads skills automatically) has the full procedure: branch, PR, ask before merging, ask again before deleting the branch. `.claude/hooks/git-guard-pretooluse.sh` backs this mechanically for Claude Code specifically (it's a Claude Code hook mechanism, so a different agent's tooling won't run it) — the rule itself doesn't depend on that hook firing.
+- Commit at each phase boundary with a message describing what now works — as a series of granular commits (one per logical unit of work: the pure domain layer, the Android-facing data layer, UI, wiki-sync, etc.), not one big commit for the whole phase.
+- Land every change — a phase-boundary commit included — via a branch and a pull request, never a direct commit, merge, or push to `main`. Skill `submit-a-pr` ([`.claude/skills/submit-a-pr/SKILL.md`](.claude/skills/submit-a-pr/SKILL.md)) has the whole procedure, including landing a granular series together under one PR; [wiki/overview.md](wiki/overview.md)'s "Build and tooling" covers the hooks that back this and why they are a backstop rather than the rule.
 
 ---
 
@@ -73,60 +73,26 @@ No image loading library. No networking library. No Timber — use `android.util
 
 Single Gradle module (`:app`). Multi-module is not worth the build-file overhead here.
 
-```
-com.<yourdomain>.notifreader/
-├── App.kt                       # Application subclass, AppContainer
-├── AppContainer.kt              # manual DI: constructs and holds singletons
-│
-├── listener/
-│   ├── NotificationTtsListener.kt   # NotificationListenerService — THIN
-│   └── NotificationExtractor.kt     # StatusBarNotification -> NotificationPayload
-│
-├── domain/
-│   ├── NotificationPayload.kt   # see §4.1 — no toString()
-│   ├── SpeechRequest.kt
-│   ├── Rule.kt                  # @Serializable
-│   ├── RuleEngine.kt            # PURE. no Android imports.
-│   ├── SecretDetector.kt        # PURE. no Android imports.
-│   ├── Deduplicator.kt          # PURE (inject a clock). no Android imports.
-│   └── Decision.kt              # sealed: Speak(text) | AnnounceOnly(text) | Suppress(reason)
-│
-├── speech/
-│   ├── SpeechQueue.kt           # single-consumer actor over a Channel
-│   ├── TtsEngine.kt             # interface — makes SpeechQueue testable
-│   ├── AndroidTtsEngine.kt      # real impl wrapping android.speech.tts.TextToSpeech
-│   ├── AudioFocusManager.kt
-│   ├── OutputRouteGate.kt       # headset-only enforcement
-│   └── AudioBecomingNoisyReceiver.kt  # stops a route change mid-utterance, not just between items
-│
-├── data/
-│   ├── SettingsRepository.kt    # DataStore-backed, exposes Flow<Settings>
-│   ├── RuleRepository.kt
-│   └── BluetoothDevices.kt      # loads the bonded-device list; BLUETOOTH_CONNECT-gated
-│
-└── ui/
-    ├── MainActivity.kt
-    ├── permission/              # notification-access grant flow
-    ├── rules/                   # rule list + editor
-    └── settings/
-```
+Packages under `net.breadthcharge.exigentheron/`, split by role:
+
+- `domain/` — rule evaluation, secret detection, dedup, and the value types they work on.
+- `listener/` — the `NotificationListenerService` and extraction from a `StatusBarNotification`.
+- `speech/` — speech queue, TTS engine, audio focus, and the output/lock gates.
+- `data/` — DataStore-backed repositories.
+- `ui/` — Compose screens.
+- `App.kt`, `AppContainer.kt` (manual DI), `SafeLog.kt` at the root.
 
 **The critical structural rule:** `domain/` has zero Android imports. `RuleEngine`, `SecretDetector`, and `Deduplicator` are pure Kotlin, unit-testable on the JVM with no Robolectric, no instrumentation, no emulator. This is what makes the project testable at all — everything else is Android framework glue that is a pain to test and should therefore contain no logic worth testing.
 
-**Data flow:**
+**The pipeline order is a rule too**, not merely how it happens to be wired:
 
 ```
-onNotificationPosted(sbn)
-  → NotificationExtractor.extract(sbn)      → NotificationPayload?
-  → Deduplicator.isDuplicate(payload)       → drop if true
-  → RuleEngine.evaluate(payload, rules)     → Decision
-  → SecretDetector.scan(decision)           → possibly downgrade to AnnounceOnly/Suppress
-  → OutputRouteGate.allows()                → drop if false
-  → SpeechQueue.enqueue(SpeechRequest)
-  → AudioFocusManager.request() → TtsEngine.speak() → abandon focus when queue drains
+extract → dedup → rule engine → secret detector → output gate → lock gate → speech queue
 ```
 
-The listener service does routing only. No logic in it.
+Dedup runs before the rule engine so a repost costs no regex work. `SecretDetector` runs after it and can only ever *downgrade* what the rules decided (§4.5), never upgrade it. The gates run last, immediately before enqueue. The listener service does routing only — no logic in it.
+
+The file-by-file tree, the annotated data-flow diagram, and every place the code has diverged from what this section once specified all live in **[wiki/architecture.md](wiki/architecture.md)** — one tree, kept honest against `app/src`, rather than a target tree here that the real one has to be reconciled against forever. What stays in this section is the part a tree can't express: which of these boundaries are requirements.
 
 ---
 
@@ -281,7 +247,7 @@ Rationale: the default should not be broadcasting private messages to a room. Le
 
 Add a separate "don't speak while locked" toggle, also defaulted on, checking `KeyguardManager.isKeyguardLocked()`.
 
-**Per-device Bluetooth override, off by default.** `TYPE_BLUETOOTH_A2DP` is Android's generic Bluetooth-audio-sink type — a car stereo and a TV soundbar report it exactly the same as real headphones, so the type check above can't tell them apart. A separate "Per-device Bluetooth control" toggle (`Settings.bluetoothDeviceControlEnabled`, default **off**) lets the user Allow or Deny individual paired devices by address, listed from `BluetoothAdapter.getBondedDevices()`. Allow/Deny are mutually exclusive by construction (`SettingsRepository.setBluetoothDeviceDecision` always clears the other set first) — there is no UI state where a device is in both. An unset device falls back to the plain type check, identical to this feature being off. This is the one exception to this app otherwise requesting zero runtime permissions (`BLUETOOTH_CONNECT`, needed to read the paired-device list's names/addresses at all) — requested only when the user turns this toggle on, never at launch. A wired headset connection always qualifies on its own regardless of what this override decides for a Bluetooth device connected alongside it.
+**Per-device Bluetooth override, off by default.** `TYPE_BLUETOOTH_A2DP` is Android's generic Bluetooth-audio-sink type — a car stereo and a TV soundbar report it exactly the same as real headphones, so the type check above can't tell them apart. A separate "Per-device Bluetooth control" toggle, default **off**, lets the user Allow or Deny individual paired devices by address, listed from `BluetoothAdapter.getBondedDevices()`. Allow and Deny must be mutually exclusive per device *by construction* — enforced where the decision is written, not left to the UI to keep straight. An unset device falls back to the plain type check, identical to this feature being off. This is the one exception to this app otherwise requesting zero runtime permissions (`BLUETOOTH_CONNECT`, needed to read the paired-device list's names/addresses at all) — requested only when the user turns this toggle on, never at launch. A wired headset connection always qualifies on its own regardless of what this override decides for a Bluetooth device connected alongside it. See [wiki/architecture.md](wiki/architecture.md) for the settings fields and repository method that implement this as built.
 
 ### 4.10 Listener lifecycle
 

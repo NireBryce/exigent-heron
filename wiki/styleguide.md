@@ -75,11 +75,20 @@ actual deep-dive exists to justify it.
   content into the wiki page. If a page starts accumulating paragraphs
   that argue a fact instead of linking to it, that fact probably belongs
   in the linked file's own header comment instead.
-- **[testing.md](testing.md) is the one exception**, the same way
+- **Two pages are exceptions.** [testing.md](testing.md), the same way
   nixos-configs' `homelab/` usage pages are: it documents *doing*
   something (building, installing, exercising the app on a device) where
   the real source is the act itself, not a file to link to. It's allowed
-  to hold real procedural content, not just links.
+  to hold real procedural content, not just links. And, as of
+  **2026-09-08**, [architecture.md](architecture.md): it holds the
+  canonical package tree and data-flow diagram rather than linking to
+  `AGENTS.md` §3 for them. That one is an exception granted *to end a
+  restatement*, not to add one — a target tree and a real tree are the
+  same shape, so two copies meant reconciling every new file against a
+  spec written before the app existed, and the spec's copy could never be
+  right about a file it hadn't anticipated. §3 now carries the summary
+  and the requirements; that page carries the tree. Neither exception is
+  a licence to add a third without the same kind of reason written down.
 - **Dates are absolute** (`2026-09-05`, never "today" or "last week") —
   the only thing that lets a stale claim be recognized as stale by its own
   text rather than by someone noticing the drift by chance.

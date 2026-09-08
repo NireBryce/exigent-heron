@@ -77,8 +77,9 @@ and caught, each paired with the skill holding its general form.
 
 ## The pipeline
 
-One path, specified in `AGENTS.md` §3's data-flow diagram and implemented
-literally in
+One path — [architecture.md](architecture.md)'s "Data flow" section has
+the annotated version and the reasoning behind the ordering; `AGENTS.md`
+§3 states that ordering as a requirement. Implemented literally in
 [`NotificationTtsListener.route()`](../app/src/main/java/net/breadthcharge/exigentheron/listener/NotificationTtsListener.kt):
 
 ```
@@ -96,7 +97,8 @@ branching logic of its own — and hops off the binder thread before
 `route()`, since rule matching can spend its full timeout budget and
 `onNotificationPosted` has to return promptly.
 
-**The critical structural rule** (`AGENTS.md` §3): `domain/` has zero
+**The critical structural rule** (`AGENTS.md` §3, and
+[architecture.md](architecture.md)): `domain/` has zero
 Android imports. That's what makes the project testable at all — plain
 JVM unit tests, no Robolectric, no emulator, no instrumentation.
 Everything else is framework glue that's meant to hold no logic worth
@@ -104,8 +106,8 @@ testing. Where logic was *specified* inside an Android class but didn't
 actually need Android, it was split out anyway —
 `listener/NotificationExtractionPolicy.kt`, `domain/TextSanitizer.kt`,
 `domain/ContentHash.kt`. All three are recorded as deliberate deviations,
-with reasons, in [architecture.md](architecture.md)'s "Deviations"
-section.
+with reasons, in [architecture.md](architecture.md)'s "Where this
+diverged from the spec's original tree" section.
 
 ## Components worth reading first
 
@@ -149,10 +151,11 @@ of listing them here is which ones repay reading directly.
   versions can't drift from local, and includes the hard grep `AGENTS.md`
   §4.6 asks for by name: `android.util.Log` must appear in exactly one
   file. Lint runs for both variants and its SARIF goes to code scanning.
-- [**`.claude/hooks/`**](../.claude/hooks/) — a git guard (destructive
-  git actions, and direct commit/merge/push to `main`) plus the signing
-  and log-hygiene guards. Each is a mechanical backstop for a slip, not
-  the policy itself: the rules live in `AGENTS.md` §0 and the skills
+- [**`.claude/hooks/`**](../.claude/hooks/) — a git guard
+  ([`git-guard-pretooluse.sh`](../.claude/hooks/git-guard-pretooluse.sh):
+  destructive git actions, and direct commit/merge/push to `main`) plus
+  the signing and log-hygiene guards. Each is a mechanical backstop for
+  a slip, not the policy itself: the rules live in `AGENTS.md` §0 and the skills
   below as plain files any agent can read, whether or not its harness
   fires hooks.
 - [**`.claude/skills/`**](../.claude/skills/) — the repo-local skills.
@@ -173,8 +176,9 @@ deliberate differences documented in place rather than silently applied.
 
 - [README.md](README.md) — the wiki's own index, and why this link layer
   exists separately from `AGENTS.md`.
-- [architecture.md](architecture.md) — the real package layout as it
-  stands, against `AGENTS.md` §3's target tree.
+- [architecture.md](architecture.md) — the canonical package tree and
+  data-flow diagram, plus where the code diverged from `AGENTS.md` §3's
+  original tree.
 - [status.md](status.md) — what's actually built and verified, dated,
   versus only specified.
 - [testing.md](testing.md) — how to actually run and exercise the app.
