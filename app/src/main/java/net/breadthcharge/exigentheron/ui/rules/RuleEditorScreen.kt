@@ -36,6 +36,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,7 +44,6 @@ import net.breadthcharge.exigentheron.data.RuleRepository
 import net.breadthcharge.exigentheron.domain.Rule
 import net.breadthcharge.exigentheron.domain.RuleAction
 import net.breadthcharge.exigentheron.domain.RuleFormValidator
-import java.util.UUID
 
 /**
  * Form state for one [Rule], new or existing. Deliberately not backed

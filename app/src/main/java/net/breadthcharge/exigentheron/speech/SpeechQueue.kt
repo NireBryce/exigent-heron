@@ -1,5 +1,6 @@
 package net.breadthcharge.exigentheron.speech
 
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,7 +11,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import net.breadthcharge.exigentheron.SafeLog
 import net.breadthcharge.exigentheron.domain.SpeechRequest
-import kotlin.time.Duration.Companion.seconds
 
 private const val QUEUE_CAPACITY = 32
 private const val INTER_UTTERANCE_SILENCE_MILLIS = 400L

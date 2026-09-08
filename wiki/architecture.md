@@ -166,7 +166,12 @@ summary can, and those are the copies that stay correct.
   `RuleRepository`, `SettingsRepository`, `RuleEngineHolder` (rebuilds a
   `RuleEngine` from `ruleRepository.rules` on every emission — Phase 2's
   `phase2HardcodedRules` is gone, see [history.md](history.md)),
-  `SecretDetector`, `AudioFocusManager`, `OutputRouteGate`, `LockStateGate`.
+  `SecretDetectorHolder`, `AudioFocusManager`, `OutputRouteGate`,
+  `LockStateGate`. The two holders are exposed as `ruleEngine` and
+  `secretDetector` — properties named for the pipeline stage rather than
+  the wrapper class, matching `AGENTS.md` §3's pipeline, as of
+  **2026-09-08** (`secretDetector` was `secretDetectorHolder` until then,
+  the one place the two disagreed).
   `ttsEngine`/`speechQueue` are `var`s (not `val`) as of Phase 4:
   `rebuildTtsEngine(enginePackage)` swaps in a fresh `AndroidTtsEngine` +
   `SpeechQueue` pair so a settings-screen engine choice actually takes

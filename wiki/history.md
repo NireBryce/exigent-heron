@@ -293,6 +293,23 @@ message carries, not as a running paraphrase of the log — see
   N+1 before N's criteria pass) moved into `AGENTS.md` §6 inline.
   `wiki/scripts/check_wiki.py` no longer scans it. This entry, not a
   restored copy, is the record of what it said and why it's gone.
+- **Code style is an `.editorconfig`, not ktlint or detekt**
+  (**2026-09-08**): a readability pass found the formatting genuinely
+  inconsistent — three files whose import blocks had drifted out of the
+  ASCII order the other 22 use, and 13 lines over the ~120 columns
+  everything else sits under. Two ways to stop that: a `.editorconfig`,
+  which Android Studio and IntelliJ honour with nothing added to the
+  build, or the ktlint Gradle plugin, which actually enforces it in CI.
+  ktlint is the better tool and was recommended; `.editorconfig` alone is
+  what landed, because `AGENTS.md` §0 makes a new dependency a question to
+  ask rather than a call to make, §2's list is meant to be the whole list,
+  and the question hadn't been answered when the work went in. The trade
+  is named in `.editorconfig`'s own header comment: this binds whatever
+  editor opens the file, not CI, so an agent writing through a plain
+  filesystem write is unconstrained by it. ktlint reads the same file and
+  would enforce exactly what it already says, so switching later is
+  additive, not a rewrite. Recorded here so the choice reads as a
+  deliberate deferral rather than an oversight.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned

@@ -68,7 +68,7 @@ class AppContainer(private val appContext: Context) {
         onRuleFailure = { id, reason -> SafeLog.error("rule $id failed: $reason") },
     )
 
-    val secretDetectorHolder = SecretDetectorHolder(
+    val secretDetector = SecretDetectorHolder(
         otpKeywords = settingsRepository.settings.map { settings ->
             settings.otpKeywords?.toList() ?: SecretDetector.DEFAULT_OTP_KEYWORDS
         },
