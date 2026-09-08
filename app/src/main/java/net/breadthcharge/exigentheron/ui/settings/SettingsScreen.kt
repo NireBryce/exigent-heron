@@ -55,12 +55,22 @@ import net.breadthcharge.exigentheron.speech.TtsEngineStatus
  * Headset-only gate, lock-state gate, DND-override toggle, TTS engine picker (with error display),
  * per-device Bluetooth allow/deny list, and OTP keyword editor — all in one screen.
  * Three sections don't justify tabs; simpler is better.
+ *
+ * Each section is its own private composable below, taking plain values
+ * and callbacks rather than the [AppContainer]. What stays in this
+ * function is only what genuinely spans sections: the Bluetooth
+ * permission state, which both gates the per-device list *and* has to be
+ * reconciled against the persisted toggle, and the `scope.launch`
+ * wiring that turns each callback into a `SettingsRepository` write. A
+ * section needing neither then reads as what it is — some form fields
+ * and where their values go.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val settings by container.settingsRepository.settings.collectAsState(initial = Settings())
+    val settingsRepository = container.settingsRepository
+    val settings by settingsRepository.settings.collectAsState(initial = Settings())
     val ttsStatus by container.ttsEngineStatus.collectAsState()
     val scope = rememberCoroutineScope()
     var showEnginePicker by remember { mutableStateOf(false) }
@@ -79,7 +89,7 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
         // grant — a denial leaves bluetoothDeviceControlEnabled exactly
         // where it already was (off, since this launcher is only ever
         // triggered from turning the toggle on in the first place).
-        if (granted) scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(true) }
+        if (granted) scope.launch { settingsRepository.setBluetoothDeviceControlEnabled(true) }
     }
     // The permission can be revoked from system settings without this
     // screen finding out except by asking again — if that leaves
@@ -88,7 +98,7 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
     // (OutputRouteGate itself already degrades safely either way).
     LaunchedEffect(bluetoothPermissionGranted, settings.bluetoothDeviceControlEnabled) {
         if (settings.bluetoothDeviceControlEnabled && !bluetoothPermissionGranted) {
-            container.settingsRepository.setBluetoothDeviceControlEnabled(false)
+            settingsRepository.setBluetoothDeviceControlEnabled(false)
         }
     }
 
@@ -101,11 +111,6 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
         }
     }
 
-    var otpKeywords by remember(settings.otpKeywords) {
-        mutableStateOf(settings.otpKeywords?.toList() ?: SecretDetector.DEFAULT_OTP_KEYWORDS)
-    }
-    var newKeywordInput by remember { mutableStateOf("") }
-
     Scaffold(
         modifier = modifier,
         topBar = { TopAppBar(title = { Text("Settings") }) },
@@ -117,172 +122,49 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Text("Output routing", style = MaterialTheme.typography.titleMedium)
-            SettingToggle(
-                label = "Headset only",
-                checked = settings.headsetOnly,
-                onCheckedChange = { scope.launch { container.settingsRepository.setHeadsetOnly(it) } },
-            )
-            SettingToggle(
-                label = "Don't speak while locked",
-                checked = settings.respectLockState,
-                onCheckedChange = { scope.launch { container.settingsRepository.setRespectLockState(it) } },
-            )
-            SettingToggle(
-                label = "Speak even during Do Not Disturb",
-                checked = settings.allowDndOverride,
-                onCheckedChange = { scope.launch { container.settingsRepository.setAllowDndOverride(it) } },
+            OutputRoutingSection(
+                headsetOnly = settings.headsetOnly,
+                respectLockState = settings.respectLockState,
+                allowDndOverride = settings.allowDndOverride,
+                onHeadsetOnly = { scope.launch { settingsRepository.setHeadsetOnly(it) } },
+                onRespectLockState = { scope.launch { settingsRepository.setRespectLockState(it) } },
+                onAllowDndOverride = { scope.launch { settingsRepository.setAllowDndOverride(it) } },
             )
 
-            SettingToggle(
-                label = "Per-device Bluetooth control",
-                checked = settings.bluetoothDeviceControlEnabled,
-                onCheckedChange = { enable ->
+            BluetoothDeviceSection(
+                enabled = settings.bluetoothDeviceControlEnabled,
+                permissionGranted = bluetoothPermissionGranted,
+                bondedDevices = bondedDevices,
+                decisionFor = settings::bluetoothDeviceDecision,
+                onEnabledChange = { enable ->
                     if (!enable) {
-                        scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(false) }
+                        scope.launch { settingsRepository.setBluetoothDeviceControlEnabled(false) }
                     } else if (bluetoothPermissionGranted) {
-                        scope.launch { container.settingsRepository.setBluetoothDeviceControlEnabled(true) }
+                        scope.launch { settingsRepository.setBluetoothDeviceControlEnabled(true) }
                     } else {
                         requestBluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT)
                     }
                 },
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Text(
-                "Allow or deny speech for specific paired Bluetooth devices, separately " +
-                    "from \"Headset only\" above — Android can't otherwise tell a real " +
-                    "headset apart from a car stereo or TV soundbar; they report the same " +
-                    "type. Needs access to your paired device list (names and addresses " +
-                    "only — nothing leaves this device either way).",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            if (settings.bluetoothDeviceControlEnabled && bluetoothPermissionGranted) {
-                if (bondedDevices.isEmpty()) {
-                    Text(
-                        "No paired devices.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                } else {
-                    for (device in bondedDevices) {
-                        BluetoothDeviceRow(
-                            device = device,
-                            decision = settings.bluetoothDeviceDecision(device.address),
-                            onDecision = { decision ->
-                                scope.launch {
-                                    container.settingsRepository.setBluetoothDeviceDecision(device.address, decision)
-                                }
-                            },
-                        )
-                    }
-                }
-            }
-
-            Text("Speech length", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
-            Text(
-                "Stop speaking a notification after this many seconds, even mid-sentence. " +
-                    "Leave blank for no limit.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            var truncationInput by remember(settings.truncationLengthSeconds) {
-                mutableStateOf(settings.truncationLengthSeconds?.toString() ?: "")
-            }
-            OutlinedTextField(
-                value = truncationInput,
-                onValueChange = { input ->
-                    truncationInput = input
-                    val seconds = input.toIntOrNull()
-                    if (input.isEmpty() || seconds != null) {
-                        scope.launch { container.settingsRepository.setTruncationLengthSeconds(seconds) }
-                    }
+                onDecision = { address, decision ->
+                    scope.launch { settingsRepository.setBluetoothDeviceDecision(address, decision) }
                 },
-                label = { Text("Max seconds") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.padding(top = 8.dp),
             )
 
-            Text("OTP detection keywords", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
-            Text(
-                "When a notification body contains a digit run (4-8 digits) near any of these keywords, " +
-                    "the message is silenced rather than announced. Leave empty to disable keyword-based detection " +
-                    "(the hardcoded check for bare 6-digit bodies still applies). Defaults shown below; edit to customize.",
-                style = MaterialTheme.typography.bodySmall,
+            SpeechLengthSection(
+                truncationLengthSeconds = settings.truncationLengthSeconds,
+                onPersist = { scope.launch { settingsRepository.setTruncationLengthSeconds(it) } },
             )
-            if (otpKeywords.isEmpty()) {
-                Text(
-                    "Keyword detection is off (list is empty).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            Column(modifier = Modifier.padding(top = 8.dp)) {
-                for (keyword in otpKeywords) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    ) {
-                        Text(keyword, modifier = Modifier.weight(1f))
-                        TextButton(onClick = {
-                            otpKeywords = otpKeywords - keyword
-                            scope.launch { container.settingsRepository.setOtpKeywords(otpKeywords.toSet()) }
-                        }) {
-                            Text("Remove")
-                        }
-                    }
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-            ) {
-                OutlinedTextField(
-                    value = newKeywordInput,
-                    onValueChange = { newKeywordInput = it },
-                    label = { Text("New keyword") },
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    onClick = {
-                        if (newKeywordInput.isNotBlank() && newKeywordInput !in otpKeywords) {
-                            otpKeywords = otpKeywords + newKeywordInput
-                            scope.launch { container.settingsRepository.setOtpKeywords(otpKeywords.toSet()) }
-                            newKeywordInput = ""
-                        }
-                    },
-                    modifier = Modifier.padding(start = 8.dp),
-                ) {
-                    Text("Add")
-                }
-            }
-            TextButton(
-                onClick = {
-                    otpKeywords = SecretDetector.DEFAULT_OTP_KEYWORDS
-                    scope.launch { container.settingsRepository.setOtpKeywords(null) }
-                    newKeywordInput = ""
-                },
-                modifier = Modifier.padding(top = 8.dp),
-            ) {
-                Text("Reset to defaults")
-            }
 
-            Text("TTS engine", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
-            Text(
-                text = "Active: ${settings.ttsEnginePackage ?: "system default"}",
-                style = MaterialTheme.typography.bodyMedium,
+            OtpKeywordSection(
+                persistedKeywords = settings.otpKeywords,
+                onPersist = { scope.launch { settingsRepository.setOtpKeywords(it) } },
             )
-            Text(
-                text = when (val status = ttsStatus) {
-                    TtsEngineStatus.Initializing -> "Status: initializing…"
-                    TtsEngineStatus.Ready -> "Status: ready"
-                    is TtsEngineStatus.Failed -> "Status: error — ${status.reason}"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = if (ttsStatus is TtsEngineStatus.Failed) MaterialTheme.colorScheme.error else Color.Unspecified,
+
+            TtsEngineSection(
+                enginePackage = settings.ttsEnginePackage,
+                status = ttsStatus,
+                onChooseEngine = { showEnginePicker = true },
             )
-            TextButton(onClick = { showEnginePicker = true }, modifier = Modifier.padding(top = 8.dp)) {
-                Text("Choose engine")
-            }
 
             TextButton(onClick = onDone, modifier = Modifier.padding(top = 24.dp)) { Text("Done") }
         }
@@ -293,12 +175,237 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
             engines = container.ttsEngine.listEngines(),
             currentPackage = settings.ttsEnginePackage,
             onChoose = { packageName ->
-                scope.launch { container.settingsRepository.setTtsEnginePackage(packageName) }
+                scope.launch { settingsRepository.setTtsEnginePackage(packageName) }
                 container.rebuildTtsEngine(packageName)
                 showEnginePicker = false
             },
             onDismiss = { showEnginePicker = false },
         )
+    }
+}
+
+@Composable
+private fun OutputRoutingSection(
+    headsetOnly: Boolean,
+    respectLockState: Boolean,
+    allowDndOverride: Boolean,
+    onHeadsetOnly: (Boolean) -> Unit,
+    onRespectLockState: (Boolean) -> Unit,
+    onAllowDndOverride: (Boolean) -> Unit,
+) {
+    Text("Output routing", style = MaterialTheme.typography.titleMedium)
+    SettingToggle(label = "Headset only", checked = headsetOnly, onCheckedChange = onHeadsetOnly)
+    SettingToggle(
+        label = "Don't speak while locked",
+        checked = respectLockState,
+        onCheckedChange = onRespectLockState,
+    )
+    SettingToggle(
+        label = "Speak even during Do Not Disturb",
+        checked = allowDndOverride,
+        onCheckedChange = onAllowDndOverride,
+    )
+}
+
+/**
+ * The per-device allow/deny list and the toggle gating it. The
+ * explanation stays visible whether or not the feature is on — it's what
+ * tells the user why they'd want it, and it names the permission before
+ * the system dialog appears rather than after.
+ */
+@Composable
+private fun BluetoothDeviceSection(
+    enabled: Boolean,
+    permissionGranted: Boolean,
+    bondedDevices: List<BondedBluetoothDevice>,
+    decisionFor: (String) -> BluetoothDeviceDecision,
+    onEnabledChange: (Boolean) -> Unit,
+    onDecision: (String, BluetoothDeviceDecision) -> Unit,
+) {
+    SettingToggle(
+        label = "Per-device Bluetooth control",
+        checked = enabled,
+        onCheckedChange = onEnabledChange,
+        modifier = Modifier.padding(top = 16.dp),
+    )
+    Text(
+        "Allow or deny speech for specific paired Bluetooth devices, separately " +
+            "from \"Headset only\" above — Android can't otherwise tell a real " +
+            "headset apart from a car stereo or TV soundbar; they report the same " +
+            "type. Needs access to your paired device list (names and addresses " +
+            "only — nothing leaves this device either way).",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    if (!enabled || !permissionGranted) return
+
+    if (bondedDevices.isEmpty()) {
+        Text(
+            "No paired devices.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    } else {
+        for (device in bondedDevices) {
+            BluetoothDeviceRow(
+                device = device,
+                decision = decisionFor(device.address),
+                onDecision = { decision -> onDecision(device.address, decision) },
+            )
+        }
+    }
+}
+
+/**
+ * [truncationLengthSeconds] is the persisted value; the field keeps its
+ * own copy so a half-typed entry isn't fought over by recomposition. A
+ * blank field persists null ("no limit"); anything that isn't a number
+ * is displayed but not persisted, leaving the last good value in place
+ * rather than clearing it.
+ */
+@Composable
+private fun SpeechLengthSection(truncationLengthSeconds: Int?, onPersist: (Int?) -> Unit) {
+    var input by remember(truncationLengthSeconds) {
+        mutableStateOf(truncationLengthSeconds?.toString() ?: "")
+    }
+
+    Text(
+        "Speech length",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Text(
+        "Stop speaking a notification after this many seconds, even mid-sentence. " +
+            "Leave blank for no limit.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    OutlinedTextField(
+        value = input,
+        onValueChange = { typed ->
+            input = typed
+            val seconds = typed.toIntOrNull()
+            if (typed.isEmpty() || seconds != null) onPersist(seconds)
+        },
+        label = { Text("Max seconds") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
+/**
+ * [persistedKeywords] is null when the user has never edited the list,
+ * meaning [SecretDetector.DEFAULT_OTP_KEYWORDS] are in force — so the
+ * editable copy here starts from those defaults rather than from an
+ * empty list, per `AGENTS.md` §4.5 ("users get a real copy of the
+ * defaults to modify, not an invisible built-in list"). "Reset to
+ * defaults" persists null to get back to exactly that state.
+ *
+ * An empty list is a legitimate choice, not an error: keyword-proximity
+ * detection is then off and the hardcoded bare-6-digit floor is all that
+ * remains, which §4.5 requires this screen to show rather than leave
+ * silent.
+ */
+@Composable
+private fun OtpKeywordSection(persistedKeywords: Set<String>?, onPersist: (Set<String>?) -> Unit) {
+    var keywords by remember(persistedKeywords) {
+        mutableStateOf(persistedKeywords?.toList() ?: SecretDetector.DEFAULT_OTP_KEYWORDS)
+    }
+    var newKeywordInput by remember { mutableStateOf("") }
+
+    Text(
+        "OTP detection keywords",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Text(
+        "When a notification body contains a digit run (4-8 digits) near any of these keywords, " +
+            "the message is silenced rather than announced. Leave empty to disable keyword-based " +
+            "detection (the hardcoded check for bare 6-digit bodies still applies). Defaults " +
+            "shown below; edit to customize.",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    if (keywords.isEmpty()) {
+        Text(
+            "Keyword detection is off (list is empty).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+    }
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        for (keyword in keywords) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            ) {
+                Text(keyword, modifier = Modifier.weight(1f))
+                TextButton(
+                    onClick = {
+                        keywords = keywords - keyword
+                        onPersist(keywords.toSet())
+                    },
+                ) {
+                    Text("Remove")
+                }
+            }
+        }
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
+        OutlinedTextField(
+            value = newKeywordInput,
+            onValueChange = { newKeywordInput = it },
+            label = { Text("New keyword") },
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            onClick = {
+                if (newKeywordInput.isNotBlank() && newKeywordInput !in keywords) {
+                    keywords = keywords + newKeywordInput
+                    onPersist(keywords.toSet())
+                    newKeywordInput = ""
+                }
+            },
+            modifier = Modifier.padding(start = 8.dp),
+        ) {
+            Text("Add")
+        }
+    }
+    TextButton(
+        onClick = {
+            keywords = SecretDetector.DEFAULT_OTP_KEYWORDS
+            onPersist(null)
+            newKeywordInput = ""
+        },
+        modifier = Modifier.padding(top = 8.dp),
+    ) {
+        Text("Reset to defaults")
+    }
+}
+
+@Composable
+private fun TtsEngineSection(enginePackage: String?, status: TtsEngineStatus, onChooseEngine: () -> Unit) {
+    Text(
+        "TTS engine",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Text(
+        text = "Active: ${enginePackage ?: "system default"}",
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    Text(
+        text = when (status) {
+            TtsEngineStatus.Initializing -> "Status: initializing…"
+            TtsEngineStatus.Ready -> "Status: ready"
+            is TtsEngineStatus.Failed -> "Status: error — ${status.reason}"
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = if (status is TtsEngineStatus.Failed) MaterialTheme.colorScheme.error else Color.Unspecified,
+    )
+    TextButton(onClick = onChooseEngine, modifier = Modifier.padding(top = 8.dp)) {
+        Text("Choose engine")
     }
 }
 
@@ -309,7 +416,10 @@ private fun SettingToggle(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth().padding(top = 8.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+    ) {
         Switch(checked = checked, onCheckedChange = onCheckedChange)
         Text(label, modifier = Modifier.padding(start = 8.dp))
     }
@@ -318,8 +428,8 @@ private fun SettingToggle(
 /**
  * Allow/Deny as two independent-looking buttons that are never actually
  * independent: tapping the one already selected resets to
- * [BluetoothDeviceDecision.UNSET], tapping the other switches straight
- * to it — [SettingsRepository.setBluetoothDeviceDecision][net.breadthcharge.exigentheron.data.SettingsRepository.setBluetoothDeviceDecision]
+ * [BluetoothDeviceDecision.UNSET], tapping the other switches straight to it —
+ * [SettingsRepository.setBluetoothDeviceDecision][net.breadthcharge.exigentheron.data.SettingsRepository.setBluetoothDeviceDecision]
  * is the only way either gets written, and it always clears the other
  * set first. There is deliberately no third "are you sure" state for
  * "both on at once" — that combination is unreachable by construction,
@@ -339,26 +449,35 @@ private fun BluetoothDeviceRow(
             Text(device.name)
             Text(device.address, style = MaterialTheme.typography.bodySmall)
         }
-        TextButton(
-            onClick = {
-                onDecision(if (decision == BluetoothDeviceDecision.ALLOWED) BluetoothDeviceDecision.UNSET else BluetoothDeviceDecision.ALLOWED)
-            },
-        ) {
-            Text(
-                "Allow",
-                color = if (decision == BluetoothDeviceDecision.ALLOWED) MaterialTheme.colorScheme.primary else Color.Unspecified,
-            )
-        }
-        TextButton(
-            onClick = {
-                onDecision(if (decision == BluetoothDeviceDecision.DENIED) BluetoothDeviceDecision.UNSET else BluetoothDeviceDecision.DENIED)
-            },
-        ) {
-            Text(
-                "Deny",
-                color = if (decision == BluetoothDeviceDecision.DENIED) MaterialTheme.colorScheme.error else Color.Unspecified,
-            )
-        }
+        DecisionButton(
+            label = "Allow",
+            target = BluetoothDeviceDecision.ALLOWED,
+            current = decision,
+            selectedColor = MaterialTheme.colorScheme.primary,
+            onDecision = onDecision,
+        )
+        DecisionButton(
+            label = "Deny",
+            target = BluetoothDeviceDecision.DENIED,
+            current = decision,
+            selectedColor = MaterialTheme.colorScheme.error,
+            onDecision = onDecision,
+        )
+    }
+}
+
+/** Selects [target], or clears back to [BluetoothDeviceDecision.UNSET] when it's already [current]. */
+@Composable
+private fun DecisionButton(
+    label: String,
+    target: BluetoothDeviceDecision,
+    current: BluetoothDeviceDecision,
+    selectedColor: Color,
+    onDecision: (BluetoothDeviceDecision) -> Unit,
+) {
+    val selected = current == target
+    TextButton(onClick = { onDecision(if (selected) BluetoothDeviceDecision.UNSET else target) }) {
+        Text(label, color = if (selected) selectedColor else Color.Unspecified)
     }
 }
 
