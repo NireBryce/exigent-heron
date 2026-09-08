@@ -21,7 +21,8 @@ class SecretDetectorHolderTest {
             scope = testScope(),
         )
 
-        assertThat(holder.scan(Decision.Speak("test"), payload("123456 code"))).isInstanceOf(Decision.AnnounceOnly::class.java)
+        val decision = holder.scan(Decision.Speak("test"), payload("123456 code"))
+        assertThat(decision).isInstanceOf(Decision.AnnounceOnly::class.java)
     }
 
     @Test

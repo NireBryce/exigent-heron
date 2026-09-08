@@ -94,7 +94,9 @@ class OutputRouteGateTest {
             connectedOutputTypes = { setOf(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) },
             bluetoothDeviceControlEnabled = { true },
             connectedBluetoothAddresses = { setOf("AA:BB") },
-            bluetoothDeviceDecision = { address -> if (address == "AA:BB") BluetoothDeviceDecision.DENIED else BluetoothDeviceDecision.UNSET },
+            bluetoothDeviceDecision = { address ->
+                if (address == "AA:BB") BluetoothDeviceDecision.DENIED else BluetoothDeviceDecision.UNSET
+            },
         )
         assertThat(gate.allows()).isFalse()
     }

@@ -54,6 +54,36 @@ class SpeechQueueTest {
 
     private fun request(text: String) = SpeechRequest(text = text, utteranceId = text)
 
+    /**
+     * Builds a queue whose every gate permits speech: focus is granted,
+     * the device is not in a call, DND is not blocking, and the output
+     * route qualifies. A test then names only the one thing it varies,
+     * so what's under test is the only thing visible at the call site.
+     *
+     * This exists because [SpeechQueue]'s constructor takes four
+     * same-shaped `() -> Boolean` gates in a row, and calling it
+     * positionally made `{ false }, { true }, { true }` a puzzle — the
+     * in-call and DND tests below differed only in which of two adjacent
+     * lambdas was `true`.
+     */
+    private fun speechQueue(
+        engine: TtsEngine,
+        scope: CoroutineScope,
+        requestAudioFocus: () -> Boolean = { true },
+        abandonAudioFocus: () -> Unit = {},
+        isInCall: () -> Boolean = { false },
+        isBlockedByDnd: () -> Boolean = { false },
+        isOutputRouteAllowed: () -> Boolean = { true },
+    ) = SpeechQueue(
+        ttsEngine = engine,
+        requestAudioFocus = requestAudioFocus,
+        abandonAudioFocus = abandonAudioFocus,
+        isInCall = isInCall,
+        isBlockedByDnd = isBlockedByDnd,
+        isOutputRouteAllowed = isOutputRouteAllowed,
+        scope = scope,
+    )
+
     private suspend fun awaitCount(list: List<*>, expected: Int) {
         withTimeout(5.seconds) {
             while (list.size < expected) kotlinx.coroutines.yield()
@@ -76,7 +106,7 @@ class SpeechQueueTest {
     fun `a single request is spoken, then a silence gap`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope)
 
         queue.enqueue(request("hello"))
         awaitCount(fake.speakCalls, 1)
@@ -91,7 +121,7 @@ class SpeechQueueTest {
     fun `requests are spoken in order`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope)
 
         queue.enqueue(request("first"))
         queue.enqueue(request("second"))
@@ -107,7 +137,12 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { true }, { false }, { true }, scope)
+        val queue = speechQueue(
+            fake,
+            scope,
+            abandonAudioFocus = { abandonCalls.incrementAndGet() },
+            isInCall = { true },
+        )
 
         queue.enqueue(request("should not be heard"))
         // No speak() will ever come; wait on something that does happen
@@ -126,7 +161,12 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { true }, { true }, scope)
+        val queue = speechQueue(
+            fake,
+            scope,
+            abandonAudioFocus = { abandonCalls.incrementAndGet() },
+            isBlockedByDnd = { true },
+        )
 
         queue.enqueue(request("should not be heard"))
         withTimeout(5.seconds) {
@@ -145,7 +185,7 @@ class SpeechQueueTest {
         // Gate the first speak() so all three enqueues land as one
         // burst in the channel before the consumer processes any of it.
         val fake = FakeTtsEngine(onSpeak = { text -> if (text == "one") releaseFirst.await() })
-        val queue = SpeechQueue(fake, { requestCalls.incrementAndGet(); true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope, requestAudioFocus = { requestCalls.incrementAndGet(); true })
 
         queue.enqueue(request("one"))
         queue.enqueue(request("two"))
@@ -162,7 +202,7 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val abandonCalls = AtomicInteger()
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope, abandonAudioFocus = { abandonCalls.incrementAndGet() })
 
         queue.enqueue(request("only one"))
         withTimeout(5.seconds) {
@@ -217,7 +257,7 @@ class SpeechQueueTest {
                 }
             },
         )
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope)
 
         queue.enqueue(request("primer"))
         withTimeout(5.seconds) { consumerParked.await() }
@@ -237,7 +277,7 @@ class SpeechQueueTest {
     fun `5 or fewer pending items are read individually, not collapsed`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope)
 
         for (i in 1..5) queue.enqueue(request(i.toString()))
         awaitCount(fake.speakCalls, 5)
@@ -251,7 +291,12 @@ class SpeechQueueTest {
         val scope = CoroutineScope(SupervisorJob())
         val fake = FakeTtsEngine()
         val abandonCalls = AtomicInteger()
-        val queue = SpeechQueue(fake, { true }, { abandonCalls.incrementAndGet() }, { false }, { false }, { false }, scope)
+        val queue = speechQueue(
+            fake,
+            scope,
+            abandonAudioFocus = { abandonCalls.incrementAndGet() },
+            isOutputRouteAllowed = { false },
+        )
 
         queue.enqueue(request("should not be heard"))
         withTimeout(5.seconds) {
@@ -271,7 +316,7 @@ class SpeechQueueTest {
         // the same way AppContainer's real outputRouteGate::allows
         // reflects whatever's connected *now*, not at construction time.
         var routeAllowed = true
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { routeAllowed }, scope)
+        val queue = speechQueue(fake, scope, isOutputRouteAllowed = { routeAllowed })
 
         queue.enqueue(request("while connected"))
         awaitCount(fake.speakCalls, 1)
@@ -297,7 +342,7 @@ class SpeechQueueTest {
             onSpeak = { text -> if (text == "one") { started.complete(Unit); stopSignal.await() } },
             onStop = { stopSignal.complete(Unit) },
         )
-        val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
+        val queue = speechQueue(fake, scope)
 
         queue.enqueue(request("one"))
         queue.enqueue(request("two"))
