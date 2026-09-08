@@ -73,60 +73,26 @@ No image loading library. No networking library. No Timber — use `android.util
 
 Single Gradle module (`:app`). Multi-module is not worth the build-file overhead here.
 
-```
-com.<yourdomain>.notifreader/
-├── App.kt                       # Application subclass, AppContainer
-├── AppContainer.kt              # manual DI: constructs and holds singletons
-│
-├── listener/
-│   ├── NotificationTtsListener.kt   # NotificationListenerService — THIN
-│   └── NotificationExtractor.kt     # StatusBarNotification -> NotificationPayload
-│
-├── domain/
-│   ├── NotificationPayload.kt   # see §4.1 — no toString()
-│   ├── SpeechRequest.kt
-│   ├── Rule.kt                  # @Serializable
-│   ├── RuleEngine.kt            # PURE. no Android imports.
-│   ├── SecretDetector.kt        # PURE. no Android imports.
-│   ├── Deduplicator.kt          # PURE (inject a clock). no Android imports.
-│   └── Decision.kt              # sealed: Speak(text) | AnnounceOnly(text) | Suppress(reason)
-│
-├── speech/
-│   ├── SpeechQueue.kt           # single-consumer actor over a Channel
-│   ├── TtsEngine.kt             # interface — makes SpeechQueue testable
-│   ├── AndroidTtsEngine.kt      # real impl wrapping android.speech.tts.TextToSpeech
-│   ├── AudioFocusManager.kt
-│   ├── OutputRouteGate.kt       # headset-only enforcement
-│   └── AudioBecomingNoisyReceiver.kt  # stops a route change mid-utterance, not just between items
-│
-├── data/
-│   ├── SettingsRepository.kt    # DataStore-backed, exposes Flow<Settings>
-│   ├── RuleRepository.kt
-│   └── BluetoothDevices.kt      # loads the bonded-device list; BLUETOOTH_CONNECT-gated
-│
-└── ui/
-    ├── MainActivity.kt
-    ├── permission/              # notification-access grant flow
-    ├── rules/                   # rule list + editor
-    └── settings/
-```
+Packages under `net.breadthcharge.exigentheron/`, split by role:
+
+- `domain/` — rule evaluation, secret detection, dedup, and the value types they work on.
+- `listener/` — the `NotificationListenerService` and extraction from a `StatusBarNotification`.
+- `speech/` — speech queue, TTS engine, audio focus, and the output/lock gates.
+- `data/` — DataStore-backed repositories.
+- `ui/` — Compose screens.
+- `App.kt`, `AppContainer.kt` (manual DI), `SafeLog.kt` at the root.
 
 **The critical structural rule:** `domain/` has zero Android imports. `RuleEngine`, `SecretDetector`, and `Deduplicator` are pure Kotlin, unit-testable on the JVM with no Robolectric, no instrumentation, no emulator. This is what makes the project testable at all — everything else is Android framework glue that is a pain to test and should therefore contain no logic worth testing.
 
-**Data flow:**
+**The pipeline order is a rule too**, not merely how it happens to be wired:
 
 ```
-onNotificationPosted(sbn)
-  → NotificationExtractor.extract(sbn)      → NotificationPayload?
-  → Deduplicator.isDuplicate(payload)       → drop if true
-  → RuleEngine.evaluate(payload, rules)     → Decision
-  → SecretDetector.scan(decision)           → possibly downgrade to AnnounceOnly/Suppress
-  → OutputRouteGate.allows()                → drop if false
-  → SpeechQueue.enqueue(SpeechRequest)
-  → AudioFocusManager.request() → TtsEngine.speak() → abandon focus when queue drains
+extract → dedup → rule engine → secret detector → output gate → lock gate → speech queue
 ```
 
-The listener service does routing only. No logic in it.
+Dedup runs before the rule engine so a repost costs no regex work. `SecretDetector` runs after it and can only ever *downgrade* what the rules decided (§4.5), never upgrade it. The gates run last, immediately before enqueue. The listener service does routing only — no logic in it.
+
+The file-by-file tree, the annotated data-flow diagram, and every place the code has diverged from what this section once specified all live in **[wiki/architecture.md](wiki/architecture.md)** — one tree, kept honest against `app/src`, rather than a target tree here that the real one has to be reconciled against forever. What stays in this section is the part a tree can't express: which of these boundaries are requirements.
 
 ---
 

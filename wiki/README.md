@@ -32,10 +32,15 @@ that document isn't the right place for.
 
 **Index over restatement**, same rule as the repo this was adapted from:
 pages here link to the real source (a code comment, `AGENTS.md` itself, an
-issue) rather than copying it. The one exception is [testing.md](testing.md),
-which — like nixos-configs' `homelab/` usage pages — documents *doing*
-something (running the app on a device) rather than a fact that lives in a
-file, so it holds real procedural content instead of just links.
+issue) rather than copying it. There are two exceptions.
+[testing.md](testing.md) — like nixos-configs' `homelab/` usage pages —
+documents *doing* something (running the app on a device) rather than a
+fact that lives in a file, so it holds real procedural content instead of
+just links. [architecture.md](architecture.md) holds the canonical
+package tree and data-flow diagram as of 2026-09-08, because a *target*
+tree and a *real* tree are the same shape and keeping both meant
+reconciling every new file against a spec written before the app existed;
+that page's own intro has the full reasoning.
 
 ## Common tasks
 
@@ -43,7 +48,7 @@ file, so it holds real procedural content instead of just links.
 |---|---|
 | get oriented on this repo from cold | [overview.md](overview.md) |
 | see what's actually built and verified vs. only specified | [status.md](status.md) |
-| understand the real package layout as it stands right now | [architecture.md](architecture.md) |
+| find a class, or understand the package layout and the pipeline | [architecture.md](architecture.md) |
 | run or test the app on an emulator or device | [testing.md](testing.md), skill [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md) |
 | check whether a bug or decision is already tracked | [open-threads.md](open-threads.md), skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md) |
 | propose filing a bug found in passing | skill [`propose-issue`](../.claude/skills/propose-issue/SKILL.md) |
@@ -59,9 +64,10 @@ file, so it holds real procedural content instead of just links.
 - [Status](status.md) — phase-by-phase: what each phase required, what's
   actually built, and what's been verified (by running the actual
   command, dated) rather than assumed from the spec text alone.
-- [Architecture](architecture.md) — the real package layout as it stands,
-  cross-referenced against `AGENTS.md` §3's target tree, and any place the
-  two have already diverged.
+- [Architecture](architecture.md) — the file-by-file tree and the
+  data-flow diagram, and every place the code has diverged from what
+  `AGENTS.md` §3 once specified. As of 2026-09-08 this page *is* the
+  tree; §3 keeps a six-bullet summary and points here.
 - [Traps & skills](traps-and-skills.md) — mistakes that have actually
   happened building this app, and the skill that holds the general form of
   each.

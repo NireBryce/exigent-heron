@@ -16,12 +16,29 @@ message carries, not as a running paraphrase of the log — see
 
 ## Decisions made while implementing, beyond AGENTS.md's own text
 
-- **Package name resolved**: `AGENTS.md` §3's tree uses
-  `com.<yourdomain>.notifreader` as a placeholder; the real package is
-  `net.breadthcharge.exigentheron` (`app/build.gradle.kts`). Not a
-  deviation, just the placeholder filled in — noted here rather than
-  silently, since a future reader diffing the spec's tree against the
-  real one would otherwise wonder whether it was intentional.
+- **Package name resolved**: `AGENTS.md` §3's tree — the one it carried
+  until 2026-09-08, see the swap below — used `com.<yourdomain>.notifreader`
+  as a placeholder; the real package is `net.breadthcharge.exigentheron`
+  (`app/build.gradle.kts`). Not a deviation, just the placeholder filled
+  in — noted here rather than silently, since a future reader diffing the
+  spec's tree against the real one would otherwise wonder whether it was
+  intentional.
+- **`AGENTS.md` §3 and `architecture.md` swapped roles** (2026-09-08):
+  §3 used to carry a target package tree and a data-flow diagram, and
+  [architecture.md](architecture.md) tracked how far the real tree had
+  caught up to it, explicitly declining to keep a second copy of the tree
+  itself. That split cost more than it paid: a target tree and a real
+  tree are the same shape, so every new file had to be reconciled against
+  a tree written before the app existed, and the spec's copy could never
+  be right about a file the spec hadn't anticipated — by the time of the
+  swap there were five such files plus a package (`ui/permission/`) the
+  spec named that the code never grew. Now `architecture.md` holds the
+  tree and the diagram, and §3 holds a six-bullet package summary plus
+  the two things a tree can't express and that genuinely are
+  requirements: `domain/`'s zero-Android-imports rule, and the pipeline
+  ordering. Recorded in [styleguide.md](styleguide.md) as the second
+  standing exception to "index over restatement," after
+  [testing.md](testing.md).
 - **`SecretDetector`'s downgrade mechanics, spelled out** (2026-09-05):
   `AGENTS.md` §4.5 says OTP-shaped content gets "suppress or downgrade to
   announce-only" but doesn't say what text an announce-only downgrade
