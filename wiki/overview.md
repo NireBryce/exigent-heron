@@ -149,10 +149,11 @@ of listing them here is which ones repay reading directly.
   versions can't drift from local, and includes the hard grep `AGENTS.md`
   §4.6 asks for by name: `android.util.Log` must appear in exactly one
   file. Lint runs for both variants and its SARIF goes to code scanning.
-- [**`.claude/hooks/`**](../.claude/hooks/) — a git guard (destructive
-  git actions, and direct commit/merge/push to `main`) plus the signing
-  and log-hygiene guards. Each is a mechanical backstop for a slip, not
-  the policy itself: the rules live in `AGENTS.md` §0 and the skills
+- [**`.claude/hooks/`**](../.claude/hooks/) — a git guard
+  ([`git-guard-pretooluse.sh`](../.claude/hooks/git-guard-pretooluse.sh):
+  destructive git actions, and direct commit/merge/push to `main`) plus
+  the signing and log-hygiene guards. Each is a mechanical backstop for
+  a slip, not the policy itself: the rules live in `AGENTS.md` §0 and the skills
   below as plain files any agent can read, whether or not its harness
   fires hooks.
 - [**`.claude/skills/`**](../.claude/skills/) — the repo-local skills.

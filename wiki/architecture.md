@@ -113,6 +113,11 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   and `BluetoothDevices.kt` (`loadBondedBluetoothDevices` — reads
   `BluetoothAdapter.getBondedDevices()`, `BLUETOOTH_CONNECT`-gated,
   returns an empty list rather than throwing when it isn't granted).
+  `AGENTS.md` §4.9 requires Allow and Deny to be mutually exclusive per
+  device *by construction* rather than by UI discipline; as built that
+  lives in `SettingsRepository.setBluetoothDeviceDecision`, which always
+  clears the other address set before writing — so there is no reachable
+  state, from the UI or otherwise, where one address sits in both.
 - `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
   impl; as of Phase 4 takes an optional `enginePackage` and uses it with
   `TextToSpeech(context, listener, engineName)`, checks
@@ -131,7 +136,13 @@ As of **2026-09-06** (Phase 4 complete except on-device verification, see
   completion callback), `OutputRouteGate.kt` (new, Phase 4 —
   headset-only enforcement against `AudioManager.getDevices`),
   `LockStateGate.kt` (new, Phase 4 — the separate don't-speak-while-locked
-  toggle against `KeyguardManager.isKeyguardLocked()`). Both gates take
+  toggle against `KeyguardManager.isKeyguardLocked()`), and
+  `AudioBecomingNoisyReceiver.kt` (**2026-09-07** — `AGENTS.md` §4.7's
+  `ACTION_AUDIO_BECOMING_NOISY` handling, which stops the *current*
+  utterance on a route change during playback; the per-utterance
+  `OutputRouteGate` re-check alongside it only ever sees the route
+  between utterances, never during one — see [status.md](status.md) for
+  the session that found both gaps). Both gates take
   their Android-facing checks as function references, the same pattern
   `SpeechQueue`'s own constructor already used for `isInCall` — see each
   file's own doc comment.
