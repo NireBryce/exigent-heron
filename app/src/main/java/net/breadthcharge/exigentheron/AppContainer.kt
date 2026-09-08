@@ -27,8 +27,12 @@ import net.breadthcharge.exigentheron.speech.AndroidTtsEngine
 import net.breadthcharge.exigentheron.speech.AudioBecomingNoisyReceiver
 import net.breadthcharge.exigentheron.speech.AudioFocusManager
 import net.breadthcharge.exigentheron.speech.LockStateGate
+import net.breadthcharge.exigentheron.speech.OutputDevice
 import net.breadthcharge.exigentheron.speech.OutputRouteGate
+import net.breadthcharge.exigentheron.speech.SpeechGates
 import net.breadthcharge.exigentheron.speech.SpeechQueue
+import net.breadthcharge.exigentheron.speech.bluetoothAddressesOf
+import net.breadthcharge.exigentheron.speech.isBlockedByDnd
 import net.breadthcharge.exigentheron.speech.TtsEngineStatus
 
 /**
@@ -81,30 +85,34 @@ class AppContainer(private val appContext: Context) {
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val audioFocusManager = AudioFocusManager(appContext)
 
+    /**
+     * The framework half of the two output-route lambdas below: read the
+     * connected outputs and reduce each to the two fields GatePolicy
+     * actually decides on. Deliberately holds no logic of its own —
+     * everything that could be wrong about *interpreting* these lives in
+     * GatePolicy, where a JVM test can reach it.
+     */
+    private fun connectedOutputDevices(): List<OutputDevice> =
+        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            .map { OutputDevice(type = it.type, address = it.address) }
+
     val outputRouteGate = OutputRouteGate(
         headsetOnlyEnabled = { currentSettings.headsetOnly },
-        connectedOutputTypes = {
-            audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.type }.toSet()
-        },
+        connectedOutputTypes = { connectedOutputDevices().map { it.type }.toSet() },
         bluetoothDeviceControlEnabled = { currentSettings.bluetoothDeviceControlEnabled },
-        // AudioDeviceInfo.getAddress() only returns a real MAC for a
-        // Bluetooth device — and only at all — with BLUETOOTH_CONNECT
-        // granted; re-checked here rather than assumed from the settings
-        // toggle above, since a user can revoke the permission from
-        // system settings without this app finding out except by asking
-        // again. Falls back to an empty set (⇒ plain type-based check,
-        // same as the feature being off) rather than crashing.
+        // Reads the framework values here; what they *mean* lives in
+        // GatePolicy.bluetoothAddressesOf, which is pure and tested —
+        // including the permission-revoked case, which is the part with
+        // a real decision in it.
         connectedBluetoothAddresses = {
-            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                    .filter { it.type in OutputRouteGate.BLUETOOTH_HEADSET_TYPES }
-                    .mapNotNull { it.address }
-                    .toSet()
-            } else {
-                emptySet()
-            }
+            bluetoothAddressesOf(
+                devices = connectedOutputDevices(),
+                bluetoothTypes = OutputRouteGate.BLUETOOTH_HEADSET_TYPES,
+                bluetoothConnectGranted = ContextCompat.checkSelfPermission(
+                    appContext,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                ) == PackageManager.PERMISSION_GRANTED,
+            )
         },
         // A lambda, deliberately, not `currentSettings::bluetoothDeviceDecision`
         // — that would bind to whatever Settings instance existed at this
@@ -146,17 +154,21 @@ class AppContainer(private val appContext: Context) {
 
     private fun createSpeechQueue(engine: AndroidTtsEngine): SpeechQueue = SpeechQueue(
         ttsEngine = engine,
+        gates = SpeechGates(
+            isInCall = {
+                audioManager.mode == AudioManager.MODE_IN_CALL ||
+                    audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+            },
+            isBlockedByDnd = {
+                isBlockedByDnd(
+                    allowDndOverride = currentSettings.allowDndOverride,
+                    interruptionFilter = notificationManager.currentInterruptionFilter,
+                )
+            },
+            isOutputRouteAllowed = outputRouteGate::allows,
+        ),
         requestAudioFocus = audioFocusManager::requestFocus,
         abandonAudioFocus = audioFocusManager::abandonFocus,
-        isInCall = {
-            audioManager.mode == AudioManager.MODE_IN_CALL ||
-                audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
-        },
-        isBlockedByDnd = {
-            !currentSettings.allowDndOverride &&
-                notificationManager.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
-        },
-        isOutputRouteAllowed = outputRouteGate::allows,
         truncationLengthSeconds = { currentSettings.truncationLengthSeconds },
         scope = scope,
     )

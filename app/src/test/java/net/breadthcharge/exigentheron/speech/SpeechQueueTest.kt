@@ -60,11 +60,11 @@ class SpeechQueueTest {
      * route qualifies. A test then names only the one thing it varies,
      * so what's under test is the only thing visible at the call site.
      *
-     * This exists because [SpeechQueue]'s constructor takes four
-     * same-shaped `() -> Boolean` gates in a row, and calling it
-     * positionally made `{ false }, { true }, { true }` a puzzle — the
-     * in-call and DND tests below differed only in which of two adjacent
-     * lambdas was `true`.
+     * [SpeechGates] now groups the three checks, so the queue's own
+     * constructor no longer takes same-shaped `() -> Boolean` gates in a
+     * row. This builder stays because the defaults are what earn their
+     * keep: a test names only the gate it varies, instead of restating
+     * three permissive lambdas to vary one.
      */
     private fun speechQueue(
         engine: TtsEngine,
@@ -76,11 +76,13 @@ class SpeechQueueTest {
         isOutputRouteAllowed: () -> Boolean = { true },
     ) = SpeechQueue(
         ttsEngine = engine,
+        gates = SpeechGates(
+            isInCall = isInCall,
+            isBlockedByDnd = isBlockedByDnd,
+            isOutputRouteAllowed = isOutputRouteAllowed,
+        ),
         requestAudioFocus = requestAudioFocus,
         abandonAudioFocus = abandonAudioFocus,
-        isInCall = isInCall,
-        isBlockedByDnd = isBlockedByDnd,
-        isOutputRouteAllowed = isOutputRouteAllowed,
         scope = scope,
     )
 

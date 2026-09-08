@@ -2,6 +2,7 @@ package net.breadthcharge.exigentheron.speech
 
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,8 +24,8 @@ private const val BURST_COLLAPSE_THRESHOLD = 5
  * [enqueue] posts and returns immediately (never blocks the notification listener);
  * overflow drops the oldest pending item rather than blocking delivery or growing unbounded.
  *
- * Takes [requestAudioFocus]/[abandonAudioFocus]/[isInCall]/[isBlockedByDnd]/
- * [isOutputRouteAllowed] as function references rather than an
+ * Takes [requestAudioFocus]/[abandonAudioFocus] and [SpeechGates]'
+ * three checks as function references rather than an
  * [AudioFocusManager], `AudioManager`, or `NotificationManager` directly —
  * `AudioFocusManager`'s constructor touches a real `Context`
  * immediately, which makes it, and anything holding one, uninstantiable
@@ -37,7 +38,7 @@ private const val BURST_COLLAPSE_THRESHOLD = 5
  * `NotificationManager.getCurrentInterruptionFilter()` with the
  * settings-backed DND-override toggle, and `outputRouteGate::allows`.
  *
- * **[isOutputRouteAllowed] is re-checked here, per utterance, not just
+ * **[SpeechGates.isOutputRouteAllowed] is re-checked here, per utterance, not just
  * once at enqueue time.** `NotificationTtsListener.route()` already
  * checks `OutputRouteGate.allows()` before ever calling [enqueue] — that
  * alone leaves a real gap: a headset connected at enqueue time can
@@ -58,17 +59,40 @@ private const val BURST_COLLAPSE_THRESHOLD = 5
  * `speak()` call only stops *waiting* for the engine's completion
  * callback, it does not stop the real `TextToSpeech` from continuing to
  * play the rest of the utterance underneath.
+ *
+ * [dispatcher] defaults to `Dispatchers.Default` — the production
+ * choice — but is injectable so a test can confine the consumer to its
+ * own single thread. `Dispatchers.Default` is one pool shared by the
+ * whole JVM test process rather than scoped per test, which is how a
+ * still-finishing consumer from one test came to overlap the next one's
+ * setup; see wiki/traps-and-skills.md.
  */
+/**
+ * The three per-utterance gates [SpeechQueue] consults, grouped so they
+ * are named rather than positional at every call site, and so the
+ * queue's own constructor isn't four same-shaped `() -> Boolean`
+ * parameters in a row.
+ *
+ * Each is a function reference, not a framework object, for the reason
+ * [SpeechQueue]'s own doc comment gives: `AudioFocusManager`'s
+ * constructor touches a real `Context`, so anything holding one is
+ * uninstantiable in a JVM test.
+ */
+class SpeechGates(
+    val isInCall: () -> Boolean,
+    val isBlockedByDnd: () -> Boolean,
+    val isOutputRouteAllowed: () -> Boolean,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class) // Channel.isEmpty, used below
 class SpeechQueue(
     private val ttsEngine: TtsEngine,
+    private val gates: SpeechGates,
     private val requestAudioFocus: () -> Boolean,
     private val abandonAudioFocus: () -> Unit,
-    private val isInCall: () -> Boolean,
-    private val isBlockedByDnd: () -> Boolean,
-    private val isOutputRouteAllowed: () -> Boolean,
     scope: CoroutineScope,
     private val truncationLengthSeconds: () -> Int? = { null },
+    dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     private val channel = Channel<SpeechRequest>(
         capacity = QUEUE_CAPACITY,
@@ -77,7 +101,7 @@ class SpeechQueue(
     private var holdingFocus = false
 
     init {
-        scope.launch(Dispatchers.Default) { consume() }
+        scope.launch(dispatcher) { consume() }
     }
 
     fun enqueue(request: SpeechRequest) {
@@ -86,7 +110,7 @@ class SpeechQueue(
 
     /**
      * Halts whatever utterance is playing *right now*, immediately —
-     * for the one case [isOutputRouteAllowed]'s per-item re-check can't
+     * for the one case [SpeechGates.isOutputRouteAllowed]'s per-item re-check can't
      * reach: a route disconnecting mid-utterance rather than between
      * items. `AppContainer` calls this from an
      * `AudioManager.ACTION_AUDIO_BECOMING_NOISY` receiver, Android's own
@@ -96,7 +120,7 @@ class SpeechQueue(
      * [TtsEngine.stop] unblocks whichever `speak()`/`silence()` call was
      * suspended waiting on it, so [consume] moves on to the next queued
      * item (if any) normally — which then goes through the same
-     * [isOutputRouteAllowed] check above and gets skipped too if the
+     * [SpeechGates.isOutputRouteAllowed] check above and gets skipped too if the
      * route is still bad.
      */
     fun stopCurrent() {
@@ -145,18 +169,18 @@ class SpeechQueue(
         // Checked first, deliberately, so a call in progress — DND, or a
         // route that no longer qualifies — never even requests focus for
         // an utterance it's about to skip anyway.
-        if (isInCall()) {
+        if (gates.isInCall()) {
             SafeLog.lifecycle("speech skipped: device in call")
             return
         }
-        if (isBlockedByDnd()) {
+        if (gates.isBlockedByDnd()) {
             SafeLog.lifecycle("speech skipped: DND")
             return
         }
         // Re-checked here, not trusted from whatever NotificationTtsListener
         // saw at enqueue time — see this class's own doc comment on
-        // [isOutputRouteAllowed] for why that's a real gap otherwise.
-        if (!isOutputRouteAllowed()) {
+        // [SpeechGates.isOutputRouteAllowed] for why that's a real gap otherwise.
+        if (!gates.isOutputRouteAllowed()) {
             SafeLog.lifecycle("speech skipped: output route")
             return
         }

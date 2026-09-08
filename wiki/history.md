@@ -310,6 +310,39 @@ message carries, not as a running paraphrase of the log — see
   would enforce exactly what it already says, so switching later is
   additive, not a rewrite. Recorded here so the choice reads as a
   deliberate deferral rather than an oversight.
+- **`AGENTS.md` §3's "no logic worth testing" claim was softened, and the
+  boundary it protects was given a CI grep** (2026-09-08). Two separate
+  problems with one sentence. First, the rule it states — `domain/` has
+  zero Android imports — was the load-bearing assumption of the entire
+  test strategy and was enforced by review alone; `check.yml` now greps
+  for `^import android.` under `domain/`, in the same shape as the
+  existing `android.util.Log` check. Second, "everything else is Android
+  framework glue that is a pain to test and should therefore contain no
+  logic worth testing" read as a statement of fact about the Android
+  side, and it wasn't one: `AppContainer` was deciding what a revoked
+  `BLUETOOTH_CONNECT` should mean, and Phase 4's output-route bug (gate
+  checked once at enqueue instead of per utterance) lived in a seam every
+  JVM test passed straight through. The sentence is now framed as the
+  goal the boundary serves, with `app/src/androidTest/` named as the tool
+  for the rest. The rule itself did not change and is not weaker.
+- **`AppContainer`'s gate lambdas were split into `speech/GatePolicy.kt`**
+  (2026-09-08), following the precedent
+  `listener/NotificationExtractionPolicy.kt` set: policy as a pure
+  function over plain values, caller left as glue thin enough that
+  reading it is enough to believe it. `GatePolicy` mirrors
+  `NotificationManager.INTERRUPTION_FILTER_ALL` as its own constant the
+  same way `SecretDetector` mirrors `VISIBILITY_PRIVATE`/`VISIBILITY_SECRET`,
+  and carries the same drift risk — the intended mitigation is an
+  instrumented test asserting the mirror still matches, which a JVM test
+  structurally cannot do.
+- **`SpeechGates` groups the queue's three gate lambdas** (2026-09-08).
+  Worth recording because it is *not* the fix it looks like: the three
+  `() -> Boolean` checks still sit adjacent inside `SpeechGates`, so
+  transposing two of them still compiles. Named arguments are what
+  actually prevent that, at both call sites, and PR #51's test-side
+  builder already covered the test half. What this buys is a smaller
+  constructor and one documented home for the three; it was landed with
+  that understood rather than as a claimed compile-time guarantee.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned

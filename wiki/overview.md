@@ -102,10 +102,12 @@ branching logic of its own — and hops off the binder thread before
 
 **The critical structural rule** (`AGENTS.md` §3, and
 [architecture.md](architecture.md)): `domain/` has zero
-Android imports. That's what makes the project testable at all — plain
-JVM unit tests, no Robolectric, no emulator, no instrumentation.
-Everything else is framework glue that's meant to hold no logic worth
-testing. Where logic was *specified* inside an Android class but didn't
+Android imports — CI greps for it. That's what keeps the logic most
+worth testing the cheapest thing here to test: plain JVM unit tests, no
+Robolectric, no emulator, no instrumentation. Everything else is
+framework glue that's *meant* to hold no logic worth testing, which is a
+goal rather than a guarantee — instrumented tests under
+`app/src/androidTest/` are the tool where it doesn't hold. Where logic was *specified* inside an Android class but didn't
 actually need Android, it was split out anyway —
 `listener/NotificationExtractionPolicy.kt`, `domain/TextSanitizer.kt`,
 `domain/ContentHash.kt`. All three are recorded as deliberate deviations,
