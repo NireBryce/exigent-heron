@@ -10,14 +10,14 @@ _Last modified: 2026-09-08_
 
 A small index over what's actually happened while building this app, as
 distinct from what `AGENTS.md` requires of it. Adapted from the
-nixos-configs repo's own wiki (same link-layer idea, same style rules),
+NireBryce/nixos-configs repo's own wiki (same link-layer idea, same style rules),
 sized down from a multi-host NixOS fleet to one Gradle module.
 
 **Why a separate layer at all, on a repo this small:** `AGENTS.md` states
 requirements — the constraints and per-component contracts the app has to
 keep satisfying. It deliberately doesn't track *whether that's actually
 true right now* (a claim written the day it's true can go stale the
-moment a later change touches the same code, the same way nixos-configs'
+moment a later change touches the same code, the same way NireBryce/nixos-configs'
 own wiki documents a "Status as of `<date>`" line rotting — see the
 `fact-hygiene` skill). This wiki is where that current-state tracking
 lives instead, plus the things a requirements document has no natural
@@ -33,7 +33,7 @@ that document isn't the right place for.
 **Index over restatement**, same rule as the repo this was adapted from:
 pages here link to the real source (a code comment, `AGENTS.md` itself, an
 issue) rather than copying it. There are two exceptions.
-[testing.md](testing.md) — like nixos-configs' `homelab/` usage pages —
+[testing.md](testing.md) — like NireBryce/nixos-configs' `homelab/` usage pages —
 documents *doing* something (running the app on a device) rather than a
 fact that lives in a file, so it holds real procedural content instead of
 just links. [architecture.md](architecture.md) holds the canonical

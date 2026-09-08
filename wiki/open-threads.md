@@ -9,7 +9,7 @@ _Last modified: 2026-09-08_
 - [Not applicable yet](#not-applicable-yet)
 
 Open questions and known gaps, plus anything tracked as a GitHub issue.
-Adapted from nixos-configs' `open-threads.md` — same idea, much shorter,
+Adapted from NireBryce/nixos-configs' `open-threads.md` — same idea, much shorter,
 since this is still a young repo. (`git log` is the accurate commit
 count if that ever matters — see [history.md](history.md)'s own note on
 not keeping a second copy of it here.)

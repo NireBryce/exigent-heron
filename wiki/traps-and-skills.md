@@ -16,7 +16,7 @@ _Last modified: 2026-09-08_
 
 Mistakes that have actually happened building this app, each linked to the
 skill that holds the general form of the lesson. Adapted from
-nixos-configs' own `traps-and-skills.md` — same idea (specific incident
+NireBryce/nixos-configs' own `traps-and-skills.md` — same idea (specific incident
 here, reusable rule in the skill), same requirement that an entry be a
 real, dated thing that happened, not a hypothetical.
 

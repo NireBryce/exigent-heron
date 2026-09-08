@@ -7,7 +7,7 @@ _Last modified: 2026-09-08_
 - [Phase status](#phase-status)
 - [How "Verified" is earned](#how-verified-is-earned)
 
-The nixos-configs equivalent of this page is `wiki/hosts.md` — what's
+The NireBryce/nixos-configs equivalent of this page is `wiki/hosts.md` — what's
 actually been switched/booted vs. only evaluated, because "the config
 would build" and "this is running on the real machine" are different
 claims that drift apart if nothing tracks which one is true. Same idea
