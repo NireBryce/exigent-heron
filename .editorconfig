@@ -1,0 +1,49 @@
+# Codifies the style this repo already writes by hand, so it stops
+# drifting file by file. Nothing here is a new preference: every value
+# below was read off the existing sources, not chosen.
+#
+# Deliberately config-only — no ktlint or detekt plugin. AGENTS.md §0
+# ("No dependencies beyond §2. If you think you need one, stop and ask")
+# makes adding a build plugin a decision to raise rather than take, and
+# an .editorconfig is honored by Android Studio/IntelliJ with nothing
+# added to the build. The trade is real and worth naming: this is
+# enforced by whatever editor opens the file, not by CI, so an agent
+# editing these files through a plain filesystem write is on its own
+# here. If that turns out to matter, ktlint reads this same file and
+# would enforce exactly what it already says.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+# 120, not ktlint's default 100: the existing sources cluster under 120
+# with a handful of outliers above it, so this is the line the code was
+# already written to.
+max_line_length = 120
+# A single ASCII-sorted block with no blank lines and no grouping —
+# `java.*`/`kotlin.*` sort in place rather than being pushed to the
+# bottom. This is what most files here already do (AndroidTtsEngine.kt,
+# NotificationTtsListener.kt, RuleEngine.kt); the few that don't are the
+# drift this file exists to stop.
+ij_kotlin_imports_layout = *
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+# The manifest and res/ XML are 4-space; the workflows are 2-space. Both
+# are as-found, not a preference being imposed on one of them.
+[*.xml]
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_size = 2
+
+# Two trailing spaces are a hard line break in Markdown — stripping them
+# silently reflows a paragraph.
+[*.md]
+trim_trailing_whitespace = false
