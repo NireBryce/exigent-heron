@@ -1,5 +1,7 @@
 # Traps & skills
 
+_Last modified: 2026-09-08_
+
 ## Contents
 
 - [Stale `./gradlew` references in AGENTS.md](#stale-gradlew-references-in-agentsmd)

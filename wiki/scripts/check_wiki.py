@@ -67,7 +67,16 @@ extractable facts only:
             headings say right now -- catches a heading renamed, added, or
             removed without the list above it following along.
 
-  check     Runs all six of the above.
+  dates     Every page's `_Last modified: YYYY-MM-DD_` line (right after
+            the title and before `## Contents`, see styleguide.md) exists,
+            matches that exact format, and isn't a future date. Purely
+            presence-and-shape -- it can't and doesn't check that the date
+            is still *true*; that's on whoever edits the page's content,
+            per skill `wiki-sync`, the same division `contents` draws
+            between a heading list going stale mechanically and deciding
+            what belongs on the page.
+
+  check     Runs all seven of the above.
 
     check_wiki.py phases       [repo-root]
     check_wiki.py skills       [repo-root]
@@ -75,6 +84,7 @@ extractable facts only:
     check_wiki.py links        [repo-root]
     check_wiki.py anchors      [repo-root]
     check_wiki.py contents     [repo-root]
+    check_wiki.py dates        [repo-root]
     check_wiki.py check        [repo-root]
     check_wiki.py gen-contents <file.md> [file.md ...]
 
@@ -83,7 +93,7 @@ wiki/ -> repo root). `gen-contents` is a fixer, not a checker: it rewrites
 each given page's `## Contents` block in place to match that page's real
 headings -- the actual fix for a `contents` finding.
 """
-import re, sys, pathlib
+import re, sys, pathlib, datetime
 
 # Phase number -> key filenames from each phase's own component list
 # (originally BUILD_PLAN.md's, before it was removed once all six phases
@@ -347,6 +357,38 @@ def check_contents(root):
     return findings
 
 
+LAST_MODIFIED_LINE = re.compile(r'^_Last modified: (\d{4}-\d{2}-\d{2})_\s*$')
+
+
+def check_dates(root):
+    """Every page under wiki/ has a `_Last modified: YYYY-MM-DD_` line right
+    after its title, in exactly the format styleguide.md's Content shape
+    section specifies, and that date isn't in the future. Presence-and-shape
+    only -- whether the date is still *accurate* needs a human reading the
+    diff, which is what skill `wiki-sync` is for."""
+    findings = []
+    today = datetime.date.today()
+    for path in sorted(root.joinpath('wiki').rglob('*.md')):
+        lines = path.read_text().splitlines()
+        if not lines or not lines[0].startswith('# '):
+            continue  # no title line to anchor the check against
+        i = 1
+        while i < len(lines) and lines[i].strip() == '':
+            i += 1
+        m = LAST_MODIFIED_LINE.match(lines[i]) if i < len(lines) else None
+        if not m:
+            findings.append(
+                f"MISSING LAST-MODIFIED  {path}: no `_Last modified: "
+                f"YYYY-MM-DD_` line right after the title")
+            continue
+        date = datetime.date.fromisoformat(m.group(1))
+        if date > today:
+            findings.append(
+                f"FUTURE DATE  {path}: Last modified says {date}, which is "
+                f"after today ({today})")
+    return findings
+
+
 CONTENTS_ITEM_LINE = re.compile(r'^-\s+\[.+\]\(#[^)]+\)\s*$')
 
 
@@ -376,6 +418,13 @@ def regenerate_contents(path):
         insert_at = 1
         while insert_at < len(lines) and lines[insert_at].strip() == '':
             insert_at += 1
+        # A `_Last modified: ..._` line (styleguide.md) sits between the
+        # title and Contents -- skip past it too, so a fresh Contents block
+        # lands after it rather than splitting title from date.
+        if insert_at < len(lines) and LAST_MODIFIED_LINE.match(lines[insert_at]):
+            insert_at += 1
+            while insert_at < len(lines) and lines[insert_at].strip() == '':
+                insert_at += 1
         new_text = ''.join(lines[:insert_at]) + block + '\n' + ''.join(lines[insert_at:])
     if new_text != text:
         path.write_text(new_text)
@@ -396,7 +445,7 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'check'
     root = repo_root([sys.argv[0]] + sys.argv[2:])
 
-    cmds = ('phases', 'skills', 'gradle', 'links', 'anchors', 'contents', 'check')
+    cmds = ('phases', 'skills', 'gradle', 'links', 'anchors', 'contents', 'dates', 'check')
     if cmd not in cmds:
         print(__doc__)
         sys.exit(2)
@@ -414,6 +463,8 @@ def main():
         findings += check_anchors(root)
     if cmd in ('contents', 'check'):
         findings += check_contents(root)
+    if cmd in ('dates', 'check'):
+        findings += check_dates(root)
 
     for f in findings:
         print(f)

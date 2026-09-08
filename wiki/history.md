@@ -1,5 +1,7 @@
 # History
 
+_Last modified: 2026-09-08_
+
 ## Contents
 
 - [This repo's history so far](#this-repos-history-so-far)

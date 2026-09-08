@@ -73,11 +73,16 @@ At the end of a change that could make a wiki fact wrong, for example:
    - If a fix balloons into new prose that argues a fact rather than
      linking to it, that's a sign the fact belongs in the linked file's
      own header comment instead.
+   - **Bump the page's `_Last modified: YYYY-MM-DD_` line** (right after
+     the title) to today, on every page you actually edited in this step
+     — not on a page you only read and found still correct.
+     `check_wiki.py dates` only catches the line being missing or
+     malformed, never a stale date left behind; that half is this step.
 5. **Run the mechanical checks** before calling it done:
    ```sh
    python3 wiki/scripts/check_wiki.py check
    ```
-   Fix any `contents`/`anchors`/`links`/`skills`/`gradle`/`phases`
+   Fix any `contents`/`anchors`/`links`/`skills`/`gradle`/`phases`/`dates`
    finding it reports — `gen-contents <page>` regenerates a stale
    `## Contents` block automatically rather than by hand.
 6. **If nothing in `wiki/` actually mentions what changed, say so and

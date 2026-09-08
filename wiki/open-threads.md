@@ -1,5 +1,7 @@
 # Open threads
 
+_Last modified: 2026-09-08_
+
 ## Contents
 
 - [Tracked as GitHub issues](#tracked-as-github-issues)
