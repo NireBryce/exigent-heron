@@ -45,6 +45,11 @@
             pkgs.kotlin
             pkgs.gradle_9
             androidSdk
+            # The .justfile is the documented way to run anything here, so
+            # the shell that provides gradle and adb should provide the
+            # thing that dispatches to them too — same reasoning as not
+            # committing a gradlew.
+            pkgs.just
           ];
 
           JAVA_HOME = jdk.home;
@@ -73,12 +78,16 @@
             echo "  gradle: $(gradle --version | grep -m1 Gradle)"
             echo "  sdk:    $ANDROID_HOME"
             echo
-            echo "No gradlew in this repo by design — use the 'gradle' on PATH,"
-            echo "e.g. 'gradle assembleDebug' or 'gradle testDebugUnitTest'."
+            echo "No gradlew in this repo by design — use the 'gradle' on PATH."
+            echo "'just --list' shows every check; scripts/test.sh is what it runs."
             echo
-            echo "Emulator (needs /dev/kvm access, e.g. being in the 'kvm' group):"
-            echo "  avdmanager create avd -n dev -k \"system-images;android-37.0;google_apis;x86_64\" -d pixel_6"
-            echo "  emulator -avd dev"
+            echo "  just test          JVM unit tests, no device needed"
+            echo "  just test-device   androidTest + listener acceptance"
+            echo "  just test-all      everything, cheapest first"
+            echo
+            echo "The device recipes boot a headless emulator themselves if none is"
+            echo "attached (needs /dev/kvm access, e.g. being in the 'kvm' group),"
+            echo "creating the AVD on first use. 'just emulator' boots one to keep."
           '';
         };
       }
