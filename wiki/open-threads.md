@@ -139,6 +139,32 @@ which tracked issue corresponds to which thread below:
   floor still holds). `SecretDetectorTest` gained cases for empty list and
   hardcoded-floor-with-empty-list; `SecretDetectorHolderTest` verifies
   rebuild-on-emission. Listed here as a closed thread.
+- **`AGENTS.md` §4.4's "mark the rule as failing in the UI" is not
+  built** — noticed **2026-09-08** while auditing `AGENTS.md` against the
+  code. `RuleEngine` already reports both halves of the requirement (a
+  pattern that won't compile, and a match that hits the 100ms timeout)
+  through its `onRuleFailure` callback, and `RuleEngineTest` covers both.
+  What's missing is the last hop: `AppContainer` wires `onRuleFailure` to
+  `SafeLog.error`, so the failure lands in logcat and never reaches the
+  rule editor or rule list. `RuleEngine.kt`'s own doc comment has been
+  honest about this all along ("for a future settings screen to
+  surface"); `AGENTS.md` §4.4 was the copy that read as though it were
+  done, and was corrected the same day. Genuinely open — a rule silently
+  never matching, with the reason visible only under `adb logcat`, is the
+  failure mode `AGENTS.md` §4.8 rejects for TTS engines ("Handle init
+  failure ... with a visible error in the UI, not a silent no-op") applied
+  to a different subsystem.
+- **`AGENTS.md` §4.10's "reset TTS state" on listener disconnect is not
+  built** — noticed **2026-09-08**, same audit.
+  `NotificationTtsListener.onListenerDisconnected` calls
+  `SafeLog.lifecycle("listener disconnected")` and returns; nothing stops
+  the engine or drains the queue. So revoking notification access (or the
+  system rebinding the service, which it does unpredictably — the reason
+  §4.10 exists) leaves an in-flight utterance playing to completion.
+  Small to fix — `container.speechQueue.stopCurrent()` is already the
+  mid-utterance stop path `AudioBecomingNoisyReceiver` uses — but it is a
+  behaviour change, so it wants its own change rather than riding along
+  with a docs correction. `AGENTS.md` §4.10 corrected the same day.
 - **Phase 2's on-device acceptance criteria are unconfirmed** (see
   [status.md](status.md)): no device was available the session that
   built the listener/speech stack. Everything JVM-testable is tested and
