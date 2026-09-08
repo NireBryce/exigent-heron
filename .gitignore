@@ -26,6 +26,10 @@ local.properties
 # direnv
 .direnv/
 
+# Python bytecode — wiki/scripts/ is imported as a module by its own
+# tests and by anything that reuses check_wiki.py's helpers.
+__pycache__/
+
 # Nix build result symlinks
 result
 result-*
