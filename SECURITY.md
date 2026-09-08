@@ -1,6 +1,6 @@
 # Security & Hardening Checklist — Phase 5
 
-Evidence-gathering for `BUILD_PLAN.md` Phase 5 and `AGENTS.md` §8's
+Evidence-gathering for Phase 5 (see [wiki/status.md](wiki/status.md)) and `AGENTS.md` §8's
 "Definition of done." Every item below is either **[x] ticked with
 evidence** (a command actually run this session, and what it printed or
 what file it produced — not an assertion) or **[ ] pending device
@@ -91,7 +91,7 @@ No violations found; no fix needed for this item.
 
 ---
 
-## 2. Debug injector isolation (`AGENTS.md`/`BUILD_PLAN.md` Phase 1)
+## 2. Debug injector isolation (`AGENTS.md`, Phase 1)
 
 **[x]** `FakeNotifications` lives at
 `app/src/debug/java/net/breadthcharge/exigentheron/debug/FakeNotifications.kt`
@@ -232,7 +232,7 @@ No violations found; no fix needed for this item.
 
 ---
 
-## 4. Locked-device / in-call / work-profile tests (`BUILD_PLAN.md` Phase 5)
+## 4. Locked-device / in-call / work-profile tests (Phase 5)
 
 **[x] Run 2026-09-07, on the `nix develop` emulator (`flake.nix`), not a
 physical device — see the caveat below each result for exactly what that

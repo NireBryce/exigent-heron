@@ -137,7 +137,7 @@ change can invalidate it with nothing watching for the break. See
   code, not after") — this skill is the mechanical half of that same
   instinct, applied to text already in the tree rather than a new
   disagreement.
-- `BUILD_PLAN.md`, Phase 0/1 acceptance criteria (originally `AGENTS.md`
-  §6, before the build plan moved to its own file) — the worked
-  (mis)example this skill's own history section documents, and the two
-  lines that were the actual fix.
+- `wiki/status.md`'s Phase 0/1 acceptance criteria (originally `AGENTS.md`
+  §6, then `BUILD_PLAN.md`'s own file before that was removed too — see
+  `wiki/history.md`) — the worked (mis)example this skill's own history
+  section documents, and the two lines that were the actual fix.

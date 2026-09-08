@@ -49,8 +49,8 @@ import java.util.UUID
  * Form state for one [Rule], new or existing. Deliberately not backed
  * by DataStore directly — [save] is the only write, and only fires when
  * [titleError]/[bodyError] are both null, which is the actual mechanism
- * behind BUILD_PLAN.md Phase 3's "invalid regex shows an error at save
- * time rather than crashing later."
+ * behind Phase 3's acceptance criterion: "invalid regex shows an error at
+ * save time rather than crashing later."
  */
 class RuleEditorViewModel(
     private val ruleRepository: RuleRepository,

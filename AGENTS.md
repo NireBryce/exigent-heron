@@ -13,7 +13,7 @@
 - Do not log notification content. Ever. Any build variant. This is not negotiable and is the most likely way you will silently ruin this app.
 - Do not add analytics, crash reporting, or telemetry of any kind.
 - Do not request the `INTERNET` permission. If something appears to need it, stop and ask.
-- Work in phases (§6, in [BUILD_PLAN.md](BUILD_PLAN.md)). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
+- Work in phases (§6). Each phase ends with a working, installable app. Do not start phase N+1 until phase N builds and its acceptance criteria pass.
 - Commit at each phase boundary with a message describing what now works — as a series of granular commits (one per logical unit of work: the pure domain layer, the Android-facing data layer, UI, wiki-sync, etc.), not one big commit for the whole phase. Skill `submit-a-pr` covers landing that series together via a single PR.
 - Land every change — a phase-boundary commit included — via a branch and a pull request, never a direct commit, merge, or push to `main`. This applies to whichever agent is doing the work, not Claude Code specifically. Skill `submit-a-pr` (`.claude/skills/submit-a-pr/SKILL.md`, plain markdown — readable directly by any agent, not only one with a harness that loads skills automatically) has the full procedure: branch, PR, ask before merging, ask again before deleting the branch. `.claude/hooks/git-guard-pretooluse.sh` backs this mechanically for Claude Code specifically (it's a Claude Code hook mechanism, so a different agent's tooling won't run it) — the rule itself doesn't depend on that hook firing.
 
@@ -317,7 +317,7 @@ Add a separate "don't speak while locked" toggle, also defaulted on, checking `K
 
 - The listener service is the **only** component exported without being the launcher activity, and the `android:permission` attribute is what stops other apps binding it. Do not remove it.
 - Every other service, receiver, and provider: `android:exported="false"`.
-- **Do not create a `BroadcastReceiver` that accepts text to speak.** It is a convenient testing shortcut and it gives every app on the device a voice. For testing, use the debug-variant injector in [BUILD_PLAN.md](BUILD_PLAN.md) Phase 1.
+- **Do not create a `BroadcastReceiver` that accepts text to speak.** It is a convenient testing shortcut and it gives every app on the device a voice. For testing, use the debug-variant injector (`debug/FakeNotifications.kt`, from Phase 1 — see [wiki/architecture.md](wiki/architecture.md)).
 - No `INTERNET` permission in any manifest, including debug. `BLUETOOTH_CONNECT` (§4.9's per-device Bluetooth override) is this app's one runtime-permission exception — declared in the manifest as every permission must be, but never requested except when the user turns that specific feature on.
 - `data_extraction_rules.xml` should exclude everything.
 - Release build: `isMinifyEnabled = true`, `isShrinkResources = true`.
@@ -328,7 +328,7 @@ Add a separate "don't speak while locked" toggle, also defaulted on, checking `K
 
 ## 6. Phases
 
-Moved to [BUILD_PLAN.md](BUILD_PLAN.md) — the phase-by-phase build order (Phase 0 through Phase 5) and each phase's acceptance criteria. Work in phases; each phase must build and install, and phase N+1 does not start until phase N's criteria pass.
+All six phases (0 through 5 — skeleton, domain core, listener/speech, persistence/UI, gates/polish, hardening) are built and verified; see [wiki/status.md](wiki/status.md) for what each phase covered and the evidence it's done. The rule that produced them still applies to future work: build and install at each phase boundary, and don't start phase N+1 until phase N's acceptance criteria pass.
 
 ---
 

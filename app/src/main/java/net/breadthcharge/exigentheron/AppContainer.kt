@@ -47,7 +47,7 @@ class AppContainer(private val appContext: Context) {
     // current for the gates/SpeechQueue lambdas — see currentSettings.
     // Blocking on the first value at container-construction time (App's
     // onCreate, main thread) is the "simplest, correct" option the
-    // BUILD_PLAN.md Phase 4 note calls for: DataStore's first emission
+    // Phase 4 note calls for: DataStore's first emission
     // is a local Preferences-file read with no network involved, and
     // AndroidTtsEngine/SpeechQueue both need a real value to construct
     // with, not a value that arrives later.

@@ -39,8 +39,8 @@ At the end of a change that could make a wiki fact wrong, for example:
 - adding, renaming, or removing a class/file `architecture.md`,
   `traps-and-skills.md`, or `status.md` mentions by name
 - finishing a phase, or making real progress on one — `status.md`'s Built
-  and Verified columns need to reflect what's actually true, not what
-  `BUILD_PLAN.md` says should eventually be true
+  and Verified columns need to reflect what's actually true, not what a
+  phase's own spec says should eventually be true
 - fixing a bug `open-threads.md` describes as open, or finding a new one
   worth recording there
 - a decision made while implementing that `AGENTS.md` doesn't already

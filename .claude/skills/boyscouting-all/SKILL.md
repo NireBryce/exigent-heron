@@ -94,8 +94,8 @@ Adapted from nixos-configs, not copied verbatim:
   hand-searching is the whole method here, not a supplement to tooling.
 - **Verification command swapped for this repo's actual one** — `gradle
   assembleDebug` / `gradle testDebugUnitTest` in place of `just
-  preflight`, matching `wiki/testing.md` and `BUILD_PLAN.md`'s own
-  acceptance criteria.
+  preflight`, matching `wiki/testing.md` and each phase's own acceptance
+  criteria (see `wiki/status.md`).
 - **`trim-docs` cross-reference dropped** — this repo has no dedicated
   conciseness-pass skill; a docs-only sweep is just its own scoped task
   here.

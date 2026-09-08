@@ -52,10 +52,10 @@ file, so it holds real procedural content instead of just links.
 ## Pages
 
 - [Overview](overview.md) — orientation for meeting this repo cold: what
-  the app is, which of the three documents answers which kind of
+  the app is, which of the two documents answers which kind of
   question, and the path a notification takes through the code.
-- [Status](status.md) — phase-by-phase: what `BUILD_PLAN.md` specifies,
-  what's actually built, and what's been verified (by running the actual
+- [Status](status.md) — phase-by-phase: what each phase required, what's
+  actually built, and what's been verified (by running the actual
   command, dated) rather than assumed from the spec text alone.
 - [Architecture](architecture.md) — the real package layout as it stands,
   cross-referenced against `AGENTS.md` §3's target tree, and any place the
