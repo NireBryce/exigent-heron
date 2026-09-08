@@ -47,15 +47,16 @@ import net.breadthcharge.exigentheron.AppContainer
 import net.breadthcharge.exigentheron.data.BondedBluetoothDevice
 import net.breadthcharge.exigentheron.data.Settings
 import net.breadthcharge.exigentheron.data.loadBondedBluetoothDevices
+import net.breadthcharge.exigentheron.domain.SecretDetector
 import net.breadthcharge.exigentheron.speech.BluetoothDeviceDecision
 import net.breadthcharge.exigentheron.speech.TtsEngineStatus
 
 /**
- * AGENTS.md §4.8/§4.9: the headset-only, lock-state, and DND-override
+ * AGENTS.md §4.5/§4.8/§4.9: the headset-only, lock-state, and DND-override
  * toggles, plus the engine picker with a visible active engine and
- * init/language error, plus the per-device Bluetooth allow/deny list —
- * all in one screen since there still aren't enough sections to justify
- * tabs (AGENTS.md §0's YAGNI).
+ * init/language error, plus the per-device Bluetooth allow/deny list,
+ * plus the OTP keyword list editor — all in one screen since there still
+ * aren't enough sections to justify tabs (AGENTS.md §0's YAGNI).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,6 +102,11 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
             emptyList()
         }
     }
+
+    var otpKeywords by remember(settings.otpKeywords) {
+        mutableStateOf(settings.otpKeywords?.toList() ?: SecretDetector.DEFAULT_OTP_KEYWORDS)
+    }
+    var newKeywordInput by remember { mutableStateOf("") }
 
     Scaffold(
         modifier = modifier,
@@ -196,6 +202,71 @@ fun SettingsScreen(container: AppContainer, onDone: () -> Unit, modifier: Modifi
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.padding(top = 8.dp),
             )
+
+            Text("OTP detection keywords", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
+            Text(
+                "When a notification body contains a digit run (4-8 digits) near any of these keywords, " +
+                    "the message is silenced rather than announced. Leave empty to disable keyword-based detection " +
+                    "(the hardcoded check for bare 6-digit bodies still applies). Defaults shown below; edit to customize.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (otpKeywords.isEmpty()) {
+                Text(
+                    "Keyword detection is off (list is empty).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                for (keyword in otpKeywords) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    ) {
+                        Text(keyword, modifier = Modifier.weight(1f))
+                        TextButton(onClick = {
+                            otpKeywords = otpKeywords - keyword
+                            scope.launch { container.settingsRepository.setOtpKeywords(otpKeywords.toSet()) }
+                        }) {
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            ) {
+                OutlinedTextField(
+                    value = newKeywordInput,
+                    onValueChange = { newKeywordInput = it },
+                    label = { Text("New keyword") },
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = {
+                        if (newKeywordInput.isNotBlank() && newKeywordInput !in otpKeywords) {
+                            otpKeywords = otpKeywords + newKeywordInput
+                            scope.launch { container.settingsRepository.setOtpKeywords(otpKeywords.toSet()) }
+                            newKeywordInput = ""
+                        }
+                    },
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text("Add")
+                }
+            }
+            TextButton(
+                onClick = {
+                    otpKeywords = SecretDetector.DEFAULT_OTP_KEYWORDS
+                    scope.launch { container.settingsRepository.setOtpKeywords(null) }
+                    newKeywordInput = ""
+                },
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Reset to defaults")
+            }
 
             Text("TTS engine", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 24.dp))
             Text(
