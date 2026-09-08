@@ -24,10 +24,15 @@ class SecretDetector(
     // boundaries fix that without complicating the multi-word entries
     // ("security code") — \b only checks the transition at each
     // phrase's own start/end, not anything about the space in between.
-    private val keywordPattern = Regex(
-        keywords.joinToString("|") { "\\b${Regex.escape(it)}\\b" },
-        RegexOption.IGNORE_CASE,
-    )
+    // If keywords list is empty, this pattern is never used (see looksLikeOtp).
+    private val keywordPattern: Regex? = if (keywords.isEmpty()) {
+        null
+    } else {
+        Regex(
+            keywords.joinToString("|") { "\\b${Regex.escape(it)}\\b" },
+            RegexOption.IGNORE_CASE,
+        )
+    }
 
     fun scan(decision: Decision, payload: NotificationPayload): Decision {
         if (decision is Decision.Suppress) return decision
@@ -52,6 +57,8 @@ class SecretDetector(
     }
 
     private fun looksLikeOtp(body: String): Boolean {
+        if (keywordPattern == null) return false // No keywords to match
+
         for (match in DIGIT_RUN.findAll(body)) {
             val start = (match.range.first - PROXIMITY_WINDOW).coerceAtLeast(0)
             val end = (match.range.last + PROXIMITY_WINDOW).coerceAtMost(body.length - 1)
@@ -77,7 +84,7 @@ class SecretDetector(
         return "New notification from $who"
     }
 
-    private companion object {
+    companion object {
         const val PROXIMITY_WINDOW = 40
 
         // Mirrors android.app.Notification.VISIBILITY_PRIVATE / VISIBILITY_SECRET
