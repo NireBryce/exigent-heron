@@ -17,7 +17,7 @@ package net.breadthcharge.exigentheron.domain
  * either — it downgrades one step further to [Decision.Suppress].
  */
 class SecretDetector(
-    private val keywords: List<String> = DEFAULT_OTP_KEYWORDS,
+    val keywords: List<String> = DEFAULT_OTP_KEYWORDS,
 ) {
     // \b-wrapped: plain substring matching would flag "shopping" for
     // containing "pin", or "encode" for containing "code". Word
