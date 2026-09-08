@@ -119,6 +119,10 @@ KNOWN_GRADLE_TASKS = {
     'assembleDebug', 'assembleRelease', 'testDebugUnitTest', 'installDebug',
     'build', 'clean', 'tasks', ':app:processDebugMainManifest',
     ':app:processReleaseMainManifest', ':app:compileReleaseKotlin',
+    # Instrumented tests (app/src/androidTest), added 2026-09-08. Needs a
+    # device or emulator, unlike every other task above.
+    'connectedDebugAndroidTest',
+    'lintDebug', 'lintRelease',
 }
 
 

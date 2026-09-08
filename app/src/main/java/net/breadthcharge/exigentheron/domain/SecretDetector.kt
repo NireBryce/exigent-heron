@@ -94,8 +94,14 @@ class SecretDetector(
         // (0 / -1). These constants must stay in sync — NotificationExtractor
         // passes the real platform value straight through as an Int, so these must track
         // the framework's values, not be reinvented.
-        private const val VISIBILITY_PRIVATE = 0
-        private const val VISIBILITY_SECRET = -1
+        //
+        // internal, not private, purely so an instrumented test can assert
+        // that they still match the framework's — a drift here wouldn't
+        // fail to compile, it would silently misclassify every
+        // notification, and this file can't import android.app to check
+        // itself. See androidTest's GatePolicyFrameworkConstantsTest.
+        internal const val VISIBILITY_PRIVATE = 0
+        internal const val VISIBILITY_SECRET = -1
 
         private val DIGIT_RUN = Regex("""\b\d{4,8}\b""")
         private val BARE_SIX_DIGIT_BODY = Regex("""^\d{6}$""")

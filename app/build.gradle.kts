@@ -31,6 +31,9 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+        // Instrumented tests run through AndroidX's runner, not the
+        // long-deprecated platform InstrumentationTestRunner.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -101,6 +104,11 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

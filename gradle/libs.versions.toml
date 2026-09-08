@@ -16,6 +16,11 @@ junit = "4.13.2"
 # comment).
 kotlinxCoroutines = "1.10.2"
 truth = "1.4.5"
+# Instrumented tests only (app/src/androidTest). Kept apart from the JVM
+# test versions above because they run somewhere else entirely — on a
+# device or emulator, against the real framework.
+androidxTestJunit = "1.2.1"
+androidxTestRunner = "1.6.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,6 +44,14 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+# AGENTS.md §3 names app/src/androidTest as the tool for framework facts
+# and wiring — the things a JVM test structurally cannot reach. These two
+# are the whole of what that needs: a JUnit4 runner that runs on a device,
+# and ApplicationProvider for a real Context. No Espresso (no UI test yet),
+# no Robolectric (a real emulator ships in the dev shell, and a simulated
+# framework is the wrong place to learn framework facts).
+androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
