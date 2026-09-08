@@ -3,7 +3,7 @@
 ## Contents
 
 - [What this is](#what-this-is)
-- [The three-document system](#the-three-document-system)
+- [The two-document system](#the-two-document-system)
 - [The pipeline](#the-pipeline)
 - [Components worth reading first](#components-worth-reading-first)
 - [Build and tooling](#build-and-tooling)
@@ -42,23 +42,29 @@ dependency already carries it — see [history.md](history.md) for the full
 reasoning and [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) for what
 the APK actually ships with.
 
-## The three-document system
+## The two-document system
 
-Three layers, deliberately not merged, because they answer different
+Two layers, deliberately not merged, because they answer different
 questions and go stale at different rates:
 
 - [`AGENTS.md`](../AGENTS.md) — the standing spec: *what* to build, in
   numbered sections (§4.1–§4.10 are the per-component specs everything
-  else cites). Written as an instruction to whichever agent is working,
-  including its own §0 instruction to say when it looks wrong rather than
-  build around it silently.
-- [`BUILD_PLAN.md`](../BUILD_PLAN.md) — *what order*: six phases, each
-  with its own acceptance criteria and a rule against starting phase N+1
-  before N passes.
-- `wiki/` — what's *actually true right now*, which neither of the above
-  tracks. [README.md](README.md) explains why that's a separate layer at
-  all; [status.md](status.md) holds the phase table, where a "Verified"
-  cell requires a date and the literal command run that session.
+  else cites), plus §6's phase rule (build and install at each boundary,
+  don't start phase N+1 before N's criteria pass). Written as an
+  instruction to whichever agent is working, including its own §0
+  instruction to say when it looks wrong rather than build around it
+  silently.
+- `wiki/` — what's *actually true right now*, which the spec alone
+  doesn't track. [README.md](README.md) explains why that's a separate
+  layer at all; [status.md](status.md) holds the phase table (all six
+  phases built and verified as of 2026-09-07), where a "Verified" cell
+  requires a date and the literal command run that session.
+
+A third layer, `BUILD_PLAN.md`, held the phase-by-phase build order
+through the six phases it specified; it was removed once all of them
+were built and verified, since `status.md`'s own phase table had already
+absorbed what it said "done" meant for each — see
+[history.md](history.md).
 
 [README.md](../README.md) is upfront that most of the implementation,
 tests, and this wiki are written by LLM coding agents under human

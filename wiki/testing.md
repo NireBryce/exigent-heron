@@ -91,11 +91,11 @@ for the hook that nudges toward this automatically.
 `NotificationTtsListener` exists as of Phase 2 (see
 [status.md](status.md)) but its on-device acceptance criteria are
 **unconfirmed** — no device was available the session that built it.
-`BUILD_PLAN.md`'s own per-phase acceptance criteria are the actual test
-script to run (a notification spoken once, three duplicates in 10
-seconds still speaking once, a music duck-and-recover) — not restated
-here to avoid a second copy that can drift from theirs. To actually run
-them:
+Phase 2's own acceptance criteria (originally `BUILD_PLAN.md`'s, removed
+once all six phases were built and verified — this page is now the copy
+of record) are the actual test script to run: a notification spoken
+once, three duplicates in 10 seconds still speaking once, a music
+duck-and-recover. To actually run them:
 
 1. `nix develop --command gradle installDebug` with a device or emulator
    attached.
@@ -133,7 +133,7 @@ listener) rather than this placeholder.
 
 ## Once there's a rule editor to test (Phase 3+)
 
-Phase 3's own acceptance criteria (`BUILD_PLAN.md`) are also
+Phase 3's own acceptance criteria (see [status.md](status.md)) are also
 **unconfirmed** on-device this session — see [open-threads.md](open-threads.md).
 To run them:
 
@@ -154,7 +154,7 @@ To run them:
 
 ## Once there's a settings screen to test (Phase 4+)
 
-Phase 4's on-device acceptance criteria (`BUILD_PLAN.md`) are
+Phase 4's on-device acceptance criteria (see [status.md](status.md)) are
 **unconfirmed** — no device available this session. The queue-collapse
 criterion is covered directly by a JVM unit test
 (`SpeechQueueTest`'s "a burst of more than 5 pending items collapses to
@@ -171,14 +171,14 @@ one summary utterance"); the other two need a real device:
    debugger) rather than the one still active from before the switch.
 3. Trigger ten notifications within five seconds from an allowlisted
    app; confirm a single "10 new notifications." utterance is heard
-   instead of ten read individually — this is BUILD_PLAN.md Phase 4's
-   own acceptance line, restated here as the on-device version of the
-   already-passing unit test above.
+   instead of ten read individually — this is Phase 4's own acceptance
+   line, restated here as the on-device version of the already-passing
+   unit test above.
 
 ## Hardening-pass device matrix (Phase 5)
 
-`BUILD_PLAN.md` Phase 5 requires testing "on a locked device, in a call,
-and with a work profile present if available." **Locked-device and
+Phase 5 requires testing "on a locked device, in a call, and with a work
+profile present if available." **Locked-device and
 in-call confirmed on the emulator as of 2026-09-07** (real
 `KeyguardManager`/`AudioManager` state, not a mock — see `SECURITY.md`
 §4 for exactly how); work-profile behavior confirmed there too, but only

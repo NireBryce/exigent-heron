@@ -219,6 +219,16 @@ message carries, not as a running paraphrase of the log — see
   personal use; the notices file is what closes that gap if the APK is
   ever distributed). JUnit is the one non-Apache dependency (EPL-1.0) and
   is test-only, never shipped.
+- **`BUILD_PLAN.md` removed** (2026-09-08): all six phases it specified
+  are built and verified (`status.md`'s Phase status table), so the
+  phase-by-phase build order it held no longer has forward-looking work
+  left to guide. Its acceptance criteria live on as plain text in
+  `status.md`'s Spec column, `testing.md`'s device-test steps, and
+  scattered code comments citing "Phase N" directly rather than the file;
+  the phase rule itself (build and install at each boundary, don't start
+  N+1 before N's criteria pass) moved into `AGENTS.md` §6 inline.
+  `wiki/scripts/check_wiki.py` no longer scans it. This entry, not a
+  restored copy, is the record of what it said and why it's gone.
 - Nothing else yet beyond the above. This page grows as real decisions
   get made that `AGENTS.md` doesn't already narrate — a library swapped
   for another, a phase's scope adjusted, something specified that turned

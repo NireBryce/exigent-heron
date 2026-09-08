@@ -2,7 +2,7 @@
 personal android tts utility, huge wip
 
 See [AGENTS.md](AGENTS.md) for the actual build spec, and
-[BUILD_PLAN.md](BUILD_PLAN.md) for the phase-by-phase build order.
+[wiki/status.md](wiki/status.md) for the phase-by-phase build history.
 
 ## LLM co-programming
 

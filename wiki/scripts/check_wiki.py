@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Static checks of wiki/ (and AGENTS.md and BUILD_PLAN.md, the files
-outside wiki/ that carry wiki-shaped claims) against the actual source
-tree, for claims that silently go stale after a refactor -- a file
-renamed, a phase's status claimed without re-checking it, a skill
-renamed. Nothing about `gradle
+"""Static checks of wiki/ (and AGENTS.md, the file outside wiki/ that
+carries wiki-shaped claims) against the actual source tree, for claims
+that silently go stale after a refactor -- a file renamed, a phase's
+status claimed without re-checking it, a skill renamed. Nothing about
+`gradle
 build` or `nix flake check` reads prose, so a doc can say something the
 tree has stopped agreeing with and nothing catches it.
 
@@ -28,15 +28,17 @@ extractable facts only:
 
   phases    wiki/status.md's "Phase status" table (Phase | ... | Built |
             Verified) against PHASE_FILES below (a hand-maintained map,
-            same shape as nixos-configs' own HOSTS constant, from
-            BUILD_PLAN.md's own component lists) -- for each phase claimed
-            "Yes", every one of its key files must actually exist somewhere
-            under app/src (found by filename, not by exact path, so a file
-            genuinely moved to a different package doesn't false-positive).
-            A phase claimed "No" whose files all exist anyway is a REVIEW
-            finding, not a hard failure -- files existing doesn't prove the
-            phase's real acceptance criteria in BUILD_PLAN.md pass, only
-            that status.md may be under-claiming and is worth a look.
+            same shape as nixos-configs' own HOSTS constant, from each
+            phase's own component list, originally BUILD_PLAN.md's before
+            it was removed -- see wiki/history.md) -- for each phase
+            claimed "Yes", every one of its key files must actually exist
+            somewhere under app/src (found by filename, not by exact path,
+            so a file genuinely moved to a different package doesn't
+            false-positive). A phase claimed "No" whose files all exist
+            anyway is a REVIEW finding, not a hard failure -- files
+            existing doesn't prove the phase's real acceptance criteria
+            pass, only that status.md may be under-claiming and is worth a
+            look.
 
   skills    Every "skill `name`"/"`name` skill" mention across wiki/ and
             AGENTS.md against real `.claude/skills/<name>/` directories --
@@ -83,10 +85,12 @@ headings -- the actual fix for a `contents` finding.
 """
 import re, sys, pathlib
 
-# Phase number -> key filenames from BUILD_PLAN.md's own component lists,
-# matched by filename anywhere under app/src rather than a fixed path, so a
-# file moved to a different package doesn't false-positive. SECURITY.md is
-# the one entry that lives at the repo root instead of under app/src.
+# Phase number -> key filenames from each phase's own component list
+# (originally BUILD_PLAN.md's, before it was removed once all six phases
+# were built and verified -- see wiki/history.md), matched by filename
+# anywhere under app/src rather than a fixed path, so a file moved to a
+# different package doesn't false-positive. SECURITY.md is the one entry
+# that lives at the repo root instead of under app/src.
 PHASE_FILES = {
     0: (['App.kt', 'AppContainer.kt', 'SafeLog.kt', 'MainActivity.kt'], 'app/src'),
     1: (['NotificationPayload.kt', 'Rule.kt', 'Decision.kt', 'RuleEngine.kt',
@@ -100,7 +104,7 @@ PHASE_FILES = {
 
 # Hand-maintained since there's no .justfile-equivalent single source of
 # truth for valid Gradle task names in this repo -- see this module's
-# docstring. Includes the module-qualified form BUILD_PLAN.md itself uses.
+# docstring. Includes the module-qualified form the wiki itself uses.
 KNOWN_GRADLE_TASKS = {
     'assembleDebug', 'assembleRelease', 'testDebugUnitTest', 'installDebug',
     'build', 'clean', 'tasks', ':app:processDebugMainManifest',
@@ -116,9 +120,8 @@ def repo_root(argv):
 
 def doc_files(root):
     """Every markdown file the checks below scan: all of wiki/ (recursive)
-    plus AGENTS.md and BUILD_PLAN.md."""
-    return (sorted(root.joinpath('wiki').rglob('*.md'))
-            + [root / 'AGENTS.md', root / 'BUILD_PLAN.md'])
+    plus AGENTS.md."""
+    return sorted(root.joinpath('wiki').rglob('*.md')) + [root / 'AGENTS.md']
 
 
 STATUS_ROW = re.compile(

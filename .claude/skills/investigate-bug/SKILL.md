@@ -33,8 +33,8 @@ hours before anyone checked it was already written up two days earlier.)
 1. **Before reproducing anything**, run `gh issue list --repo
    NireBryce/exigent-heron --search "<keywords>" --state all` with a
    couple of guesses from the report's own wording (symptom text, error
-   message, class/function name), and grep `AGENTS.md`, `BUILD_PLAN.md`,
-   and `wiki/` for the same keywords — `wiki/open-threads.md` is where a
+   message, class/function name), and grep `AGENTS.md` and `wiki/` for the
+   same keywords — `wiki/open-threads.md` is where a
    known gap or open question like this would already be tracked, and
    `wiki/traps-and-skills.md` is where a past mistake matching the
    symptom would already be written up with its general form.
@@ -51,7 +51,7 @@ hours before anyone checked it was already written up two days earlier.)
 4. **State fixed vs. verified precisely.** A fix that hasn't actually been
    built and re-tested (`gradle assembleDebug`/`testDebugUnitTest`, or a
    real run on-device per the relevant Phase's acceptance criteria in
-   BUILD_PLAN.md) is *in the tree*, not *fixed* — say which one, in the
+   `wiki/status.md`) is *in the tree*, not *fixed* — say which one, in the
    issue and your reply both, not just implied.
 
 ## See also
