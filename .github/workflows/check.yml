@@ -76,10 +76,34 @@ jobs:
       # Surfaces lint's findings in the PR's "Files changed"/Security tab
       # via GitHub's code scanning, instead of only a build-log grep --
       # existing tool's own report, not a second analysis.
-      - name: upload lint results to code scanning
+      #
+      # One step per variant, each with its own `category`, deliberately.
+      # Two earlier shapes both failed, on every run rather than
+      # intermittently:
+      #
+      #   * a two-line `sarif_file:` block naming both reports --
+      #     upload-sarif reads a multi-line value as one literal path
+      #     (`Path does not exist: ...debug.sarif\n...release.sarif`).
+      #     This is what broke every run from 977b23d onward.
+      #   * a single `sarif_file: app/build/reports/` directory upload --
+      #     valid as a path, but it bundles both variants' runs into one
+      #     upload sharing one category, which code scanning has rejected
+      #     since 2025-07-21 ("does not support uploading multiple SARIF
+      #     runs with the same category").
+      #
+      # Distinct categories also keep the two variants' findings from
+      # overwriting each other in the Security tab: code scanning treats
+      # a category as the identity of a recurring analysis.
+      - name: upload debug lint results to code scanning
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: |
-            app/build/reports/lint-results-debug.sarif
-            app/build/reports/lint-results-release.sarif
+          sarif_file: app/build/reports/lint-results-debug.sarif
+          category: lint-debug
+
+      - name: upload release lint results to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: app/build/reports/lint-results-release.sarif
+          category: lint-release
