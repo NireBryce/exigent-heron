@@ -192,20 +192,44 @@ class SpeechQueueTest {
     @Test
     fun `a burst of more than 5 pending items collapses to one summary utterance`() = runBlocking {
         val scope = CoroutineScope(SupervisorJob())
-        val fake = FakeTtsEngine()
-        // No gate needed: enqueue() is a fast, non-suspending trySend()
-        // on this test's own thread, and none of these ten calls yields
-        // — same assumption the "requests are spoken in order" test
-        // above already relies on for its (smaller, ungated) burst.
+        val consumerParked = CompletableDeferred<Unit>()
+        val releasePrimer = CompletableDeferred<Unit>()
+        // Park the consumer inside a primer utterance *before* the burst
+        // is enqueued at all, using the same onSpeak gate the audio-focus
+        // test above uses.
+        //
+        // This gate is load-bearing, not ceremony. An earlier version of
+        // this test enqueued the ten items with no gate, on the stated
+        // assumption that enqueue() is a non-suspending trySend() that
+        // never yields — true of the *producer*, but it says nothing
+        // about the consumer, which runs on Dispatchers.Default (a
+        // different thread) and is free to receive and batch the first
+        // few items while the remaining enqueues are still happening. A
+        // batch of 5 or fewer is then spoken item-by-item rather than
+        // collapsed, which is exactly what the assertion below would
+        // see. That version passed locally and failed on CI's slower,
+        // more contended runner — see wiki/traps-and-skills.md.
+        val fake = FakeTtsEngine(
+            onSpeak = { text ->
+                if (text == "primer") {
+                    consumerParked.complete(Unit)
+                    releasePrimer.await()
+                }
+            },
+        )
         val queue = SpeechQueue(fake, { true }, {}, { false }, { false }, { true }, scope)
 
-        for (i in 1..10) queue.enqueue(request(i.toString()))
-        awaitCount(fake.speakCalls, 1)
+        queue.enqueue(request("primer"))
+        withTimeout(5.seconds) { consumerParked.await() }
 
-        // Give any (incorrect) extra speak() calls a moment to show up
-        // before asserting there's exactly one.
-        withTimeout(2.seconds) { kotlinx.coroutines.delay(200) }
-        assertThat(fake.speakCalls).containsExactly("10 new notifications.")
+        // The consumer is now suspended inside speak("primer"), so all
+        // ten land in the channel before it can receive any of them —
+        // making the batch it drains next deterministically all ten.
+        for (i in 1..10) queue.enqueue(request(i.toString()))
+        releasePrimer.complete(Unit)
+
+        awaitCount(fake.speakCalls, 2)
+        assertThat(fake.speakCalls).containsExactly("primer", "10 new notifications.").inOrder()
         scope.shutdown()
     }
 
