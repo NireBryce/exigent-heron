@@ -6,11 +6,9 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 
 /**
- * Requests `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK` and abandons it — see
- * AGENTS.md §4.7. [SpeechQueue] is responsible for calling this once per
- * burst (before the first queued item, after the queue drains), not
- * once per utterance — doing it per-utterance is what causes audible
- * ducking thrash on a burst of notifications.
+ * Requests and abandons `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`.
+ * [SpeechQueue] calls this once per burst (before the first item, after the queue drains),
+ * not per-utterance — per-utterance causes audible ducking thrash on notification bursts.
  *
  * `USAGE_ASSISTANCE_ACCESSIBILITY`: this app reads notification content
  * aloud in place of the user looking at the screen, the same category

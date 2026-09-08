@@ -6,10 +6,8 @@ import android.media.AudioDeviceInfo
 enum class BluetoothDeviceDecision { ALLOWED, DENIED, UNSET }
 
 /**
- * Headset-only enforcement — see AGENTS.md §4.9. "The default should not
- * be broadcasting private messages to a room": [allows] returns `false`
- * whenever the headset-only setting is on and none of the currently
- * connected outputs is a headset.
+ * Headset-only enforcement — enabled by default to prevent broadcasting private notifications
+ * to a room. [allows] returns `false` when this setting is on and no connected output is a headset.
  *
  * Takes [headsetOnlyEnabled]/[connectedOutputTypes] as function
  * references rather than an `AudioManager`/`SettingsRepository` directly

@@ -3,11 +3,10 @@ package net.breadthcharge.exigentheron
 import android.util.Log
 
 /**
- * The only permitted entry point to [android.util.Log] in this codebase —
- * see AGENTS.md §4.6. There is deliberately no function here that accepts
- * an arbitrary String. If you find yourself wanting one so you can log a
- * notification title or body, that is the feature working: put whatever
- * you were about to log somewhere that isn't logcat.
+ * The only permitted entry point to [android.util.Log] in this codebase.
+ * Three functions only: decision(pkg, ruleId, action), lifecycle(msg), error(msg, t?).
+ * Deliberately no arbitrary-String function — if you're reaching for one to log notification
+ * content, that's the safety feature working. Put that data somewhere other than logcat.
  *
  * CI (or a pre-commit grep) should assert `android.util.Log` appears in
  * exactly this one file.

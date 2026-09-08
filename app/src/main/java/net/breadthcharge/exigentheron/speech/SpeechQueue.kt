@@ -15,24 +15,21 @@ import kotlin.time.Duration.Companion.seconds
 private const val QUEUE_CAPACITY = 32
 private const val INTER_UTTERANCE_SILENCE_MILLIS = 400L
 
-/** AGENTS.md §4.7: "If the queue exceeds 5 pending items, collapse to a summary." */
+/** If queue exceeds this many pending items, collapse to "5 new notifications" instead of reading each one. */
 private const val BURST_COLLAPSE_THRESHOLD = 5
 
 /**
- * Single-consumer actor over a bounded [Channel] — see AGENTS.md §4.7.
- * [enqueue] never suspends the caller (`NotificationTtsListener`)
- * waiting for speech to finish; it posts and returns immediately,
- * dropping the *oldest* pending item on overflow rather than blocking
- * notification delivery or growing without bound.
+ * Single-consumer actor over a bounded [Channel].
+ * [enqueue] posts and returns immediately (never blocks the notification listener);
+ * overflow drops the oldest pending item rather than blocking delivery or growing unbounded.
  *
  * Takes [requestAudioFocus]/[abandonAudioFocus]/[isInCall]/[isBlockedByDnd]/
  * [isOutputRouteAllowed] as function references rather than an
  * [AudioFocusManager], `AudioManager`, or `NotificationManager` directly —
  * `AudioFocusManager`'s constructor touches a real `Context`
  * immediately, which makes it, and anything holding one, uninstantiable
- * in a JVM test. This keeps [TtsEngine] as the *only* real dependency
- * (per AGENTS.md §4.7: "the only way to test queue behaviour without an
- * emulator"), while still letting a JVM test substitute the audio-focus,
+ * in a JVM test. [TtsEngine] is the only real dependency, making this
+ * testable on the JVM without an emulator. Tests substitute audio-focus,
  * in-call, DND, and output-route behavior too, with plain lambdas instead
  * of a second fake class. `AppContainer` wires the real ones:
  * `audioFocusManager::requestFocus` / `::abandonFocus`, an

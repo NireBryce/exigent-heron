@@ -11,7 +11,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.suspendCancellableCoroutine
 import net.breadthcharge.exigentheron.SafeLog
 
-/** Observable init/failure state — see AGENTS.md §4.8's "not a silent no-op". */
+/** Observable init/failure state — always visible, never a silent failure. */
 sealed interface TtsEngineStatus {
     data object Initializing : TtsEngineStatus
     data object Ready : TtsEngineStatus
@@ -19,14 +19,10 @@ sealed interface TtsEngineStatus {
 }
 
 /**
- * Wraps [android.speech.tts.TextToSpeech]. [enginePackage] is the user's
- * persisted choice from AGENTS.md §4.8's engine picker — null falls back
- * to the system default, which is only ever a *temporary* state until
- * the user has picked one in settings, never a silent permanent fallback
- * (§4.8: "do not silently accept the system default"). This class
- * exposes [statusListener] so the settings screen can surface an init
- * failure or missing-language data instead of the silent no-op AGENTS.md
- * §4.8 explicitly warns against.
+ * Wraps [android.speech.tts.TextToSpeech]. [enginePackage] is the user's persisted choice,
+ * null only temporarily until they pick one in settings (never a permanent silent fallback to
+ * system default). Exposes [statusListener] so settings can surface init failures and
+ * missing-language data — never silent failures.
  */
 class AndroidTtsEngine(
     context: Context,
@@ -45,9 +41,8 @@ class AndroidTtsEngine(
             ready.completeExceptionally(IllegalStateException(reason))
             return@OnInitListener
         }
-        // AGENTS.md §4.8: LANG_MISSING_DATA/LANG_NOT_SUPPORTED get a
-        // visible error too, not a silent no-op — the engine "succeeded"
-        // but has nothing to actually speak the default locale with.
+        // LANG_MISSING_DATA/LANG_NOT_SUPPORTED are visible errors: the engine "succeeded"
+        // but has nothing to speak the default locale with — surface this, don't silently fail.
         when (val langResult = tts.setLanguage(Locale.getDefault())) {
             TextToSpeech.LANG_MISSING_DATA, TextToSpeech.LANG_NOT_SUPPORTED -> {
                 val reason = "TTS language unavailable (result=$langResult)"
@@ -124,11 +119,9 @@ class AndroidTtsEngine(
         }
 
     /**
-     * AGENTS.md §4.8: "Enumerate with `TextToSpeech.getEngines()`, show
-     * the list in settings." [TextToSpeech.getEngines] is an instance
-     * method, not static, but it returns every engine installed on the
-     * device regardless of which one *this* instance is bound to — safe
-     * to call even while this instance's own init is still pending.
+     * List all installed TTS engines for the settings picker.
+     * [TextToSpeech.getEngines] is an instance method but returns every engine on the device,
+     * not just the one this instance uses — safe to call during init.
      */
     fun listEngines(): List<TextToSpeech.EngineInfo> = tts.engines
 

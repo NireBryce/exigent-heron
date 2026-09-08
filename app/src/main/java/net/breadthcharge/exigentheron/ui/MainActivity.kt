@@ -38,9 +38,8 @@ import net.breadthcharge.exigentheron.ui.rules.RuleListScreen
 import net.breadthcharge.exigentheron.ui.settings.SettingsScreen
 
 /**
- * No navigation-compose dependency (AGENTS.md §2's list doesn't have
- * one, and three screens don't need one) — [Screen] plus a manual
- * `when` in [MainActivity] is the whole nav stack.
+ * Three screens need no nav library — [Screen] sealed interface plus a manual
+ * `when` expression in [MainActivity] is the entire nav stack.
  */
 private sealed interface Screen {
     data object Main : Screen
@@ -117,7 +116,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Re-checked here specifically so returning from the system
         // settings screen (below) reflects a just-granted permission
-        // without needing a manual refresh — AGENTS.md §4.10.
+        // without needing a manual app refresh.
         accessGranted.value = isNotificationAccessGranted(this)
     }
 }
@@ -147,8 +146,7 @@ private fun MainScreen(
     ) {
         Text(text = "exigent-heron")
         Text(text = if (granted) "Notification access: granted" else "Notification access: not granted")
-        // AGENTS.md §4.8: "Show the active engine on the main screen.
-        // The user should never have to wonder."
+        // Always show which TTS engine is selected; the user should never wonder why nothing's speaking.
         Text(text = "TTS engine: ${settings.ttsEnginePackage ?: "system default"}")
         if (!granted) {
             Button(onClick = {

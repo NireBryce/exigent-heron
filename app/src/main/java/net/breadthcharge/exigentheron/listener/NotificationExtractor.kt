@@ -7,10 +7,9 @@ import net.breadthcharge.exigentheron.domain.contentHashOf
 import net.breadthcharge.exigentheron.domain.sanitizeNotificationText
 
 /**
- * `StatusBarNotification` → [NotificationPayload], per AGENTS.md §4.2.
- * Thin: reads the platform object, sanitizes, and delegates the actual
- * drop decision to [shouldDropNotification] — no logic of its own
- * beyond that translation.
+ * Converts `StatusBarNotification` → [NotificationPayload].
+ * Reads the platform object, sanitizes (strip control chars and zero-width), and delegates
+ * the drop decision to [shouldDropNotification] — no other logic of its own.
  *
  * Deliberately reads only [Notification.EXTRA_TITLE],
  * [Notification.EXTRA_TEXT], and [Notification.EXTRA_BIG_TEXT] (preferring

@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports — see AGENTS.md §3.
+ * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * The field-level checks `RuleEditorScreen`'s save button gates on,
  * pulled out of `RuleEditorViewModel.save()` into a pure function —

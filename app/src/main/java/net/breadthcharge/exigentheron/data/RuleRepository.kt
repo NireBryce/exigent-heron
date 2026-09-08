@@ -15,10 +15,8 @@ private val Context.ruleDataStore: DataStore<Preferences> by preferencesDataStor
 private val RULES_KEY = stringPreferencesKey("rules_json")
 
 /**
- * DataStore-backed persistence for [Rule]s (AGENTS.md §2: Preferences
- * DataStore + `kotlinx.serialization`, not Room). Deliberately thin —
- * [RuleCodec] holds the actual encode/decode/list-editing logic and is
- * unit-tested directly; this class only wires it to a real [Context].
+ * DataStore-backed persistence for [Rule]s (Preferences DataStore + kotlinx.serialization;
+ * Room would be ceremony for ~30 rules). Thin layer wiring [RuleCodec] to the file storage.
  */
 class RuleRepository(private val context: Context) {
 

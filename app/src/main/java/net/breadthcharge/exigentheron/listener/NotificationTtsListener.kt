@@ -15,9 +15,8 @@ import net.breadthcharge.exigentheron.domain.NotificationPayload
 import net.breadthcharge.exigentheron.domain.SpeechRequest
 
 /**
- * Routing only, per AGENTS.md §3: extract → dedup → rules → secret scan
- * → speak, each step exactly one call. No decision-making of its own —
- * see [route] if that stops being true at a glance.
+ * Routing only: this service is a pass-through. The pipeline is extract → dedup → rules → secret scan
+ * → gates → speak. Each step is exactly one call. No decision-making lives here — see [route] to confirm.
  */
 class NotificationTtsListener : NotificationListenerService() {
 
@@ -61,9 +60,8 @@ class NotificationTtsListener : NotificationListenerService() {
                 return
             }
         }
-        // Placed right before SpeechQueue.enqueue(), per AGENTS.md §3's
-        // data-flow diagram — a rule/secret-scan decision to speak can
-        // still be dropped here by the headset-only or lock-state gate.
+        // Gates are the final step before enqueueing — a rule/secret-scan decision to speak
+        // can still be dropped here by the headset-only or lock-state gate.
         if (!container.outputRouteGate.allows() || !container.lockStateGate.allows()) {
             SafeLog.decision(payload.packageName, ruleId = decision.ruleId, action = "suppress")
             return

@@ -1,9 +1,8 @@
 package net.breadthcharge.exigentheron.speech
 
 /**
- * "Don't speak while locked" enforcement — see AGENTS.md §4.9's separate
- * lock-state toggle, defaulted on alongside [OutputRouteGate]'s
- * headset-only one.
+ * "Don't speak while locked" enforcement — a separate toggle defaulted on,
+ * alongside [OutputRouteGate]'s headset-only gate.
  *
  * Same function-reference pattern as [OutputRouteGate] and
  * [SpeechQueue]'s `isInCall`: [isKeyguardLocked] stands in for

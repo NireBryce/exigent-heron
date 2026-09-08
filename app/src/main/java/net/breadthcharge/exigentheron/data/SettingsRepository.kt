@@ -26,25 +26,16 @@ private val TRUNCATION_LENGTH_SECONDS_KEY = intPreferencesKey("truncation_length
 private val OTP_KEYWORDS_KEY = stringSetPreferencesKey("otp_keywords")
 
 /**
- * The gates and toggles AGENTS.md §4.8/§4.9 actually ask for — nothing
- * more (AGENTS.md §0's YAGNI: this held zero fields through Phase 3
- * because nothing needed one yet).
+ * The TTS engine picker, output gates, and override toggles — exactly what the spec asks for,
+ * nothing more (built incrementally from Phase 3 onward).
  *
- * [headsetOnly] and [respectLockState] default **on** — AGENTS.md §4.9
- * and §7's "Default the headset gate off 'for convenience'": the
- * default must not broadcast private messages to a room or a glanced-at
- * lock screen. [allowDndOverride] defaults **off** — AGENTS.md §4.7:
- * "do not speak under DND unless the user explicitly opts in."
- * [ttsEnginePackage] is null until the user picks one in settings;
- * AGENTS.md §4.8 is explicit that a null choice falls back to the
- * system default only as a *temporary* state, not a permanent silent one.
+ * [headsetOnly] and [respectLockState] default **on** (never broadcast to a room/locked screen by default).
+ * [allowDndOverride] defaults **off** (user must explicitly opt into speaking under DND).
+ * [ttsEnginePackage] is null until the user picks one; that null state is only temporary,
+ * not a permanent fallback to the system default.
  *
- * [bluetoothDeviceControlEnabled] defaults **off** — this is the one
- * setting in this class gated behind a runtime permission
- * (`BLUETOOTH_CONNECT`), and this app requests zero runtime permissions
- * otherwise (AGENTS.md §0/§5). Off by default means the permission
- * prompt itself is never shown until the user deliberately opts into
- * this feature from the settings screen, not on first launch.
+ * [bluetoothDeviceControlEnabled] defaults **off** (this setting requires `BLUETOOTH_CONNECT`
+ * permission; deferring it until the user explicitly opts in, not on first launch).
  * [allowedBluetoothAddresses]/[deniedBluetoothAddresses] are mutually
  * exclusive by construction — [setBluetoothDeviceDecision] is the only
  * way to write either, and it always removes an address from the other
@@ -52,20 +43,12 @@ private val OTP_KEYWORDS_KEY = stringSetPreferencesKey("otp_keywords")
  * ("unset") is every device's default state, meaning
  * [OutputRouteGate]'s plain type-based check as if this feature were off.
  *
- * [truncationLengthSeconds] is null ("no limit") by default, per
- * AGENTS.md §4.7's silence-over-guessing stance — cutting a notification
- * off mid-sentence needs the user to opt in, not a default that could
- * drop the important half of a message the user never asked to have
- * shortened. When set, [SpeechQueue] stops an utterance's audio once it
- * has been playing this long, however far through the text it's gotten
- * — it caps *playback time*, not character count, since speech rate
- * varies by engine/voice/locale and a char-count cap couldn't promise
- * the same number of seconds two engines would actually take to say it.
+ * [truncationLengthSeconds] is null ("no limit") by default (users must opt into truncation,
+ * not have their messages cut mid-sentence by default). When set, [SpeechQueue] stops playback
+ * after this many seconds (caps *playback* time, not character count, since speech rates vary).
  *
- * [otpKeywords] is null by default, meaning "use the [SecretDetector.DEFAULT_OTP_KEYWORDS]".
- * When set, [SecretDetector] uses this list instead. A user who never opens
- * the settings screen is unaffected; one who edits gets a real copy of the
- * defaults to work from. See AGENTS.md §4.5.
+ * [otpKeywords] is null by default (use [SecretDetector.DEFAULT_OTP_KEYWORDS]).
+ * When edited, users get a real copy of the defaults to modify, not an invisible built-in list.
  */
 data class Settings(
     val headsetOnly: Boolean = true,
@@ -86,9 +69,8 @@ data class Settings(
 }
 
 /**
- * DataStore-backed persistence for [Settings] (AGENTS.md §2: Preferences
- * DataStore, not Room) — the Phase 4 fields the Phase 3 scaffold's doc
- * comment said would land here.
+ * DataStore-backed persistence for [Settings] (Preferences DataStore chosen over Room
+ * for the small ruleset this single-user app manages).
  */
 class SettingsRepository(context: Context) {
 

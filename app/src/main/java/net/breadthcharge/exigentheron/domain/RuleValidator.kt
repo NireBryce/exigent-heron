@@ -3,13 +3,13 @@ package net.breadthcharge.exigentheron.domain
 import java.util.regex.PatternSyntaxException
 
 /**
- * PURE. No Android imports — see AGENTS.md §3.
+ * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * Single source of truth for "is this a pattern we'll accept" — used by
  * both [RuleEngine.compileOrNull] (defensive: a rule already on disk
  * shouldn't crash evaluation even if it somehow bypassed the check
  * below) and the rule editor (Phase 3: surfaces [PatternValidation.Invalid]
- * inline at save time, per AGENTS.md §4.4 — "Catch `PatternSyntaxException`
+ * inline at save time — invalid regex must be caught and shown to the user at save time, not crash evaluation later: "Catch `PatternSyntaxException`
  * at rule-save time and show the error in the editor").
  */
 object RuleValidator {
