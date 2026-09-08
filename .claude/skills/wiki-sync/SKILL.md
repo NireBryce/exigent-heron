@@ -28,7 +28,7 @@ as a follow-up" — the same discipline `AGENTS.md` asks of itself. That
 rule is easy to know and easy to forget in practice, because by the time a
 change is done and verified, the wiki is the last thing still in mind.
 This skill is the deliberate checklist for closing that loop instead of
-trusting it'll happen by habit. (Adapted from nixos-configs' own
+trusting it'll happen by habit. (Adapted from NireBryce/nixos-configs' own
 `wiki-sync` skill — same shape, same reasoning, applied to a much smaller
 wiki.)
 

@@ -85,10 +85,10 @@ running a full audit under a friendlier name.
 
 ## What's different here
 
-Adapted from nixos-configs, not copied verbatim:
+Adapted from NireBryce/nixos-configs, not copied verbatim:
 
 - **`ship` → `submit-a-pr`**, per `boyscouting`'s own note.
-- **No `statix`/`deadnix`/`just preflight` equivalent.** nixos-configs
+- **No `statix`/`deadnix`/`just preflight` equivalent.** NireBryce/nixos-configs
   leans on Nix-specific linters wired into a preflight command; this repo
   has no analogous mechanical pass, so step 3 is explicit that
   hand-searching is the whole method here, not a supplement to tooling.

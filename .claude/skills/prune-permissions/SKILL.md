@@ -22,7 +22,7 @@ The file only ever grows. Every tool call that needs a new permission
 pattern gets one appended automatically — including patterns for commands
 that were themselves part of auditing this same file. Nothing prunes it
 back down on its own, so left alone it accumulates stale, never-fires-again
-cruft. (Adapted from nixos-configs' `prune-permissions` skill, which found
+cruft. (Adapted from NireBryce/nixos-configs' `prune-permissions` skill, which found
 the same pattern there: 31 entries down to 21 on its first real pass.)
 
 ## Heuristic: dead vs. standing
