@@ -101,6 +101,17 @@ Plus two source sets outside `main/`:
   problems that surfaced specifically because of that. 118 tests as of
   **2026-09-08**; [status.md](status.md) has the current pass count
   rather than a second copy of the number here.
+- `app/src/androidTest/java/net/breadthcharge/exigentheron/` — added
+  **2026-09-08**, the instrumented source set `AGENTS.md` §3 now names
+  for what a JVM test structurally cannot reach. Four classes, 19 tests:
+  the two DataStore repositories' round-trips (neither had any test),
+  `AndroidTtsEngineTest` (that `stop()` really unblocks a suspended
+  `speak()` — a fake can only show `SpeechQueue` *calls* it),
+  `GatePolicyFrameworkConstantsTest` (that the constants `SecretDetector`
+  and `GatePolicy` mirror still equal the framework's), and
+  `InstalledAppsTest` (a regression test for the `<queries>` manifest
+  block). [testing.md](testing.md) has how to run them and what they
+  deliberately don't prove.
 
 ## The critical structural rule
 

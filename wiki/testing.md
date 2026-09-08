@@ -5,6 +5,7 @@ _Last modified: 2026-09-08_
 ## Contents
 
 - [Building and installing](#building-and-installing)
+- [Instrumented tests (`app/src/androidTest/`)](#instrumented-tests-appsrcandroidtest)
 - [Checking the manifest](#checking-the-manifest)
 - [Watching logcat safely](#watching-logcat-safely)
 - [Once there's a listener to test (Phase 2+)](#once-theres-a-listener-to-test-phase-2)
@@ -41,6 +42,56 @@ emulator -avd dev
 
 Needs `/dev/kvm` access (e.g. being in the `kvm` group) for reasonable
 boot times.
+
+## Instrumented tests (`app/src/androidTest/`)
+
+Added **2026-09-08**. These need a device or emulator — that is the whole
+point of them, per `AGENTS.md` §3: they cover what a JVM test
+structurally cannot reach, which is framework facts and wiring.
+
+```sh
+nix develop --command gradle connectedDebugAndroidTest
+```
+
+**19 tests, 0 failures, 0 skipped, verified 2026-09-08** on the
+`nix develop` emulator (`dev`, API 37, `google_apis` x86_64) — still not
+a physical device, see the Phase 5 matrix below. What they cover:
+
+- `data/RuleRepositoryTest`, `data/SettingsRepositoryTest` — the
+  DataStore round-trips neither repository had any test for, plus the
+  defaults (headset-only and lock-state on, DND-override off) and the
+  allow/deny sets' mutual exclusion. Note what these *don't* prove:
+  `preferencesDataStore` is a per-`Context` singleton, so a second
+  repository in the same process shares the instance rather than
+  re-reading the file. The force-stop step below is still the only thing
+  that shows cross-process persistence.
+- `speech/AndroidTtsEngineTest` — that `stop()` really does unblock a
+  suspended `speak()`. A fake `TtsEngine` can only prove `SpeechQueue`
+  *calls* `stop()`; both the `ACTION_AUDIO_BECOMING_NOISY` path and the
+  truncation timeout depend on that call actually achieving something.
+- `speech/GatePolicyFrameworkConstantsTest` — that the constants
+  `SecretDetector` and `GatePolicy` mirror still equal the framework's.
+  A drift wouldn't fail to compile; it would silently misclassify.
+- `ui/rules/InstalledAppsTest` — a regression test for the `<queries>`
+  manifest block, not for the function's own three lines.
+
+### The listener acceptance script
+
+[`scripts/listener-acceptance.sh`](../scripts/listener-acceptance.sh)
+automates most of the Phase 2 script below — it grants notification
+access with `cmd notification allow_listener` (no UI tap), posts real
+notifications through the platform, and reads back `SafeLog.decision`
+lines. **Verified 2026-09-08**: passes on the emulator, run three times.
+
+```sh
+nix develop --command ./scripts/listener-acceptance.sh
+```
+
+It asserts on decision lines only — a package, a rule id, an action,
+never notification content — and scopes logcat to the app's own tag, the
+same rule "Watching logcat safely" states above. What it cannot do is
+the part needing ears: duck-and-recover, headset-only routing, and the
+engine picker all stay manual below.
 
 `gradle testDebugUnitTest` runs whatever JVM unit tests exist under
 `app/src/test` — as of **2026-09-08** that's 118 tests, all passing; see
