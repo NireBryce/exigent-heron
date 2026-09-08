@@ -1,52 +1,58 @@
 package net.breadthcharge.exigentheron.domain
 
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class SecretDetectorHolderTest {
-    private val testScope = TestScope(StandardTestDispatcher())
+
+    // Dispatchers.Unconfined for synchronous flow collection without
+    // needing a virtual clock — same pattern as RuleEngineHolderTest.
+    private fun testScope() = CoroutineScope(Dispatchers.Unconfined)
 
     @Test
-    fun rebuilds_detector_on_keyword_emission() {
+    fun `rebuilds detector on keyword emission`(): Unit = runBlocking {
         val keywords = listOf("code", "otp")
         val holder = SecretDetectorHolder(
-            otpKeywords = flowOf(keywords),
-            scope = testScope,
+            otpKeywords = kotlinx.coroutines.flow.flowOf(keywords),
+            scope = testScope(),
         )
 
-        testScope.runCurrent()
-
-        assertThat(holder.detector.value.keywords).containsExactlyElementsIn(keywords)
+        assertThat(holder.scan(Decision.Speak("test"), payload("123456 code"))).isInstanceOf(Decision.AnnounceOnly::class.java)
     }
 
     @Test
-    fun detector_changes_on_each_keyword_flow_emission() {
-        val flow = kotlinx.coroutines.flow.MutableStateFlow(listOf("code"))
+    fun `detector changes on each keyword flow emission`(): Unit = runBlocking {
+        val flow = MutableStateFlow(listOf("magic"))
         val holder = SecretDetectorHolder(
             otpKeywords = flow,
-            scope = testScope,
+            scope = testScope(),
         )
 
-        testScope.runCurrent()
-        val firstDetector = holder.detector.value
-        assertThat(firstDetector.keywords).containsExactly("code")
+        // With "magic" keyword, this OTP-shaped content should be downgraded
+        val result1 = holder.scan(Decision.Speak("test"), payload("The magic word is 123456."))
+        assertThat(result1).isInstanceOf(Decision.AnnounceOnly::class.java)
 
-        flow.value = listOf("code", "otp", "pin")
-        testScope.runCurrent()
+        // Change to a different keyword that won't match
+        flow.value = listOf("otherword")
 
-        val secondDetector = holder.detector.value
-        assertThat(secondDetector.keywords).containsExactlyElementsIn(listOf("code", "otp", "pin"))
-        assertThat(secondDetector).isNotSameInstanceAs(firstDetector)
+        // Now the same content should NOT be downgraded (no keyword match)
+        val result2 = holder.scan(Decision.Speak("test"), payload("The magic word is 123456."))
+        assertThat(result2).isInstanceOf(Decision.Speak::class.java)
     }
 
-    // Access detector as a property for the test
-    private val SecretDetectorHolder.detector: kotlinx.coroutines.flow.StateFlow<SecretDetector>
-        get() = this::class.java.getDeclaredField("detector").let {
-            it.isAccessible = true
-            @Suppress("UNCHECKED_CAST")
-            it.get(this) as kotlinx.coroutines.flow.StateFlow<SecretDetector>
-        }
+    private fun payload(body: String) = NotificationPayload(
+        key = "k",
+        packageName = "com.example.app",
+        postTime = 0,
+        title = "Test",
+        body = body,
+        isGroupSummary = false,
+        isOngoing = false,
+        visibility = 1,
+        contentHash = "irrelevant",
+    )
 }
