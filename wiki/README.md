@@ -39,6 +39,7 @@ file, so it holds real procedural content instead of just links.
 
 | I want to... | Start here |
 |---|---|
+| get oriented on this repo from cold | [overview.md](overview.md) |
 | see what's actually built and verified vs. only specified | [status.md](status.md) |
 | understand the real package layout as it stands right now | [architecture.md](architecture.md) |
 | run or test the app on an emulator or device | [testing.md](testing.md), skill [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md) |
@@ -50,6 +51,9 @@ file, so it holds real procedural content instead of just links.
 
 ## Pages
 
+- [Overview](overview.md) — orientation for meeting this repo cold: what
+  the app is, which of the three documents answers which kind of
+  question, and the path a notification takes through the code.
 - [Status](status.md) — phase-by-phase: what `BUILD_PLAN.md` specifies,
   what's actually built, and what's been verified (by running the actual
   command, dated) rather than assumed from the spec text alone.
