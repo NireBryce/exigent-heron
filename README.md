@@ -29,3 +29,9 @@ VS Code: accept the recommended extensions prompt (or `Extensions: Show
 Recommended Extensions`) — `mkhl.direnv` is the one that actually matters,
 it's what gets `JAVA_HOME`/`ANDROID_HOME` from the dev shell into the
 Kotlin language server.
+
+## License
+
+[Apache-2.0](LICENSE) — see also
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the third-party
+dependencies the app ships with.
