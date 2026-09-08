@@ -428,8 +428,9 @@ private fun SettingToggle(
 /**
  * Allow/Deny as two independent-looking buttons that are never actually
  * independent: tapping the one already selected resets to
- * [BluetoothDeviceDecision.UNSET], tapping the other switches straight to it —
- * [SettingsRepository.setBluetoothDeviceDecision][net.breadthcharge.exigentheron.data.SettingsRepository.setBluetoothDeviceDecision]
+ * [BluetoothDeviceDecision.UNSET], tapping the other switches straight to
+ * it — `SettingsRepository`'s
+ * [setBluetoothDeviceDecision][net.breadthcharge.exigentheron.data.SettingsRepository.setBluetoothDeviceDecision]
  * is the only way either gets written, and it always clears the other
  * set first. There is deliberately no third "are you sure" state for
  * "both on at once" — that combination is unreachable by construction,

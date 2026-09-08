@@ -40,7 +40,8 @@ class OutputRouteGate(
     private val connectedOutputTypes: () -> Set<Int>,
     private val bluetoothDeviceControlEnabled: () -> Boolean = { false },
     private val connectedBluetoothAddresses: () -> Set<String> = { emptySet() },
-    private val bluetoothDeviceDecision: (address: String) -> BluetoothDeviceDecision = { BluetoothDeviceDecision.UNSET },
+    private val bluetoothDeviceDecision: (address: String) -> BluetoothDeviceDecision =
+        { BluetoothDeviceDecision.UNSET },
 ) {
     fun allows(): Boolean {
         if (!headsetOnlyEnabled()) return true

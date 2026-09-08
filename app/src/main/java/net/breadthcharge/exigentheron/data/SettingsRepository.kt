@@ -118,7 +118,11 @@ class SettingsRepository(context: Context) {
     /** Null (or non-positive, treated the same as null) clears the limit — see [Settings.truncationLengthSeconds]. */
     suspend fun setTruncationLengthSeconds(seconds: Int?) {
         dataStore.edit {
-            if (seconds == null || seconds <= 0) it.remove(TRUNCATION_LENGTH_SECONDS_KEY) else it[TRUNCATION_LENGTH_SECONDS_KEY] = seconds
+            if (seconds == null || seconds <= 0) {
+                it.remove(TRUNCATION_LENGTH_SECONDS_KEY)
+            } else {
+                it[TRUNCATION_LENGTH_SECONDS_KEY] = seconds
+            }
         }
     }
 
@@ -134,8 +138,10 @@ class SettingsRepository(context: Context) {
         dataStore.edit { prefs ->
             val allowed = (prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet()) - address
             val denied = (prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet()) - address
-            prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.ALLOWED) allowed + address else allowed
-            prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.DENIED) denied + address else denied
+            prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] =
+                if (decision == BluetoothDeviceDecision.ALLOWED) allowed + address else allowed
+            prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] =
+                if (decision == BluetoothDeviceDecision.DENIED) denied + address else denied
         }
     }
 
