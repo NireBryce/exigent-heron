@@ -17,9 +17,16 @@ made and caught.
 
 ```
 direnv allow      # or: nix develop
-gradle assembleDebug
-gradle testDebugUnitTest
+just              # lists every check
+just test         # JVM unit tests, no device needed
+just test-device  # androidTest + the listener acceptance script
+just test-all     # everything, cheapest first
 ```
+
+`just` is the interface; [scripts/test.sh](scripts/test.sh) is what it
+runs, and works on its own if you'd rather call it directly. The device
+recipes boot a headless emulator themselves when none is attached, and
+stop only one they started.
 
 No `gradlew` is committed — the flake's dev shell puts a pinned `gradle`
 (and JDK, Kotlin, and the Android SDK) on `PATH` instead. See

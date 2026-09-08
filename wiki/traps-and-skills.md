@@ -12,6 +12,8 @@ _Last modified: 2026-09-08_
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 - [git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits](#git-reset---hard-meant-for-a-throwaway-test-commit-wiped-real-uncommitted-edits)
 - [A concurrency test that pinned a race the producer usually won](#a-concurrency-test-that-pinned-a-race-the-producer-usually-won)
+- [`$!` tracked the emulator launcher, not the emulator](#-tracked-the-emulator-launcher-not-the-emulator)
+- [`adb wait-for-device` waits forever](#adb-wait-for-device-waits-forever)
 - [fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API](#fwcdkotlins-gradle-classpath-resolver-breaks-on-agp-9s-new-extension-api)
 
 Mistakes that have actually happened building this app, each linked to the
@@ -240,6 +242,53 @@ system it didn't mention. A green concurrency test on one machine is
 evidence about that machine's scheduling, not about the property the test
 names — if a test's correctness depends on one thread losing a race,
 gate the race instead of assuming the timing holds.
+
+## `$!` tracked the emulator launcher, not the emulator
+
+**2026-09-08.** `scripts/test.sh` boots a headless emulator when no
+device is attached, and stops it again only if it was the one that
+started it — so it captured `$!` after `emulator -avd ... &` and used
+that PID for both "is it still alive?" and "is it dead yet?".
+
+Neither worked, because `emulator` is a launcher: it spawns
+`qemu-system-x86_64-headless` as a separate process and can exit on its
+own. `kill -0 "$EMULATOR_PID"` therefore returned false while the
+emulator was very much running, so teardown printed "stopping the
+emulator this script started" and returned success against a live qemu
+that then held the AVD's lock files for the next run. The liveness check
+had the mirror-image bug: it would have declared a perfectly healthy
+emulator dead.
+
+Fixed by matching the real process by its own argument —
+`pgrep -f "qemu-system.*-avd $AVD"` — and never tracking `$!` at all. The
+general form: a PID from `$!` is only the thing you launched, which is
+not necessarily the thing you care about. Check for the process that
+actually does the work, by a property that identifies it.
+
+Found by asserting on the world rather than on the script's own output:
+the run printed its "stopping" line and exited 0, and only
+`pgrep -f qemu-system` afterwards showed the emulator still up. See skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) — a script
+saying it did something is not evidence that it did.
+
+## `adb wait-for-device` waits forever
+
+**2026-09-08.** The same script used `adb wait-for-device` before polling
+`sys.boot_completed`. That call has no timeout: when an emulator started
+but never registered with adb — a stale AVD lock from a previously killed
+run — the script sat silently for eleven minutes with no output at all,
+looking indistinguishable from a slow boot.
+
+Two things were wrong beyond the missing bound. The emulator's own stdout
+went to `/dev/null`, so the one artifact that would have explained it was
+discarded; and the wait had no way to notice the emulator had gone away.
+Now the boot wait is bounded (`BOOT_TIMEOUT`, default 600s), the
+emulator's output is kept in `build/emulator.log`, and a failure prints
+that log's tail rather than a bare timeout.
+
+The general form: a blocking call with no timeout turns "this failed"
+into "this is still going", and discarding a subprocess's output removes
+the only evidence of which one it was.
 
 ## fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API
 
