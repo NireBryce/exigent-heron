@@ -29,6 +29,7 @@ import net.breadthcharge.exigentheron.speech.AudioFocusManager
 import net.breadthcharge.exigentheron.speech.LockStateGate
 import net.breadthcharge.exigentheron.speech.OutputDevice
 import net.breadthcharge.exigentheron.speech.OutputRouteGate
+import net.breadthcharge.exigentheron.speech.SpeechGates
 import net.breadthcharge.exigentheron.speech.SpeechQueue
 import net.breadthcharge.exigentheron.speech.bluetoothAddressesOf
 import net.breadthcharge.exigentheron.speech.isBlockedByDnd
@@ -153,19 +154,21 @@ class AppContainer(private val appContext: Context) {
 
     private fun createSpeechQueue(engine: AndroidTtsEngine): SpeechQueue = SpeechQueue(
         ttsEngine = engine,
+        gates = SpeechGates(
+            isInCall = {
+                audioManager.mode == AudioManager.MODE_IN_CALL ||
+                    audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
+            },
+            isBlockedByDnd = {
+                isBlockedByDnd(
+                    allowDndOverride = currentSettings.allowDndOverride,
+                    interruptionFilter = notificationManager.currentInterruptionFilter,
+                )
+            },
+            isOutputRouteAllowed = outputRouteGate::allows,
+        ),
         requestAudioFocus = audioFocusManager::requestFocus,
         abandonAudioFocus = audioFocusManager::abandonFocus,
-        isInCall = {
-            audioManager.mode == AudioManager.MODE_IN_CALL ||
-                audioManager.mode == AudioManager.MODE_IN_COMMUNICATION
-        },
-        isBlockedByDnd = {
-            isBlockedByDnd(
-                allowDndOverride = currentSettings.allowDndOverride,
-                interruptionFilter = notificationManager.currentInterruptionFilter,
-            )
-        },
-        isOutputRouteAllowed = outputRouteGate::allows,
         truncationLengthSeconds = { currentSettings.truncationLengthSeconds },
         scope = scope,
     )
