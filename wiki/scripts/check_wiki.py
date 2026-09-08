@@ -53,6 +53,11 @@ extractable facts only:
             hand-maintained; treat a false "unknown" here as a prompt to
             add the task to the list, not necessarily a real doc bug.
 
+  recipes   Every backtick `just <recipe>` mention across wiki/ and
+            AGENTS.md against the recipes .justfile actually defines.
+            Mechanical, unlike `gradle` above: .justfile is a single file
+            listing every valid name, so this needs no hand-maintained set.
+
   links     Every relative markdown link (`[text](target)`) across wiki/
             and AGENTS.md resolves to a real file. Fully general -- a link
             target either exists or it doesn't, no judgement call needed.
@@ -221,6 +226,50 @@ def check_gradle(root):
                     f"UNKNOWN TASK  {path}: `gradle {m.group(1)}` -- "
                     f"'{name}' is not in KNOWN_GRADLE_TASKS (add it if "
                     f"it's real)")
+    return findings
+
+
+JUST_MENTION = re.compile(r'`just ([^`]+)`')
+
+
+def just_recipes(root):
+    """Recipe names from .justfile: a line at column 0 ending in ':',
+    optionally with parameters after the name. Deliberately mechanical --
+    unlike KNOWN_GRADLE_TASKS there IS a single file listing these, so
+    nothing here is hand-maintained."""
+    justfile = root / '.justfile'
+    if not justfile.exists():
+        return None
+    names = set()
+    for line in justfile.read_text().splitlines():
+        m = re.match(r'^([a-zA-Z][\w-]*)(\s+[^:]*)?:(?!=)', line)
+        if m:
+            names.add(m.group(1))
+    return names
+
+
+def check_recipes(root):
+    """Every backtick `just <recipe>` mention across wiki/ and AGENTS.md
+    against the recipes .justfile actually defines. The mechanical version
+    of check_gradle -- a renamed or deleted recipe leaves every document
+    that told someone to run it silently wrong."""
+    recipes = just_recipes(root)
+    if recipes is None:
+        return []
+    findings = []
+    for path in doc_files(root):
+        for m in JUST_MENTION.finditer(path.read_text()):
+            tokens = m.group(1).split()
+            if not tokens or '<' in m.group(1):
+                continue  # a template, not a literal invocation
+            # `just --list` and friends are just's own flags, not recipes.
+            name = tokens[0]
+            if name.startswith('-'):
+                continue
+            if name not in recipes:
+                findings.append(
+                    f"UNKNOWN RECIPE  {path}: `just {m.group(1)}` -- "
+                    f"'{name}' is not a recipe in .justfile")
     return findings
 
 
@@ -449,7 +498,8 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'check'
     root = repo_root([sys.argv[0]] + sys.argv[2:])
 
-    cmds = ('phases', 'skills', 'gradle', 'links', 'anchors', 'contents', 'dates', 'check')
+    cmds = ('phases', 'skills', 'gradle', 'recipes', 'links', 'anchors',
+            'contents', 'dates', 'check')
     if cmd not in cmds:
         print(__doc__)
         sys.exit(2)
@@ -461,6 +511,8 @@ def main():
         findings += check_skills(root)
     if cmd in ('gradle', 'check'):
         findings += check_gradle(root)
+    if cmd in ('recipes', 'check'):
+        findings += check_recipes(root)
     if cmd in ('links', 'check'):
         findings += check_links(root)
     if cmd in ('anchors', 'check'):
