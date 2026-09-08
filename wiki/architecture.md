@@ -70,6 +70,7 @@ net.breadthcharge.exigentheron/
 │   ├── AudioFocusManager.kt
 │   ├── AudioBecomingNoisyReceiver.kt # a route change *during* an utterance
 │   ├── OutputRouteGate.kt            # headset-only enforcement
+│   ├── GatePolicy.kt                 # PURE — the gate decisions AppContainer used to inline
 │   └── LockStateGate.kt              # don't-speak-while-locked
 │
 ├── data/
@@ -97,17 +98,28 @@ Plus two source sets outside `main/`:
   `speech/SpeechQueueTest.kt` are the first tests here to exercise
   Android-facing (if Android-import-light or -free) code rather than pure
   `domain/` — see [traps-and-skills.md](traps-and-skills.md) for two real
-  problems that surfaced specifically because of that. 105 tests as of
-  **2026-09-07**; [status.md](status.md) has the current pass count
+  problems that surfaced specifically because of that. 118 tests as of
+  **2026-09-08**; [status.md](status.md) has the current pass count
   rather than a second copy of the number here.
 
 ## The critical structural rule
 
 **`domain/` has zero Android imports.** `RuleEngine`, `SecretDetector`,
 and `Deduplicator` are pure Kotlin, unit-testable on the JVM with no
-Robolectric, no instrumentation, no emulator. This is what makes the
-project testable at all — everything else is Android framework glue that
-is a pain to test and should therefore contain no logic worth testing.
+Robolectric, no instrumentation, no emulator. This keeps the logic most
+worth testing the cheapest thing here to test. Enforced as of
+**2026-09-08** by a grep in [`check.yml`](../.github/workflows/check.yml),
+anchored to `^import android.` so `kotlinx.coroutines` — legal in
+`domain/`, and used by `RuleEngine` and both holders — still passes.
+
+"Everything else is glue that should hold no logic worth testing" is the
+*goal* that boundary serves, not a description of what is already true,
+and `AGENTS.md` §3 now says so rather than reading as though the Android
+side weren't worth testing. `AppContainer` held two real decisions in
+lambdas no JVM test could reach until `speech/GatePolicy.kt` split them
+out (**2026-09-08**), and the worst pipeline bug so far lived in a seam
+every JVM test passed straight through — see
+[history.md](history.md).
 
 This is a *requirement*, not an observation about how the code happens to
 be arranged, which is why `AGENTS.md` §3 states it too rather than only
@@ -243,9 +255,17 @@ summary can, and those are the copies that stay correct.
   `TextToSpeech(context, listener, engineName)`, checks
   `LANG_MISSING_DATA`/`LANG_NOT_SUPPORTED` after a successful init rather
   than treating init-success alone as ready, and exposes `listEngines()`
-  for the settings picker), `AudioFocusManager.kt`, `SpeechQueue.kt`
-  (Phase 4: takes an `isBlockedByDnd` function reference alongside
-  `isInCall`, and its consumer now drains whatever else is already
+  for the settings picker), `AudioFocusManager.kt`,
+  `GatePolicy.kt` (**2026-09-08** — pure, no Android imports, holding the
+  DND and Bluetooth-address decisions `AppContainer` previously made
+  inline in the lambdas it hands the gates; the framework reads that feed
+  it stayed behind, same split `listener/NotificationExtractionPolicy.kt`
+  makes against `NotificationExtractor`), `SpeechQueue.kt`
+  (Phase 4: takes `isBlockedByDnd` alongside `isInCall` — both, with
+  `isOutputRouteAllowed`, grouped into a `SpeechGates` parameter
+  **2026-09-08**, and the consumer's dispatcher made injectable at the
+  same time so a test can confine it off the process-wide
+  `Dispatchers.Default` pool — and its consumer now drains whatever else is already
   buffered into a batch before deciding whether to speak it item-by-item
   or collapse it to one "`<n>` new notifications." summary — `AGENTS.md`
   §4.7's queue-collapse-on-burst; **2026-09-07**: when
