@@ -8,6 +8,7 @@
 - [scope.cancel() without join() let one test's coroutine bleed into the next](#scopecancel-without-join-let-one-tests-coroutine-bleed-into-the-next)
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 - [git reset --hard, meant for a throwaway test commit, wiped real uncommitted edits](#git-reset---hard-meant-for-a-throwaway-test-commit-wiped-real-uncommitted-edits)
+- [A concurrency test that pinned a race the producer usually won](#a-concurrency-test-that-pinned-a-race-the-producer-usually-won)
 - [fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API](#fwcdkotlins-gradle-classpath-resolver-breaks-on-agp-9s-new-extension-api)
 
 Mistakes that have actually happened building this app, each linked to the
@@ -164,6 +165,46 @@ command in general rather than a question about the actual, current
 state of the tree it was about to run against. No existing skill states
 this as its own rule; worth folding into a future skill on running
 destructive git commands mid-task if this pattern recurs.
+
+## A concurrency test that pinned a race the producer usually won
+
+**2026-09-08.** `SpeechQueueTest`'s "a burst of more than 5 pending items
+collapses to one summary utterance" enqueued ten items with no gate and
+asserted the queue spoke exactly `"10 new notifications."`. It carried a
+comment explaining why no gate was needed: `enqueue()` is a fast,
+non-suspending `trySend()` and none of the ten calls yields. That is true
+of the *producer* — and says nothing about the consumer, which
+`SpeechQueue` runs on `Dispatchers.Default`, a different thread, free to
+receive and batch the first few items while the remaining enqueues are
+still in flight. A batch of 5 or fewer is spoken item-by-item instead of
+collapsed, which is exactly what the assertion would then see.
+
+It passed locally every time — a fast machine's producer wins that race
+comfortably — and failed on CI's slower, more contended runner
+(`107 tests completed, 1 failed`, run 34184923666), on an unrelated
+docs-only PR whose diff touched nothing under `app/src/`. The fix parks
+the consumer inside a primer utterance using the same `onSpeak` gate the
+audio-focus test above it already used, so all ten land in the channel
+before the consumer can receive any of them, making the batch
+deterministically all ten. The assertion was not weakened to accommodate
+the race.
+
+Worth noting what could *not* be done: the failure was never reproduced
+locally, including four runs of the pre-fix test pinned to two cores
+under background load. The diagnosis rests on reading the code and on
+CI's own failure, not on a local repro — and the fix removes the race
+whether or not that particular interleaving is the one CI hit.
+
+**General form:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md), category 1,
+and a close cousin of [the ReDoS
+entry](#a-redos-test-that-passed-for-the-wrong-reason) above: a comment
+asserting *why* a test is safe is a claim like any other, and this one
+was load-bearing, confidently worded, and wrong about the half of the
+system it didn't mention. A green concurrency test on one machine is
+evidence about that machine's scheduling, not about the property the test
+names — if a test's correctness depends on one thread losing a race,
+gate the race instead of assuming the timing holds.
 
 ## fwcd.kotlin's Gradle classpath resolver breaks on AGP 9's new extension API
 
