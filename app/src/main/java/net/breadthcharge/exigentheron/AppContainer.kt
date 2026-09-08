@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.breadthcharge.exigentheron.data.RuleRepository
@@ -21,6 +22,7 @@ import net.breadthcharge.exigentheron.data.SettingsRepository
 import net.breadthcharge.exigentheron.domain.Deduplicator
 import net.breadthcharge.exigentheron.domain.RuleEngineHolder
 import net.breadthcharge.exigentheron.domain.SecretDetector
+import net.breadthcharge.exigentheron.domain.SecretDetectorHolder
 import net.breadthcharge.exigentheron.speech.AndroidTtsEngine
 import net.breadthcharge.exigentheron.speech.AudioBecomingNoisyReceiver
 import net.breadthcharge.exigentheron.speech.AudioFocusManager
@@ -68,7 +70,12 @@ class AppContainer(private val appContext: Context) {
         onRuleFailure = { id, reason -> SafeLog.error("rule $id failed: $reason") },
     )
 
-    val secretDetector = SecretDetector()
+    val secretDetectorHolder = SecretDetectorHolder(
+        otpKeywords = settingsRepository.settings.map { settings ->
+            settings.otpKeywords?.toList() ?: SecretDetector.DEFAULT_OTP_KEYWORDS
+        },
+        scope = scope,
+    )
 
     private val audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val keyguardManager = appContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager

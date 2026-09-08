@@ -51,7 +51,7 @@ class NotificationTtsListener : NotificationListenerService() {
 
     private suspend fun route(payload: NotificationPayload) {
         val ruleDecision = container.ruleEngine.evaluate(payload)
-        val decision = container.secretDetector.scan(ruleDecision, payload)
+        val decision = container.secretDetectorHolder.scan(ruleDecision, payload)
 
         val text = when (decision) {
             is Decision.Speak -> decision.text

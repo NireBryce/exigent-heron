@@ -57,6 +57,7 @@ net.breadthcharge.exigentheron/
 │   ├── RuleFormValidator.kt          # the rest of the editor's save-time gate
 │   ├── RuleCodec.kt                  # JSON encode/decode/list-editing
 │   ├── SecretDetector.kt             # can only ever downgrade a Decision
+│   ├── SecretDetectorHolder.kt       # rebuilds a SecretDetector from Flow<List<String>> (OTP keywords)
 │   ├── Deduplicator.kt               # injected clock; LRU + TTL
 │   ├── ContentHash.kt                # see "Where this diverged"
 │   ├── TextSanitizer.kt              # see "Where this diverged"
@@ -190,7 +191,10 @@ summary can, and those are the copies that stay correct.
   [history.md](history.md)), `RuleCodec.kt` (pure JSON
   encode/decode/list-editing that `data/RuleRepository.kt` wraps), and
   `RuleEngineHolder.kt` (rebuilds a live `RuleEngine` from a
-  `Flow<List<Rule>>` so a rule edit takes effect without an app restart).
+  `Flow<List<Rule>>` so a rule edit takes effect without an app restart),
+  and as of **2026-09-08** `SecretDetectorHolder.kt` (rebuilds a live
+  `SecretDetector` from a `Flow<List<String>>` of OTP keywords, so a
+  keyword edit in settings takes effect without an app restart).
   Post-Phase-5, `RuleFormValidator.kt` joined them, pulling
   `RuleEditorViewModel.save()`'s remaining form-only checks (empty app
   selection, non-numeric priority) out into the same pure/testable shape,
@@ -218,7 +222,9 @@ summary can, and those are the copies that stay correct.
   gained three more fields **2026-09-07** — `bluetoothDeviceControlEnabled`
   plus two `stringSetPreferencesKey` address sets, see `AGENTS.md` §4.9;
   gained a fourth, `truncationLengthSeconds: Int?`, the same day — null
-  by default (no limit), an `intPreferencesKey` when set),
+  by default (no limit), an `intPreferencesKey` when set; as of **2026-09-08**
+  gained `otpKeywords: Set<String>?` backed by `stringSetPreferencesKey`,
+  null = use `SecretDetector.DEFAULT_OTP_KEYWORDS`, see `AGENTS.md` §4.5),
   and `BluetoothDevices.kt` (`loadBondedBluetoothDevices` — reads
   `BluetoothAdapter.getBondedDevices()`, `BLUETOOTH_CONNECT`-gated,
   returns an empty list rather than throwing when it isn't granted).

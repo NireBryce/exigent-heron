@@ -23,6 +23,7 @@ private val BLUETOOTH_DEVICE_CONTROL_ENABLED_KEY = booleanPreferencesKey("blueto
 private val ALLOWED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("allowed_bluetooth_addresses")
 private val DENIED_BLUETOOTH_ADDRESSES_KEY = stringSetPreferencesKey("denied_bluetooth_addresses")
 private val TRUNCATION_LENGTH_SECONDS_KEY = intPreferencesKey("truncation_length_seconds")
+private val OTP_KEYWORDS_KEY = stringSetPreferencesKey("otp_keywords")
 
 /**
  * The gates and toggles AGENTS.md §4.8/§4.9 actually ask for — nothing
@@ -60,6 +61,11 @@ private val TRUNCATION_LENGTH_SECONDS_KEY = intPreferencesKey("truncation_length
  * — it caps *playback time*, not character count, since speech rate
  * varies by engine/voice/locale and a char-count cap couldn't promise
  * the same number of seconds two engines would actually take to say it.
+ *
+ * [otpKeywords] is null by default, meaning "use the [SecretDetector.DEFAULT_OTP_KEYWORDS]".
+ * When set, [SecretDetector] uses this list instead. A user who never opens
+ * the settings screen is unaffected; one who edits gets a real copy of the
+ * defaults to work from. See AGENTS.md §4.5.
  */
 data class Settings(
     val headsetOnly: Boolean = true,
@@ -70,6 +76,7 @@ data class Settings(
     val allowedBluetoothAddresses: Set<String> = emptySet(),
     val deniedBluetoothAddresses: Set<String> = emptySet(),
     val truncationLengthSeconds: Int? = null,
+    val otpKeywords: Set<String>? = null,
 ) {
     fun bluetoothDeviceDecision(address: String): BluetoothDeviceDecision = when (address) {
         in allowedBluetoothAddresses -> BluetoothDeviceDecision.ALLOWED
@@ -97,6 +104,7 @@ class SettingsRepository(context: Context) {
             allowedBluetoothAddresses = prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
             deniedBluetoothAddresses = prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet(),
             truncationLengthSeconds = prefs[TRUNCATION_LENGTH_SECONDS_KEY],
+            otpKeywords = prefs[OTP_KEYWORDS_KEY],
         )
     }
 
@@ -143,6 +151,13 @@ class SettingsRepository(context: Context) {
             val denied = (prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] ?: emptySet()) - address
             prefs[ALLOWED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.ALLOWED) allowed + address else allowed
             prefs[DENIED_BLUETOOTH_ADDRESSES_KEY] = if (decision == BluetoothDeviceDecision.DENIED) denied + address else denied
+        }
+    }
+
+    /** Null (or empty, converted to null) reverts to [SecretDetector.DEFAULT_OTP_KEYWORDS] — see [Settings.otpKeywords]. */
+    suspend fun setOtpKeywords(keywords: Set<String>?) {
+        dataStore.edit {
+            if (keywords == null || keywords.isEmpty()) it.remove(OTP_KEYWORDS_KEY) else it[OTP_KEYWORDS_KEY] = keywords
         }
     }
 }

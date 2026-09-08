@@ -17,17 +17,22 @@ package net.breadthcharge.exigentheron.domain
  * either — it downgrades one step further to [Decision.Suppress].
  */
 class SecretDetector(
-    private val keywords: List<String> = DEFAULT_OTP_KEYWORDS,
+    val keywords: List<String> = DEFAULT_OTP_KEYWORDS,
 ) {
     // \b-wrapped: plain substring matching would flag "shopping" for
     // containing "pin", or "encode" for containing "code". Word
     // boundaries fix that without complicating the multi-word entries
     // ("security code") — \b only checks the transition at each
     // phrase's own start/end, not anything about the space in between.
-    private val keywordPattern = Regex(
-        keywords.joinToString("|") { "\\b${Regex.escape(it)}\\b" },
-        RegexOption.IGNORE_CASE,
-    )
+    // If keywords list is empty, this pattern is never used (see looksLikeOtp).
+    private val keywordPattern: Regex? = if (keywords.isEmpty()) {
+        null
+    } else {
+        Regex(
+            keywords.joinToString("|") { "\\b${Regex.escape(it)}\\b" },
+            RegexOption.IGNORE_CASE,
+        )
+    }
 
     fun scan(decision: Decision, payload: NotificationPayload): Decision {
         if (decision is Decision.Suppress) return decision
@@ -52,6 +57,8 @@ class SecretDetector(
     }
 
     private fun looksLikeOtp(body: String): Boolean {
+        if (keywordPattern == null) return false // No keywords to match
+
         for (match in DIGIT_RUN.findAll(body)) {
             val start = (match.range.first - PROXIMITY_WINDOW).coerceAtLeast(0)
             val end = (match.range.last + PROXIMITY_WINDOW).coerceAtMost(body.length - 1)
@@ -77,19 +84,23 @@ class SecretDetector(
         return "New notification from $who"
     }
 
-    private companion object {
-        const val PROXIMITY_WINDOW = 40
+    // Non-private only so DEFAULT_OTP_KEYWORDS can reach AppContainer,
+    // SettingsScreen and SecretDetectorHolder (AGENTS.md §4.5's editable
+    // list). Everything else here, the hardcoded floor's own regex above
+    // all, stays private — the floor is not user-configurable.
+    companion object {
+        private const val PROXIMITY_WINDOW = 40
 
         // Mirrors android.app.Notification.VISIBILITY_PRIVATE / VISIBILITY_SECRET
         // (0 / -1). Domain stays Android-import-free (AGENTS.md §3);
         // NotificationExtractor (Phase 2) passes the real platform constant
         // straight through as an Int, so these values must track the
         // framework's, not be reinvented.
-        const val VISIBILITY_PRIVATE = 0
-        const val VISIBILITY_SECRET = -1
+        private const val VISIBILITY_PRIVATE = 0
+        private const val VISIBILITY_SECRET = -1
 
-        val DIGIT_RUN = Regex("""\b\d{4,8}\b""")
-        val BARE_SIX_DIGIT_BODY = Regex("""^\d{6}$""")
+        private val DIGIT_RUN = Regex("""\b\d{4,8}\b""")
+        private val BARE_SIX_DIGIT_BODY = Regex("""^\d{6}$""")
 
         val DEFAULT_OTP_KEYWORDS = listOf(
             "code", "otp", "one-time", "one time", "passcode", "pin",
