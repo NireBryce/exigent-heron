@@ -92,6 +92,21 @@ jobs:
             exit 1
           fi
 
+      # wiki/ and AGENTS.md claims against the real tree. Nothing ran
+      # these in CI until 2026-09-08: they were local-only, reached via
+      # `just wiki-lint`, skill submit-a-pr's step 2, and a hook nudge --
+      # all of which a slip skips silently. An unrun check and a check
+      # that examines nothing fail identically, so this runs the suite
+      # that proves each check can still fail (test_check_wiki.py) before
+      # the checks themselves; `just wiki-lint` is both, in that order.
+      #
+      # Deliberately not `continue-on-error`: every finding this can
+      # produce is either mechanical (a broken link, a renamed heading) or
+      # a REVIEW that check_wiki.py itself exits 0 on, so a red run here
+      # means something is actually wrong rather than merely opinionated.
+      - name: wiki self-test + claims (nix develop)
+        run: nix develop --command just wiki-lint
+
       # Android Lint, built into AGP already in use here -- no new
       # dependency to add or ask about, just a task nothing was running.
       # Both variants: lintRelease needs no signing config (lint only
