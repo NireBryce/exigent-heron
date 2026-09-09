@@ -116,7 +116,7 @@ net.breadthcharge.exigentheron/
 │   ├── NotificationExtractor.kt        # StatusBarNotification -> NotificationPayload
 │   └── NotificationExtractionPolicy.kt # Android-free drop conditions
 │
-├── domain/                           # PURE. zero Android imports.
+├── domain/                           # ANDROID-FREE. zero Android imports.
 │   ├── NotificationPayload.kt        # toString() emits key + package only, never content
 │   ├── SpeechRequest.kt
 │   ├── Rule.kt                       # @Serializable, with RuleAction
@@ -140,7 +140,7 @@ net.breadthcharge.exigentheron/
 │   ├── AudioFocusManager.kt
 │   ├── AudioBecomingNoisyReceiver.kt # a route change *during* an utterance
 │   ├── OutputRouteGate.kt            # headset-only enforcement
-│   ├── GatePolicy.kt                 # PURE — the DND/Bluetooth gate decisions
+│   ├── GatePolicy.kt                 # ANDROID-FREE — the DND/Bluetooth gates
 │   └── LockStateGate.kt              # don't-speak-while-locked
 │
 ├── data/
