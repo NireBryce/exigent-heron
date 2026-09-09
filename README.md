@@ -1,8 +1,9 @@
 # exigent-heron
 personal android tts utility, huge wip
 
-See [AGENTS.md](AGENTS.md) for the actual build spec, and
-[wiki/status.md](wiki/status.md) for the phase-by-phase build history.
+See [AGENTS.md](AGENTS.md) for the actual build spec,
+[wiki/status.md](wiki/status.md) for the phase-by-phase build history, and
+[INSTALL.md](INSTALL.md) to build a signed APK and put it on a phone.
 
 ## LLM co-programming
 
