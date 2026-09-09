@@ -52,8 +52,9 @@ anything that needed its own task.
    `boyscouting`'s "what qualifies" names — unused imports, TODO/FIXME
    comments older than the code around them, duplicated small blocks,
    obviously-stale comments referencing code that moved. This repo has no
-   `statix`/`deadnix`-equivalent static-analysis pass wired into a preflight
-   command, so there's no mechanical shortcut here — hand-searching is the
+   `statix`/`deadnix` equivalent — `just lint` (Android Lint) and `just
+   test-all` exist, but neither finds what this skill sweeps for (a dead
+   import, a stale comment, a drifted name). Hand-searching is still the
    whole method; lean on Android Studio's own inspections locally if
    available, but don't assume any are run automatically.
 4. **Apply `boyscouting`'s qualifying bar to each candidate individually.**
@@ -65,10 +66,13 @@ anything that needed its own task.
    should be able to revert "remove dead import in RuleEngine.kt" without
    reverting "fix stale comment in SpeechQueue.kt". Group only truly
    identical mechanical fixes into one commit.
-6. **Run `gradle assembleDebug` and `gradle testDebugUnitTest`** before
-   shipping — a sweep this wide is exactly where a typo becomes a build
-   failure or a silently broken test. (No `./gradlew` in this repo — use
-   `gradle` on `PATH` inside the Nix dev shell, per `wiki/testing.md`.)
+6. **Run `just test-all`** before shipping — a sweep this wide is exactly
+   where a typo becomes a build failure or a silently broken test, and
+   that recipe is structure + wiki + build + unit + lint + device,
+   cheapest first. `just build` and `just test` are the fast subset if
+   you're iterating. (No `./gradlew` in this repo — `just` and the
+   `gradle` on `PATH` both come from the Nix dev shell, per
+   `wiki/testing.md`.)
 7. **Ship normally** (`submit-a-pr`) — one branch, one PR, describing the
    sweep's scope and listing what categories of fix it contains, not just
    "cleanup". Step 2 of that skill (`wiki-sync`) still applies if any
@@ -88,13 +92,15 @@ running a full audit under a friendlier name.
 Adapted from NireBryce/nixos-configs, not copied verbatim:
 
 - **`ship` → `submit-a-pr`**, per `boyscouting`'s own note.
-- **No `statix`/`deadnix`/`just preflight` equivalent.** NireBryce/nixos-configs
-  leans on Nix-specific linters wired into a preflight command; this repo
-  has no analogous mechanical pass, so step 3 is explicit that
-  hand-searching is the whole method here, not a supplement to tooling.
-- **Verification command swapped for this repo's actual one** — `gradle
-  assembleDebug` / `gradle testDebugUnitTest` in place of `just
-  preflight`, matching `wiki/testing.md` and each phase's own acceptance
+- **No `statix`/`deadnix` equivalent**, though a preflight now exists.
+  NireBryce/nixos-configs leans on Nix-specific dead-code/style linters;
+  this repo's nearest equivalent is Android Lint, which doesn't find what
+  this skill sweeps for — so step 3 is still explicit that hand-searching
+  is the whole method here, not a supplement to tooling.
+- **Verification command swapped for this repo's actual one** — `just
+  test-all` in place of `just preflight` (**2026-09-08**; it was `gradle
+  assembleDebug`/`gradle testDebugUnitTest` until the `just` runner
+  landed), matching `wiki/testing.md` and each phase's own acceptance
   criteria (see `wiki/status.md`).
 - **`trim-docs` cross-reference dropped** — this repo has no dedicated
   conciseness-pass skill; a docs-only sweep is just its own scoped task
