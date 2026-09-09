@@ -15,6 +15,7 @@ _Text is llm generated with occasional human review_
 - [SafeLog.error masked a real test exception](#safelogerror-masked-a-real-test-exception)
 - [git reset --hard wiped real uncommitted edits](#git-reset---hard-wiped-real-uncommitted-edits)
 - [A concurrency test that pinned a race the producer usually won](#a-concurrency-test-that-pinned-a-race-the-producer-usually-won)
+- [A check that examined nothing reported "no findings"](#a-check-that-examined-nothing-reported-no-findings)
 - [`$!` tracked the emulator launcher, not the emulator](#-tracked-the-emulator-launcher-not-the-emulator)
 - [`adb wait-for-device` waits forever](#adb-wait-for-device-waits-forever)
 - [fwcd.kotlin's Gradle classpath resolver breaks on AGP 9](#fwcdkotlins-gradle-classpath-resolver-breaks-on-agp-9)
@@ -250,6 +251,56 @@ machine's scheduling, not about the property the test names.
 This race was, separately, diagnosed and fixed **twice** in this repo,
 independently, because an open branch holding one of the fixes was never
 tracked — see [history-4llm.md](history-4llm.md).
+
+## A check that examined nothing reported "no findings"
+
+**2026-09-08.** `check_freshness`, added to compare each page's
+`_Last modified:` date against git, printed `freshness: no findings`
+across all 18 wiki pages on its first run. It had examined none of them.
+
+`LAST_MODIFIED_LINE` is anchored (`^..._$`) but compiled **without**
+`re.M`. `check_dates` had always used it the way it was built for —
+`.match()` against one line at a time. The new check used
+`.search(path.read_text())` against the whole file, where `^`/`$` bind to
+the string's start and end, so it matched nothing on every page, returned
+`None`, and hit the `if not m: continue` skip.
+
+Every symptom pointed the right way and none of them was alarming: exit
+0, no findings, and a green `check` run. The bug surfaced only because
+the *next* step was to run three cases built to fail — and the first one,
+an uncommitted substantive edit with a backdated `_Last modified:` line,
+also came back clean. A case constructed to produce a finding that
+doesn't is the signal; a green run on the real tree never would have
+been.
+
+**This is the second time in this repo.** `RuleEngineTest`'s first ReDoS
+case (2026-09-05, above) passed in 0.053s having exercised none of the
+timeout path it was named for. Same shape, different subsystem: a test or
+check whose *green* is evidence about the harness rather than about the
+property it claims to cover. Two instances is enough to stop calling it
+bad luck.
+
+**The fix is mechanical, not attentional.**
+`wiki/scripts/test_check_wiki.py` (**2026-09-08**) gives every check at
+least one fixture that must produce a finding, plus a clean-tree case
+that must produce none, plus a direct regression test
+(`test_examines_pages_at_all`) for the `re.M` bug itself. `suite_wiki` in
+`scripts/test.sh` runs it *before* `check_wiki.py check`, so the checks
+are never trusted without first proving they can fail, and CI runs both.
+
+Its own teeth were verified by mutation rather than assumed: reverting
+`stated_date` to the whole-file search turns 3 tests red, narrowing
+`link_files` back to `doc_files` turns 1 red, raising `DUP_MIN_WORDS`
+turns 1 red, and making the bookkeeping filter excuse everything turns 2
+red. A suite that stayed green under those would have been the same
+mistake one level up.
+
+**General form:** skill
+[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md), category 1. A
+passing check is a claim about the check, not about the tree, until
+something has shown it can fail. Where the thing being trusted is
+automation, "look more carefully next time" is not a fix — the fix is a
+fixture that fails on purpose, kept and run.
 
 ## `$!` tracked the emulator launcher, not the emulator
 

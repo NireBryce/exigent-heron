@@ -140,6 +140,12 @@ Consequences worth knowing before editing:
 Nothing here reads prose. A sentence can become false with every check
 green.
 
+`wiki/scripts/test_check_wiki.py` proves each check can still fail, on
+fixtures built to break it, and `just wiki-lint` runs it *before* the
+checks — because a check examining nothing passes exactly like a check
+that found nothing, which this repo shipped twice. CI runs both as of
+**2026-09-08**; before that the checks were local-only.
+
 ## Provenance
 
 This wiki, `check_wiki.py`, the git-guard hook, and several skills are

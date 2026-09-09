@@ -32,7 +32,7 @@ just test-acceptance    # posts real notifications, checks decisions
 just test-device        # both of the above
 just test-all           # everything, cheapest first
 just structure          # the two rules CI greps for
-just wiki-lint          # wiki claims vs the repo
+just wiki-lint          # wiki check self-test, then wiki claims
 just lint               # Android Lint, debug and release
 ```
 
