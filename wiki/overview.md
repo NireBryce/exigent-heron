@@ -1,6 +1,6 @@
 # Overview
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 _Text is llm generated with occasional human review_
 
@@ -78,7 +78,7 @@ Three things about it are requirements, not accidents:
 ## Where things live
 
 ```
-domain/     pure Kotlin, zero Android imports — rules, secrets, dedup
+domain/     Android-free Kotlin — rules, secrets, dedup
 listener/   the NotificationListenerService and extraction
 speech/     the queue, the TTS engine, the audio gates
 data/       DataStore-backed settings and rules

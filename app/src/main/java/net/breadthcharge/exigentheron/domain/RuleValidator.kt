@@ -3,7 +3,7 @@ package net.breadthcharge.exigentheron.domain
 import java.util.regex.PatternSyntaxException
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * Single source of truth for "is this a pattern we'll accept" — used by
  * both [RuleEngine.compileOrNull] (defensive: a rule already on disk

@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  * Runs after [RuleEngine] and can only downgrade a [Decision], never upgrade one.
  *
  * **Downgrade semantics, spelled out because the spec states the rule

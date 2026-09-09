@@ -1,6 +1,6 @@
 # History (dense)
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 _Text is llm generated with occasional human review_
 
@@ -91,6 +91,49 @@ comments citing "Phase N" directly; the phase rule (build and install at
 each boundary, don't start N+1 before N's criteria pass) moved into
 `AGENTS.md` §6 inline. `check_wiki.py` no longer scans it. That entry,
 not a restored copy, is the record of what it said.
+
+**`PURE` renamed to `ANDROID-FREE`** (2026-09-09). The marker on
+`domain/` and on `speech/GatePolicy.kt` / `listener/NotificationExtractionPolicy.kt`
+had always meant one narrow thing — no Android framework dependency, so a
+plain JVM test can construct and run it — and nothing about side effects.
+By the ordinary meaning of the word almost nothing it labelled qualified:
+`Deduplicator` mutates an access-ordered `LinkedHashMap` inside
+`isDuplicate()`, `RuleEngine` launches coroutines and races a timeout
+against `Thread.interrupt()`, both holders own a `MutableStateFlow` and a
+live `CoroutineScope`.
+
+Three things made it worth renaming rather than documenting harder:
+
+1. **The word was doing two jobs in the same files.** This repo also uses
+   "pure function" in its ordinary sense, correctly — "pull the decision
+   into a pure function", "as a pure function over plain values". A reader
+   hitting "pure" had to work out which meaning applied, with no contextual
+   signal. `architecture-4llm.md`'s `NotificationExtractionPolicy` entry
+   shows the collision in one sentence: "as a pure function over plain
+   values ... but it has zero Android imports" — two properties, one word,
+   named separately anyway.
+2. **The label carried no information.** Every marker restated the
+   definition immediately after it: `PURE. No Android imports — domain/
+   must be unit-testable on the JVM without Robolectric.`
+3. **The repo was already paying for it per-site.** `RuleEngineHolder` and
+   `SecretDetectorHolder` disambiguated inline — `PURE (domain/ sense —
+   Flow/CoroutineScope are kotlinx.coroutines, not Android Framework)` —
+   and [architecture.md](architecture.md)'s section on the term had to open
+   by saying it doesn't mean what the word usually means. Both
+   disambiguations were deleted by the rename; the new name makes them
+   redundant.
+
+"Androidless" was considered and rejected as not a standard compound and
+awkward in prose ("androidless code"); "JVM-testable" names the
+consequence rather than the rule CI actually greps for. 13 Kotlin doc
+comments, `AGENTS.md` §3 and its Definition of Done, and the wiki pages
+were updated; genuine "pure function" usages were deliberately left, and
+are less ambiguous now that the other meaning is gone.
+
+`SECURITY.md` keeps the old wording throughout. It is a dated evidence log
+of what was run during Phase 5, including a Definition-of-Done item quoted
+as it read then; rewriting it would falsify a record rather than update a
+claim.
 
 **Package name resolved.** §3's tree used `com.<yourdomain>.notifreader`
 as a placeholder; the real package is `net.breadthcharge.exigentheron`.

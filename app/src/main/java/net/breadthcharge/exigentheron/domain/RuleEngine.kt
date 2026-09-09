@@ -9,7 +9,7 @@ private const val MAX_MATCH_INPUT_LENGTH = 2000
 private val MATCH_TIMEOUT = 100.milliseconds
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * Rules are compiled once at construction (cached regex patterns), not per
  * notification. Sorted by [Rule.priority] descending; first enabled,

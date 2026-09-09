@@ -3,7 +3,7 @@ package net.breadthcharge.exigentheron.domain
 import kotlinx.serialization.Serializable
 
 /**
- * PURE. No Android imports. User-authored, persisted as JSON through
+ * ANDROID-FREE. No Android imports. User-authored, persisted as JSON through
  * DataStore via [RuleRepository][net.breadthcharge.exigentheron.data.RuleRepository].
  */
 @Serializable

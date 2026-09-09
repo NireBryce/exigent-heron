@@ -101,7 +101,7 @@ class AppContainer(private val appContext: Context) {
         connectedOutputTypes = { connectedOutputDevices().map { it.type }.toSet() },
         bluetoothDeviceControlEnabled = { currentSettings.bluetoothDeviceControlEnabled },
         // Reads the framework values here; what they *mean* lives in
-        // GatePolicy.bluetoothAddressesOf, which is pure and tested —
+        // GatePolicy.bluetoothAddressesOf, which is Android-free and tested —
         // including the permission-revoked case, which is the part with
         // a real decision in it.
         connectedBluetoothAddresses = {

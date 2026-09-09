@@ -1,6 +1,6 @@
 # Testing
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 _Text is llm generated with occasional human review_
 
@@ -100,7 +100,7 @@ test structurally cannot reach:
   suspended `speak()`. A fake can only show that `SpeechQueue` *calls*
   it, and two features depend on the call achieving something.
 - `speech/GatePolicyFrameworkConstantsTest` — that the framework
-  constants the pure code mirrors still match. Drift wouldn't fail to
+  constants the Android-free code mirrors still match. Drift wouldn't fail to
   compile; it would silently misclassify.
 - `ui/rules/InstalledAppsTest` — a regression test for the `<queries>`
   manifest block.

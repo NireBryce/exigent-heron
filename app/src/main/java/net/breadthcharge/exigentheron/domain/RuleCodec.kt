@@ -6,7 +6,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * The JSON and list-editing logic of RuleRepository, extracted so it's
  * unit-testable on the JVM independent of DataStore/Context.
