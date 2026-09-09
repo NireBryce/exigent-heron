@@ -6,6 +6,7 @@ _Text is llm generated with occasional human review_
 
 ## Contents
 
+- [What "pure" means here](#what-pure-means-here)
 - [The rule everything else follows from](#the-rule-everything-else-follows-from)
 - [Package tree](#package-tree)
 - [Data flow](#data-flow)
@@ -17,6 +18,58 @@ _Text is llm generated with occasional human review_
 Where the code lives and how it fits together. **This page is the
 canonical tree** — [`AGENTS.md`](../AGENTS.md) §3 keeps a six-bullet
 summary and points here.
+
+## What "pure" means here
+
+The tree below marks `domain/` and two other files **PURE**. It is worth
+being exact about that, because it does not mean what the word usually
+means.
+
+**Pure here means one thing: no Android framework dependency.** A pure
+file can be constructed and run by a plain JVM unit test — no emulator,
+no instrumentation, no Robolectric. That is the entire definition.
+
+It does **not** mean side-effect-free, stateless, or deterministic. Real
+examples from `domain/`, all of them pure by this definition:
+
+- `Deduplicator` keeps a mutable access-ordered `LinkedHashMap` and
+  mutates it on every call — `isDuplicate()` is a question that changes
+  the answer to the next one.
+- `RuleEngine` launches coroutines, races a 100ms timeout, and depends on
+  `Thread.interrupt()` actually landing mid-regex.
+- Both `*Holder` classes own a `MutableStateFlow` and a long-lived
+  `CoroutineScope`.
+
+What *is* allowed in pure code: the Kotlin stdlib, the JDK
+(`java.security.MessageDigest`, `java.util.regex`), kotlinx.coroutines,
+and kotlinx.serialization. What is not: anything under `android.`.
+
+**Two consequences worth knowing before you write pure code.**
+
+*Framework constants have to be copied, not imported.* `SecretDetector`
+can't `import android.app.Notification`, so it mirrors
+`VISIBILITY_PRIVATE`/`VISIBILITY_SECRET` as its own integers; `GatePolicy`
+does the same for `INTERRUPTION_FILTER_ALL`. A drift between the copy and
+the framework wouldn't fail to compile — it would silently misclassify —
+which is why an instrumented test asserts they still match.
+
+*Framework values arrive as plain arguments or function references.* Pure
+code never reaches for a `Context` or a system service; the caller reads
+those and passes the result in. That's why the gates take
+`() -> Boolean` rather than an `AudioManager`.
+
+**How it's enforced, and what that misses.** CI greps `domain/` for
+`^import android.` — anchored, so `kotlinx.coroutines` passes. The
+anchor is also the limit: a fully-qualified reference with no import
+line, or an Android type arriving through a non-`domain/` parameter,
+would slip past it. Neither has happened; the rule is upheld by writing
+the code this way, and the grep is the backstop.
+
+Note that **pure and `domain/` are not the same set.**
+`listener/NotificationExtractionPolicy.kt` and `speech/GatePolicy.kt` are
+both pure and both deliberately outside `domain/` — they're extraction
+and gate policy, not rule/secret/dedup logic. Purity is a property of a
+file; `domain/` is a claim about what a file is *about*.
 
 ## The rule everything else follows from
 
