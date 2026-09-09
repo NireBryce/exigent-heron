@@ -4,7 +4,7 @@ import java.security.MessageDigest
 
 /**
  * Stable hash of a notification's title+body — see
- * [NotificationPayload.contentHash] and [Deduplicator]. Pure JVM
+ * [NotificationPayload.contentHash] and [Deduplicator]. Android-free
  * (`java.security`, not an Android API), extracted to `domain/` so
  * [NotificationExtractor][net.breadthcharge.exigentheron.listener.NotificationExtractor]
  * (real notifications) and `debug/FakeNotifications.kt` (synthetic ones)
