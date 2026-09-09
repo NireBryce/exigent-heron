@@ -16,15 +16,15 @@ import org.junit.runner.RunWith
  * `RuleRepository` has no JVM test — it is a DataStore wrapper, and
  * DataStore needs a real `Context`. That left the whole write-read path
  * (encode → Preferences → disk → decode) unexercised except by hand:
- * wiki/testing.md's Phase 3 step 1 is a human adding a rule, force-stopping
- * the app, and looking.
+ * wiki/testing.md's "Persistence" manual check is a human adding a rule,
+ * force-stopping the app, and looking.
  *
  * **What this does and does not prove.** It covers serialization, the
  * DataStore write, and that a file really lands on disk. It does *not*
  * prove survival across a process death: `preferencesDataStore` is a
  * per-Context singleton, so a second `RuleRepository` in this process
  * shares the same instance rather than re-reading the file. The
- * force-stop step in wiki/testing.md is still the only thing that shows
+ * force-stop check in wiki/testing.md is still the only thing that shows
  * cross-process persistence, and it stays in that document for that
  * reason.
  */

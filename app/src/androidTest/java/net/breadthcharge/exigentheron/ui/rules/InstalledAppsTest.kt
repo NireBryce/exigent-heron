@@ -16,8 +16,8 @@ import org.junit.runner.RunWith
  * app* unless the manifest declares the launcher intent it's querying
  * for. Dropping that declaration doesn't fail to build and doesn't
  * throw: the app picker simply comes back empty, which is why
- * wiki/testing.md's Phase 3 step 3 is a human opening the picker and
- * checking it isn't. This asserts the same thing without the human.
+ * wiki/testing.md's "App picker" manual check is a human opening the
+ * picker and checking it isn't. This asserts the same thing without the human.
  */
 @RunWith(AndroidJUnit4::class)
 class InstalledAppsTest {
