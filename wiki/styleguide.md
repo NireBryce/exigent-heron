@@ -34,7 +34,10 @@ of the article so the article stays usable.
 
 **When you add a page, add both.** A subject with only an article loses
 its history the first time someone compresses it; a subject with only a
-companion has no entry point.
+companion has no entry point. `check_wiki.py`'s `pairs` check fails on a
+missing half, and flags a long paragraph written verbatim into both — it
+can't tell that the same fact was reworded into each, which is the part
+you have to watch yourself.
 
 ## Which half does a fact go in
 

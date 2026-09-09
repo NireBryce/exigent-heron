@@ -102,8 +102,9 @@ Cold start on this repo, cheapest useful order:
 ## Mechanical checks
 
 [`scripts/check_wiki.py`](scripts/check_wiki.py), run as `just wiki-lint`
-or `python3 wiki/scripts/check_wiki.py check`. Eight checks: `phases`,
-`skills`, `gradle`, `recipes`, `links`, `anchors`, `contents`, `dates`.
+or `python3 wiki/scripts/check_wiki.py check`. Nine checks: `phases`,
+`skills`, `gradle`, `recipes`, `links`, `anchors`, `contents`, `dates`,
+`pairs`.
 The script's own docstring is the authority on what each does and what it
 deliberately does not catch.
 
@@ -124,6 +125,10 @@ Consequences worth knowing before editing:
   <page>` — never by hand.
 - `dates` checks the `_Last modified:` line exists, is shaped right, and
   is not in the future. It cannot check that it is still true.
+- `pairs` (added **2026-09-08**) checks every page has its counterpart —
+  a missing or orphaned half is a hard failure — and flags a prose
+  paragraph of 25+ words written verbatim into both halves as a REVIEW
+  finding. It cannot see a fact restated in different words.
 
 Nothing here reads prose. A sentence can become false with every check
 green.

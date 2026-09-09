@@ -66,7 +66,7 @@ At the end of a change that could make a wiki fact wrong, for example:
    way skill `fact-hygiene` insists on, rather than trusting what the page
    already says or what you assume changed.
 4. **Edit stale pages in the same change**, following
-   [`wiki/styleguide.md`](../../wiki/styleguide.md):
+   [`wiki/styleguide.md`](../../../wiki/styleguide.md):
    - Dates absolute (`2026-09-05`), never relative ("today", "last week").
    - Relative links verified to resolve after editing.
    - kebab-case naming; `README.md` reserved for a directory's own index.
@@ -75,7 +75,9 @@ At the end of a change that could make a wiki fact wrong, for example:
      dated deviations. Put each fact in exactly one half — the current
      answer in the article, the why/when/what-was-rejected in the
      companion — and edit whichever half actually went stale, not both by
-     reflex. `check_wiki.py` knows nothing about the pairing.
+     reflex. `check_wiki.py`'s `pairs` check catches a missing half and a
+     verbatim-duplicated paragraph, but not the same fact reworded into
+     both — that part is this step.
    - If a fix balloons into new prose that argues a fact rather than
      linking to it, that's a sign the fact belongs in the linked file's
      own header comment instead.
@@ -88,8 +90,8 @@ At the end of a change that could make a wiki fact wrong, for example:
    ```sh
    python3 wiki/scripts/check_wiki.py check
    ```
-   Fix any `contents`/`anchors`/`links`/`skills`/`gradle`/`phases`/`dates`
-   finding it reports — `gen-contents <page>` regenerates a stale
+   Fix any `contents`/`anchors`/`links`/`skills`/`gradle`/`recipes`/
+   `phases`/`dates`/`pairs` finding it reports — `gen-contents <page>` regenerates a stale
    `## Contents` block automatically rather than by hand.
 6. **If nothing in `wiki/` actually mentions what changed, say so and
    stop.** Don't manufacture an edit to a page the change doesn't touch —
@@ -100,9 +102,9 @@ At the end of a change that could make a wiki fact wrong, for example:
 
 - [`submit-a-pr`](../submit-a-pr/SKILL.md) — its step 2 is where this
   procedure is actually invoked before a change lands.
-- [`wiki/styleguide.md`](../../wiki/styleguide.md) — the house rules
+- [`wiki/styleguide.md`](../../../wiki/styleguide.md) — the house rules
   this skill's edits have to follow.
-- [`wiki/README.md`](../../wiki/README.md) — why the wiki is a link
+- [`wiki/README.md`](../../../wiki/README.md) — why the wiki is a link
   layer, and "keeping this from rotting".
 - Skill `fact-hygiene` — the general discipline behind re-deriving a fact
   instead of trusting a stale one, applied beyond just the wiki.

@@ -55,9 +55,9 @@ rather than folded in silently.
 - **Anything that touches a file you weren't already going to touch.**
   That's scope creep wearing boyscouting's name — a separate task (or
   `propose-issue` if it's a bug, or a mention in your reply if it's not).
-- **A rule from `wiki/module-style-guide.md`** (or `AGENTS.md`'s §4
-  component rules) **violated in a file you're merely reading**, not
-  editing — mention it, don't fix it uninvited.
+- **A rule from `.editorconfig`** (or `AGENTS.md`'s §4 component rules,
+  or `wiki/styleguide.md` for a wiki page) **violated in a file you're
+  merely reading**, not editing — mention it, don't fix it uninvited.
 - **Anything §0 already forbids outright** — a new dependency, a logging
   call touching notification content, an `INTERNET`-permission-adjacent
   change — is never boyscouting-small regardless of how few lines it is;
