@@ -1,6 +1,6 @@
 # Architecture (dense)
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 _Text is llm generated with occasional human review_
 
@@ -9,7 +9,7 @@ _Text is llm generated with occasional human review_
 - [Status of this page](#status-of-this-page)
 - [Per-file detail with dates](#per-file-detail-with-dates)
 - [Divergences from the spec's original tree](#divergences-from-the-specs-original-tree)
-- [Framework constants mirrored in pure code](#framework-constants-mirrored-in-pure-code)
+- [Framework constants mirrored in Android-free code](#framework-constants-mirrored-in-android-free-code)
 - [Recording a new divergence](#recording-a-new-divergence)
 
 Companion to [architecture.md](architecture.md), which holds the
@@ -129,7 +129,7 @@ it was granted **to end a restatement, not to add one**. See
 - `LockStateGate` (Phase 4): against `KeyguardManager.isKeyguardLocked()`.
 - `AudioBecomingNoisyReceiver` (**2026-09-07**): §4.7's
   `ACTION_AUDIO_BECOMING_NOISY` handling.
-- `GatePolicy` (**2026-09-08**): pure, no Android imports; holds the DND
+- `GatePolicy` (**2026-09-08**): Android-free; holds the DND
   and Bluetooth-address decisions `AppContainer` previously made inline
   in the lambdas it handed the gates. The framework reads stayed behind —
   the same split `NotificationExtractionPolicy` makes against
@@ -153,7 +153,7 @@ it was granted **to end a restatement, not to add one**. See
 **Test source sets**
 - `app/src/test/` — one class per testable class, mirroring package
   structure. `NotificationExtractionPolicyTest` and `SpeechQueueTest` were
-  the first to exercise Android-facing code rather than pure `domain/`;
+  the first to exercise Android-facing code rather than `domain/`;
   two real problems surfaced specifically because of that, see
   [traps-and-skills.md](traps-and-skills.md). 118 tests as of
   **2026-09-08** — [status.md](status.md) holds the current count.
@@ -224,13 +224,13 @@ permission flow ever lands (`BLUETOOTH_CONNECT`'s launcher in
 `SettingsScreen.kt` is already a second such site), the spec's original
 instinct gets better, not worse.
 
-## Framework constants mirrored in pure code
+## Framework constants mirrored in Android-free code
 
-Two pure classes mirror framework integer constants rather than importing
+Two Android-free classes mirror framework integer constants rather than importing
 them, because importing would break the `domain/`-purity rule (and, for
 `GatePolicy`, the same reasoning applied by analogy):
 
-| Pure class | Mirrors |
+| Android-free class | Mirrors |
 |---|---|
 | `domain/SecretDetector.kt` | `Notification.VISIBILITY_PRIVATE`, `VISIBILITY_SECRET` |
 | `speech/GatePolicy.kt` | `NotificationManager.INTERRUPTION_FILTER_ALL` |

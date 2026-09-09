@@ -1,12 +1,12 @@
 # Architecture
 
-_Last modified: 2026-09-08_
+_Last modified: 2026-09-09_
 
 _Text is llm generated with occasional human review_
 
 ## Contents
 
-- [What "pure" means here](#what-pure-means-here)
+- [What "Android-free" means here](#what-android-free-means-here)
 - [The rule everything else follows from](#the-rule-everything-else-follows-from)
 - [Package tree](#package-tree)
 - [Data flow](#data-flow)
@@ -19,18 +19,19 @@ Where the code lives and how it fits together. **This page is the
 canonical tree** — [`AGENTS.md`](../AGENTS.md) §3 keeps a six-bullet
 summary and points here.
 
-## What "pure" means here
+## What "Android-free" means here
 
-The tree below marks `domain/` and two other files **PURE**. It is worth
-being exact about that, because it does not mean what the word usually
-means.
+The tree below marks `domain/` and two other files **ANDROID-FREE**, and
+so do those files' own doc comments.
 
-**Pure here means one thing: no Android framework dependency.** A pure
+**It means one thing: no Android framework dependency.** An Android-free
 file can be constructed and run by a plain JVM unit test — no emulator,
-no instrumentation, no Robolectric. That is the entire definition.
+no instrumentation, no Robolectric. That is the entire definition, and it
+is exactly what CI greps for.
 
-It does **not** mean side-effect-free, stateless, or deterministic. Real
-examples from `domain/`, all of them pure by this definition:
+It says nothing about state or side effects, which is worth stating
+because the label it replaced implied otherwise. All of these are
+Android-free:
 
 - `Deduplicator` keeps a mutable access-ordered `LinkedHashMap` and
   mutates it on every call — `isDuplicate()` is a question that changes
@@ -40,11 +41,17 @@ examples from `domain/`, all of them pure by this definition:
 - Both `*Holder` classes own a `MutableStateFlow` and a long-lived
   `CoroutineScope`.
 
-What *is* allowed in pure code: the Kotlin stdlib, the JDK
+Allowed in Android-free code: the Kotlin stdlib, the JDK
 (`java.security.MessageDigest`, `java.util.regex`), kotlinx.coroutines,
-and kotlinx.serialization. What is not: anything under `android.`.
+and kotlinx.serialization. Not allowed: anything under `android.`.
 
-**Two consequences worth knowing before you write pure code.**
+**These files were marked `PURE` until 2026-09-09.** The word was doing
+two jobs at once — this rule, and its ordinary meaning, which this wiki
+still uses correctly elsewhere ("pull the decision into a pure function").
+Renamed so each term means one thing; see
+[history-4llm.md](history-4llm.md).
+
+**Two consequences worth knowing before you write Android-free code.**
 
 *Framework constants have to be copied, not imported.* `SecretDetector`
 can't `import android.app.Notification`, so it mirrors
@@ -53,9 +60,9 @@ does the same for `INTERRUPTION_FILTER_ALL`. A drift between the copy and
 the framework wouldn't fail to compile — it would silently misclassify —
 which is why an instrumented test asserts they still match.
 
-*Framework values arrive as plain arguments or function references.* Pure
-code never reaches for a `Context` or a system service; the caller reads
-those and passes the result in. That's why the gates take
+*Framework values arrive as plain arguments or function references.*
+Android-free code never reaches for a `Context` or a system service; the
+caller reads those and passes the result in. That's why the gates take
 `() -> Boolean` rather than an `AudioManager`.
 
 **How it's enforced, and what that misses.** CI greps `domain/` for
@@ -65,11 +72,12 @@ line, or an Android type arriving through a non-`domain/` parameter,
 would slip past it. Neither has happened; the rule is upheld by writing
 the code this way, and the grep is the backstop.
 
-Note that **pure and `domain/` are not the same set.**
+Note that **Android-free and `domain/` are not the same set.**
 `listener/NotificationExtractionPolicy.kt` and `speech/GatePolicy.kt` are
-both pure and both deliberately outside `domain/` — they're extraction
-and gate policy, not rule/secret/dedup logic. Purity is a property of a
-file; `domain/` is a claim about what a file is *about*.
+both Android-free and both deliberately outside `domain/` — they're
+extraction and gate policy, not rule/secret/dedup logic. Being
+Android-free is a property of a file; `domain/` is a claim about what a
+file is *about*.
 
 ## The rule everything else follows from
 
@@ -106,7 +114,7 @@ net.breadthcharge.exigentheron/
 ├── listener/
 │   ├── NotificationTtsListener.kt      # NotificationListenerService — routing only
 │   ├── NotificationExtractor.kt        # StatusBarNotification -> NotificationPayload
-│   └── NotificationExtractionPolicy.kt # pure drop conditions
+│   └── NotificationExtractionPolicy.kt # Android-free drop conditions
 │
 ├── domain/                           # PURE. zero Android imports.
 │   ├── NotificationPayload.kt        # toString() emits key + package only, never content
@@ -189,12 +197,12 @@ copy that stays correct. This is a map to get you to the right file.
   `decision(pkg, ruleId, action)`, `lifecycle(msg)`, `error(msg, t?)`;
   no arbitrary-string overload. **Logcat tag is `"ExigentHeron"`**, not
   the class name — check before scoping an `adb logcat`.
-- **`domain/`** — the rule engine, secret detection, dedup, and the pure
-  validators/codecs. The two `*Holder` classes rebuild their subject from
+- **`domain/`** — the rule engine, secret detection, dedup, and the
+  Android-free validators/codecs. The two `*Holder` classes rebuild their subject from
   a `Flow` so an edit in the UI takes effect on the next notification
   rather than on the next app start.
 - **`listener/`** — the service (routing only), the Android-facing half
-  of extraction, and the pure drop-condition half.
+  of extraction, and the Android-free drop-condition half.
 - **`data/`** — Preferences DataStore. Rules are one JSON blob under
   `rules_json`; `Settings` carries headset-only, lock-state,
   DND-override, engine package, the two Bluetooth address sets, a
@@ -229,7 +237,7 @@ Current test counts live in [status.md](status.md) rather than here.
 
 ## Adding a class
 
-1. Can it be pure? Then it goes in `domain/`, no Android imports.
+1. Can it be Android-free? Then it goes in `domain/`, no Android imports.
 2. Does it decide something? Pull the decision into a pure function and
    leave the framework read behind — `NotificationExtractionPolicy` and
    `GatePolicy` are the two worked examples.

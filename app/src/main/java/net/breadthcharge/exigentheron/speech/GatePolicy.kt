@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.speech
 
 /**
- * PURE. No Android imports — so the decisions `AppContainer` used to
+ * ANDROID-FREE. No Android imports — so the decisions `AppContainer` used to
  * make inline, in lambdas it hands the gates, are unit-testable on the
  * JVM like everything in `domain/` is.
  *

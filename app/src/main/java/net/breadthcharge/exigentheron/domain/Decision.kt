@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports. The output of [RuleEngine.evaluate], then
+ * ANDROID-FREE. No Android imports. The output of [RuleEngine.evaluate], then
  * possibly downgraded (never upgraded) by [SecretDetector.scan]. The decision is threaded through the
  * pipeline: extract → dedup → rule engine → secret detector → output gate → lock gate → speech queue.
  *

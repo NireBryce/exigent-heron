@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE (clock injected). No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE (clock injected). No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * Apps repost notifications constantly (progress updates, read
  * receipts, reactions); reading each repost aloud is the #1 quality

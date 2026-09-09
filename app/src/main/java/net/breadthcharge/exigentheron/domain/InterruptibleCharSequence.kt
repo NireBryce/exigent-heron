@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric.
  *
  * `java.util.regex.Matcher` (which `kotlin.text.Regex` wraps) has no
  * cooperative-cancellation checks of its own — interrupting the thread

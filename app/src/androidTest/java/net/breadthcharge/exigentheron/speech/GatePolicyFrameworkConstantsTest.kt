@@ -13,7 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Two pure files mirror framework constants as plain Ints so they can
+ * Two Android-free files mirror framework constants as plain Ints so they can
  * stay Android-import-free: [SecretDetector]'s visibility levels and
  * [INTERRUPTION_FILTER_ALL]. Both carry a comment saying the values must
  * track the framework's rather than be reinvented — and until this file

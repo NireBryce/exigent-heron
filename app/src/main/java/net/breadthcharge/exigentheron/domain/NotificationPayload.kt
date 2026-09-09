@@ -1,7 +1,7 @@
 package net.breadthcharge.exigentheron.domain
 
 /**
- * PURE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric. Constructed by
+ * ANDROID-FREE. No Android imports — domain/ must be unit-testable on the JVM without Robolectric. Constructed by
  * [NotificationExtractor][net.breadthcharge.exigentheron.listener.NotificationExtractor]
  * (Android-facing) from a `StatusBarNotification`.
  *

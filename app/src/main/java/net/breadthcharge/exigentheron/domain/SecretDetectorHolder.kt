@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * PURE (domain/ sense — `Flow`/`CoroutineScope` are kotlinx.coroutines, not Android Framework).
+ * ANDROID-FREE. `Flow`/`CoroutineScope` are kotlinx.coroutines, not Android.
  * No Android imports.
  *
  * Keeps a live [SecretDetector] rebuilt from whatever [otpKeywords]
