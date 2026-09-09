@@ -43,6 +43,15 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check_wiki.py's `freshness` compares each wiki page's stated
+          # _Last modified_ date against the commit that last changed it.
+          # The default shallow fetch (depth 1) grafts a root that looks
+          # like it introduced every file, collapsing every page's history
+          # onto the tip and reporting all of them as drifted. The check
+          # detects a shallow repo and skips that half rather than guess,
+          # so this is what makes it do anything here at all.
+          fetch-depth: 0
 
       # Pinned to a commit SHA, not @main: a floating branch ref on a
       # third-party action means a compromised or force-pushed upstream

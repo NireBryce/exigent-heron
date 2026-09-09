@@ -118,7 +118,11 @@ extractable facts only:
 
             Both ignore changes that only touch the `_Last modified:`
             line, the provenance notice, or the `## Contents` block, so a
-            gen-contents run or a date bump alone never trips it.
+            gen-contents run or a date bump alone never trips it. In a
+            shallow clone the second case is skipped entirely: a grafted
+            root looks like it introduced every file, so every page would
+            read as drifted onto the tip's date. The first case needs no
+            history and still runs there.
 
   check     Runs all ten of the above.
 
@@ -592,6 +596,13 @@ def check_freshness(root):
     differ."""
     if not git(root, 'rev-parse', '--git-dir').strip():
         return []  # no git (a tarball, a vendored copy) -- nothing to say
+    # A shallow clone's grafted root looks like it introduced every file it
+    # contains, so every page's "last substantive commit" collapses onto the
+    # tip's date and every page older than the tip reads as drifted.
+    # Measured: the same tree gives 0 findings full and one REVIEW per page
+    # at --depth 1. The history isn't there to answer the question, so don't
+    # guess -- the uncommitted half below needs no history and still runs.
+    shallow = git(root, 'rev-parse', '--is-shallow-repository').strip() == 'true'
     today = datetime.date.today().isoformat()
     findings = []
     for path in sorted(root.joinpath('wiki').rglob('*.md')):
@@ -608,6 +619,8 @@ def check_freshness(root):
             continue  # the pending edit is the live fact; don't also
                       # report the older committed drift underneath it
 
+        if shallow:
+            continue  # see above -- no usable history for this half
         committed = last_substantive_commit_date(root, path)
         if committed and committed > stated:
             findings.append(

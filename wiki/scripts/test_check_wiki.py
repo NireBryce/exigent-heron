@@ -315,6 +315,30 @@ class FreshnessTest(CheckTest):
         self.assertTrue(all(f.startswith('REVIEW') for f in findings),
                         f'committed drift is judgement-laden, got: {findings}')
 
+    def test_shallow_clone_skips_the_committed_half(self):
+        """A depth-1 clone's grafted root looks like it introduced every
+        file, so every page collapses onto the tip's date and reads as
+        drifted. Measured on one tree: 0 findings full, one REVIEW per
+        page shallow. CI checks out shallow by default, so without this
+        the check would cry wolf on every page of every run."""
+        self.fx.write('wiki/p.md', page('P', date='2026-09-01'))
+        self.fx.write('wiki/p-4llm.md', page('P (dense)', date='2026-09-01',
+                                             sections=(('B', 'other body'),)))
+        self.fx.commit('pages', '2026-09-01')
+        self.fx.write('code.txt', 'unrelated\n')
+        self.fx.commit('a later commit touching no page', '2026-09-20')
+
+        clone = pathlib.Path(tempfile.mkdtemp(prefix='check-wiki-shallow-'))
+        self.addCleanup(shutil.rmtree, clone, True)
+        target = clone / 'r'
+        subprocess.run(('git', 'clone', '-q', '--depth', '1',
+                        f'file://{self.fx.root}', str(target)),
+                       capture_output=True)
+        self.assertEqual(
+            cw.git(target, 'rev-parse', '--is-shallow-repository').strip(),
+            'true', 'fixture did not produce a shallow clone')
+        self.assertSilent(cw.check_freshness(target))
+
     def test_silent_without_git(self):
         """Must degrade to silence in a tarball or vendored copy rather
         than erroring."""
