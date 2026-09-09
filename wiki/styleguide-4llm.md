@@ -2,6 +2,8 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - [The split, and why](#the-split-and-why)
@@ -129,6 +131,12 @@ authority; this is the shape of what it can and cannot see.
   backticked name, or a backticked name followed by **skill**) against
   `.claude/skills/<name>/`. A bare backticked token is deliberately
   unmatched, since most of them here are code identifiers.
+
+**Known gap:** `gen-contents` inserts a *fresh* `## Contents` block after
+the title and date line but ahead of the provenance notice, since it
+predates that notice. It rewrites an existing block in place correctly,
+which is the case that actually comes up; a brand-new page needs the
+block moved below the notice by hand.
 
 **Cannot see, at all:** whether any sentence is true. A claim about what
 a class does, a "why" that no longer applies, a date left un-bumped, a

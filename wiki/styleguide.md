@@ -2,6 +2,8 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - [The paired-page convention](#the-paired-page-convention)
@@ -63,11 +65,17 @@ Every page — both halves — opens exactly like this:
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - (one bullet per `##` heading, generated)
 ```
 
+- **The provenance notice is mandatory too**, on every page, in exactly
+  that wording — most of this wiki is written by LLM coding agents under
+  human review, and a reader shouldn't have to consult
+  [README.md](README.md) to learn that.
 - **The date line is mandatory**, absolute, and bumped to today by
   whoever edits the page's actual content. A purely mechanical touch (a
   `gen-contents` run, a typo fix) doesn't need it. The checker verifies

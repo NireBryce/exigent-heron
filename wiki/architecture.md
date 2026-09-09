@@ -2,6 +2,8 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - [The rule everything else follows from](#the-rule-everything-else-follows-from)

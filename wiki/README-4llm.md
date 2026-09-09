@@ -2,6 +2,8 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - [What this file is](#what-this-file-is)

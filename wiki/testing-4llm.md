@@ -2,6 +2,8 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
 - [Why this page holds procedure at all](#why-this-page-holds-procedure-at-all)
