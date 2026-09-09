@@ -11,7 +11,7 @@ package net.breadthcharge.exigentheron.domain
  * first place). Threaded through so
  * [SafeLog.decision][net.breadthcharge.exigentheron.SafeLog.decision]'s `ruleId`
  * parameter — always `null` in practice before this — can log which
- * rule actually fired, per `wiki/open-threads.md`'s note on it.
+ * rule actually fired, per `wiki/open-threads-4llm.md`'s note on it.
  */
 sealed interface Decision {
     val ruleId: String?

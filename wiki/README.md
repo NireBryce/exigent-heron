@@ -2,99 +2,94 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
-- [Common tasks](#common-tasks)
+- [Two forms of every page](#two-forms-of-every-page)
+- [I want to...](#i-want-to)
 - [Pages](#pages)
-- [Keeping this from rotting](#keeping-this-from-rotting)
+- [Keeping this honest](#keeping-this-honest)
 
-A small index over what's actually happened while building this app, as
-distinct from what `AGENTS.md` requires of it. Adapted from the
-NireBryce/nixos-configs repo's own wiki (same link-layer idea, same style rules),
-sized down from a multi-host NixOS fleet to one Gradle module.
+Notes on what this app actually is and how to work on it, kept separate
+from [`AGENTS.md`](../AGENTS.md), which states what the app must keep
+satisfying and deliberately doesn't track whether that's true right now.
 
-**Why a separate layer at all, on a repo this small:** `AGENTS.md` states
-requirements — the constraints and per-component contracts the app has to
-keep satisfying. It deliberately doesn't track *whether that's actually
-true right now* (a claim written the day it's true can go stale the
-moment a later change touches the same code, the same way NireBryce/nixos-configs'
-own wiki documents a "Status as of `<date>`" line rotting — see the
-`fact-hygiene` skill). This wiki is where that current-state tracking
-lives instead, plus the things a requirements document has no natural
-home for: decisions made while actually implementing it, mistakes hit
-along the way, open questions, and how to actually run the thing.
+If you are new here, read [overview.md](overview.md), then
+[testing.md](testing.md) when you want to run something.
 
-**Not a replacement for `AGENTS.md`.** `AGENTS.md` is still the
-agent-facing entry point and the one document worth reading cold before
-touching this repo — including its own instruction to say when it looks
-wrong rather than build around it silently. This wiki is for everything
-that document isn't the right place for.
+## Two forms of every page
 
-**Index over restatement**, same rule as the repo this was adapted from:
-pages here link to the real source (a code comment, `AGENTS.md` itself, an
-issue) rather than copying it. There are two exceptions.
-[testing.md](testing.md) — like NireBryce/nixos-configs' `homelab/` usage pages —
-documents *doing* something (running the app on a device) rather than a
-fact that lives in a file, so it holds real procedural content instead of
-just links. [architecture.md](architecture.md) holds the canonical
-package tree and data-flow diagram as of 2026-09-08, because a *target*
-tree and a *real* tree are the same shape and keeping both meant
-reconciling every new file against a spec written before the app existed;
-that page's own intro has the full reasoning.
+Each subject has two files:
 
-## Common tasks
+| File | Written for | Holds |
+|---|---|---|
+| `<page>.md` | a human contributor | what you need to do the task, in the order you need it |
+| `<page>-4llm.md` | an agent loading context | the same subject's dense detail: full reasoning chains, dated deviations, incident post-mortems, provenance |
 
-| I want to... | Start here |
+A fact lives in exactly one of the two. The article states the current
+answer and links; the companion holds the history and the argument behind
+it. The companion is not a longer draft of the article — it is the part
+that was deliberately kept out of it.
+
+If you are reading as a human and want the whole story behind a decision,
+the `-4llm` page is where it went. It is dense on purpose and will not
+read pleasantly.
+
+## I want to...
+
+| Goal | Start here |
 |---|---|
-| get oriented on this repo from cold | [overview.md](overview.md) |
-| see what's actually built and verified vs. only specified | [status.md](status.md) |
-| find a class, or understand the package layout and the pipeline | [architecture.md](architecture.md) |
-| run or test the app on an emulator or device | [testing.md](testing.md), skill [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md) |
-| check whether a bug or decision is already tracked | [open-threads.md](open-threads.md), skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md) |
-| propose filing a bug found in passing | skill [`propose-issue`](../.claude/skills/propose-issue/SKILL.md) |
-| fix something small while already editing a file, without scope creep | skill [`boyscouting`](../.claude/skills/boyscouting/SKILL.md) (a deliberate repo-wide sweep instead: [`boyscouting-all`](../.claude/skills/boyscouting-all/SKILL.md)) |
-| avoid a mistake this repo has already made once | [traps-and-skills.md](traps-and-skills.md) |
-| keep this wiki honest after a change | skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) |
+| understand what this app is | [overview.md](overview.md) |
+| build, install, or test it | [testing.md](testing.md) |
+| find a class or follow the pipeline | [architecture.md](architecture.md) |
+| know what's verified vs. only written | [status.md](status.md) |
+| check if a bug is already known | [open-threads.md](open-threads.md), skill [`investigate-bug`](../.claude/skills/investigate-bug/SKILL.md) |
+| avoid a mistake already made here | [traps-and-skills.md](traps-and-skills.md) |
+| know why something is the way it is | [history.md](history.md) |
+| land a change | skill [`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md), then skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) |
+| add or edit a wiki page | [styleguide.md](styleguide.md) |
 
 ## Pages
 
-- [Overview](overview.md) — orientation for meeting this repo cold: what
-  the app is, which of the two documents answers which kind of
-  question, and the path a notification takes through the code.
-- [Status](status.md) — phase-by-phase: what each phase required, what's
-  actually built, and what's been verified (by running the actual
-  command, dated) rather than assumed from the spec text alone.
-- [Architecture](architecture.md) — the file-by-file tree and the
-  data-flow diagram, and every place the code has diverged from what
-  `AGENTS.md` §3 once specified. As of 2026-09-08 this page *is* the
-  tree; §3 keeps a six-bullet summary and points here.
-- [Traps & skills](traps-and-skills.md) — mistakes that have actually
-  happened building this app, and the skill that holds the general form of
-  each.
-- [History](history.md) — decisions made while implementing that
-  `AGENTS.md` doesn't narrate, and anything specified but later changed.
-- [Open threads](open-threads.md) — open questions and known gaps, plus
-  anything tracked as a GitHub issue.
-- [Testing](testing.md) — how to actually build, install, and exercise the
-  app on an emulator or device; the one page here allowed to hold real
-  procedural content rather than just links.
-- [Wiki style guide](styleguide.md) — this wiki's own house style.
+- [Overview](overview.md) — what the app is, its one hard constraint, and
+  the path a notification takes. ([dense](overview-4llm.md))
+- [Architecture](architecture.md) — package tree, data flow, what each
+  package holds. ([dense](architecture-4llm.md))
+- [Status](status.md) — what is built and what has actually been run.
+  ([dense](status-4llm.md))
+- [Testing](testing.md) — build, install, and exercise the app.
+  ([dense](testing-4llm.md))
+- [Open threads](open-threads.md) — known gaps and where issues live.
+  ([dense](open-threads-4llm.md))
+- [Traps & skills](traps-and-skills.md) — mistakes made here, and the
+  lesson each one carries. ([dense](traps-and-skills-4llm.md))
+- [History](history.md) — why the code looks like this.
+  ([dense](history-4llm.md))
+- [Wiki style guide](styleguide.md) — house rules for these pages.
+  ([dense](styleguide-4llm.md))
+- [Wiki index, dense form](README-4llm.md) — this page's companion.
 
-## Keeping this from rotting
+## Keeping this honest
 
-No CI ties these pages to the code they describe except the mechanical
-checks in [`scripts/check_wiki.py`](scripts/check_wiki.py) (links, anchors,
-skill names, a phase's claimed status against what's actually in the
-tree) — see that script's own docstring for exactly what it does and
-doesn't catch. Everything else is the same rule `AGENTS.md` holds itself
-to: whichever change makes a page stale corrects it in the same change,
-not as a follow-up. Skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md)
-is the checklist for that — as of **2026-09-05**, not just a checklist
-someone might remember to run: skill
-[`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md)'s own step 2 runs
-it, by name, before a branch is pushed, and
-[`git-guard-pretooluse.sh`](../.claude/hooks/git-guard-pretooluse.sh)
-nudges a second time at `gh pr create` if the branch added or removed an
-`app/src/` file with nothing under `wiki/` alongside it. Neither is a
-substitute for actually running the procedure deliberately — see that
-hook's own comment for exactly what it can and can't catch.
+Two rules, both short:
+
+1. **Whichever change makes a page stale fixes it in the same change.**
+   Skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) is the
+   checklist; skill [`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md)
+   runs it before a branch is pushed.
+2. **Dates are absolute, and a "verified" claim names the command that
+   was run.** Skill [`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md)
+   is the general form.
+
+Run the mechanical checks before you land anything that touches this
+directory:
+
+```sh
+just wiki-lint          # or: python3 wiki/scripts/check_wiki.py check
+```
+
+They catch broken links, broken anchors, stale `## Contents` blocks,
+unknown skill/recipe/task names, a missing date line, and a phase claimed
+built whose files don't exist. They cannot tell that a sentence became
+untrue — that part is yours.

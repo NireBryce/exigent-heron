@@ -37,7 +37,7 @@ hits in the output above are its own doc comment.
 **[x]** The CI grep §4.6 asks for already exists —
 `.github/workflows/check.yml`'s "assert android.util.Log usage is
 confined to one file" step (added 2026-09-05 per
-`wiki/open-threads.md`), which runs the same `grep -rl` on every PR and
+`wiki/open-threads-4llm.md`), which runs the same `grep -rl` on every PR and
 push to `main` and fails the build if the hit count isn't exactly 1. No
 new mechanism added this phase — a second one would just be a second
 copy that could drift from the first. Confirmed by reading the workflow

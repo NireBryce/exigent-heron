@@ -2,138 +2,162 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
-- [Shape](#shape)
-- [Naming](#naming)
-- [Content shape](#content-shape)
+- [The paired-page convention](#the-paired-page-convention)
+- [Which half does a fact go in](#which-half-does-a-fact-go-in)
+- [Page shape](#page-shape)
+- [Naming and layout](#naming-and-layout)
+- [Writing rules](#writing-rules)
 - [Linking](#linking)
-- [Keeping this from rotting](#keeping-this-from-rotting)
+- [Before you land a wiki change](#before-you-land-a-wiki-change)
 - [See also](#see-also)
 
-How this wiki is organized and written. Read this before adding a page or
-reorganizing links. Adapted from NireBryce/nixos-configs' `wiki/styleguide.md`,
-collapsed from that repo's multi-tier hierarchy (cross-cutting pages,
-per-category pages, a usage tier, an escape-hatch subdirectory) down to
-what a single-module app actually needs: one flat tier, plus one page
-that's the escape hatch's whole reason to exist elsewhere in that repo —
-here it's just [testing.md](testing.md).
+Read this before adding a page or reorganizing links.
 
-## Shape
+## The paired-page convention
 
-**`wiki/*.md`**, flat, no subdirectories yet. Every page in
-[README.md](README.md)'s own Pages list. If a page ever grows a
-deep-dive that doesn't belong in its summary (NireBryce/nixos-configs did this once,
-for `shell-config` → `blesh.md`/`carapace.md`), the pattern to copy then
-is: the page becomes `wiki/<name>/README.md`, and each deep-dive gets its
-own sibling file named after its subject. Don't reach for that until an
-actual deep-dive exists to justify it.
+Every subject here exists twice:
 
-## Naming
+- **`<page>.md`** — written for a human contributor. Task-first, scannable,
+  short. Answers "what do I need to know to do this?"
+- **`<page>-4llm.md`** — written for an agent loading context. Dense,
+  telegraphic, exhaustive. Holds the reasoning chains, the dated
+  deviations, the incident write-ups, the provenance.
 
-- kebab-case, matching the subject exactly (`open-threads.md`,
-  `traps-and-skills.md`).
-- `README.md` is reserved for a directory's own index — not used as a
-  single-topic page name unless the escape hatch above is ever needed.
+Both are real pages with the same structural requirements (date line,
+`## Contents`, working links). The `-4llm` half is not a draft, an
+appendix, or a dumping ground — it is the material deliberately kept out
+of the article so the article stays usable.
 
-## Content shape
+**When you add a page, add both.** A subject with only an article loses
+its history the first time someone compresses it; a subject with only a
+companion has no entry point.
 
-- **Every page opens with a `_Last modified: YYYY-MM-DD_` line**, right
-  after the title and before `## Contents`:
+## Which half does a fact go in
 
+A fact lives in **exactly one** of the pair. Duplicating it means one
+copy rots first and nothing catches which.
+
+| Goes in the article | Goes in the companion |
+|---|---|
+| the current answer | how it got to be the answer |
+| the command to run | what running it does and doesn't prove |
+| "X is checked twice" | the bug that made the second check necessary |
+| a short caveat | the measurement behind the caveat |
+| the rule | the two options weighed, and why the other lost |
+
+The article links to the companion once, in "See also". The companion
+links back where a specific section is the entry point.
+
+If you are editing and can't tell which half something belongs in: does a
+contributor need it to *do the task*, or to *understand a past decision*?
+The first is the article.
+
+## Page shape
+
+Every page — both halves — opens exactly like this:
+
+```
+# Page title
+
+_Last modified: 2026-09-08_
+
+_Text is llm generated with occasional human review_
+
+## Contents
+
+- (one bullet per `##` heading, generated)
+```
+
+- **The provenance notice is mandatory too**, on every page, in exactly
+  that wording — most of this wiki is written by LLM coding agents under
+  human review, and a reader shouldn't have to consult
+  [README.md](README.md) to learn that.
+- **The date line is mandatory**, absolute, and bumped to today by
+  whoever edits the page's actual content. A purely mechanical touch (a
+  `gen-contents` run, a typo fix) doesn't need it. The checker verifies
+  the line exists and isn't in the future; it cannot verify the date is
+  still *true*. That half is yours.
+- **The `## Contents` list is generated, not hand-written.** After adding,
+  renaming, or removing a heading:
+
+  ```sh
+  python3 wiki/scripts/check_wiki.py gen-contents wiki/<page>.md
   ```
-  # Page title
 
-  _Last modified: 2026-09-08_
+  It implements GitHub's own heading-slug algorithm and is idempotent.
+  Don't hand-derive slugs.
 
-  ## Contents
-  ```
+## Naming and layout
 
-  Absolute date, same rule as below — the point is a reader can tell at a
-  glance how stale a page might be without opening `git log`. **Whoever
-  edits a page's actual content bumps this line to today in the same
-  change**; a purely mechanical touch (a `gen-contents` run, a typo fix)
-  doesn't need to. `wiki/scripts/check_wiki.py dates` checks that the line
-  exists and is shaped right, but — like every other date claim in this
-  repo — can't check that it's still *true*; that's on the editor, the
-  same discipline skill `wiki-sync` already asks for everywhere else on a
-  page. (Adapted from NireBryce/nixos-configs' own `wiki/styleguide.md`.)
-- **Every page opens with a `## Contents`** — a bullet list of section
-  links, one per `##` heading, right after the title and before any intro
-  prose. Each link's target is GitHub's own heading-slug algorithm applied
-  to that heading's text (lowercase, strip everything that isn't a
-  letter/digit/space/hyphen/underscore, then turn each space into a
-  hyphen). **Don't hand-derive this** — `wiki/scripts/check_wiki.py`
-  implements the exact algorithm and two checks that use it (`anchors`:
-  every `#fragment` link resolves to a real heading; `contents`: every
-  page's Contents list matches its own current headings). After adding,
-  renaming, or removing a heading, run `python3 wiki/scripts/check_wiki.py
-  gen-contents <page>` to regenerate it correctly rather than editing by
-  hand; it's idempotent.
+- `wiki/*.md`, flat, no subdirectories.
+- kebab-case, matching the subject exactly (`open-threads.md`).
+- The companion is the article's name plus `-4llm`, same directory.
+- `README.md` is reserved for a directory's own index.
+- If a page ever grows a deep-dive that doesn't belong in its summary,
+  the pattern is `wiki/<name>/README.md` with siblings named after their
+  subjects. Don't reach for it until an actual deep-dive exists.
+
+## Writing rules
+
 - **Index over restatement.** Link to the real source — a code comment,
-  `AGENTS.md` itself, a skill, a GitHub issue — rather than copying its
-  content into the wiki page. If a page starts accumulating paragraphs
-  that argue a fact instead of linking to it, that fact probably belongs
-  in the linked file's own header comment instead.
-- **Two pages are exceptions.** [testing.md](testing.md), the same way
-  NireBryce/nixos-configs' `homelab/` usage pages are: it documents *doing*
-  something (building, installing, exercising the app on a device) where
-  the real source is the act itself, not a file to link to. It's allowed
-  to hold real procedural content, not just links. And, as of
-  **2026-09-08**, [architecture.md](architecture.md): it holds the
-  canonical package tree and data-flow diagram rather than linking to
-  `AGENTS.md` §3 for them. That one is an exception granted *to end a
-  restatement*, not to add one — a target tree and a real tree are the
-  same shape, so two copies meant reconciling every new file against a
-  spec written before the app existed, and the spec's copy could never be
-  right about a file it hadn't anticipated. §3 now carries the summary
-  and the requirements; that page carries the tree. Neither exception is
-  a licence to add a third without the same kind of reason written down.
-- **Dates are absolute** (`2026-09-05`, never "today" or "last week") —
-  the only thing that lets a stale claim be recognized as stale by its own
-  text rather than by someone noticing the drift by chance.
+  `AGENTS.md`, a skill, an issue — rather than copying it. If a page
+  accumulates paragraphs arguing a fact instead of linking to it, that
+  fact probably belongs in the linked file's own header comment.
+- **Two pages are standing exceptions**, both with reasons recorded:
+  [testing.md](testing.md), because it documents *doing* something where
+  the source is the act, not a file; and [architecture.md](architecture.md),
+  which holds the canonical tree. The second was granted **to end a
+  restatement, not to add one** — see
+  [styleguide-4llm.md](styleguide-4llm.md). Neither is licence to add a
+  third without the same kind of reason written down.
+- **Never mirror state owned by another system.** No table of open
+  issues, no copy of anything `gh` can answer live. Link to the
+  authority; keep only what the authority doesn't know.
+- **Dates are absolute** (`2026-09-05`, never "today" or "recently"). It
+  is the only thing that lets a stale claim be recognized as stale from
+  its own text.
+- **A "verified" claim names the command and the date.** Skill
+  [`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md).
 - **See-also sections point two ways**: sideways to sibling pages, and
   outward to the general form of a trap where one exists — usually a
-  skill. The wiki page stays the specific instance; the skill stays the
+  skill. The page stays the specific instance; the skill stays the
   reusable lesson.
 
 ## Linking
 
-- Relative paths, recomputed for actual file depth if a page ever moves
-  into a subdirectory.
-- Link in both directions where it makes sense: [README.md](README.md)
-  links down into a page, and that page links back to related pages.
-- Verify a link resolves before leaving it. `wiki/scripts/check_wiki.py
-  links` catches a broken file target mechanically; `anchors` catches a
-  broken `#fragment`. Both run as part of `check`. (This goes further than
-  NireBryce/nixos-configs' own script, whose `wiki/styleguide.md` says outright
-  "there's no automated check for this" for a file target — only for
-  `#fragment` anchors and the `## Contents` block. `links` here is a real,
-  working check (`check_wiki.py`'s `check_links`), not a copied claim that
-  outran what was actually built — verified 2026-09-05 by reading the
-  function, not assumed from the docstring.)
+- Relative paths, recomputed if a page ever moves into a subdirectory.
+- Link in both directions where it makes sense.
+- Verify a link resolves before leaving it — the checker's `links` and
+  `anchors` checks catch a broken file target and a broken `#fragment`
+  respectively, and both run as part of `check`.
 
-## Keeping this from rotting
+## Before you land a wiki change
 
-The mechanical checks in `wiki/scripts/check_wiki.py` catch a moved file, a
-renamed heading, an unknown skill name, or a phase's claimed status
-disagreeing with what's actually in `app/src/main/java`. They do **not**
-catch a fact that's simply become untrue in prose (a claim about what a
-class does, a "why" that no longer applies) — that's a human/agent
-judgment call. (NireBryce/nixos-configs' own script draws a version of this same
-line — mechanical checks are structural, not prose-aware, there too — but
-its actual check set differs, per the note above; don't read this as the
-two scripts checking identical things.) The rule for everything the script
-can't see: whichever change makes a page stale corrects it in the same
-change, not as a follow-up. Skill
-[`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) is the checklist for
-noticing when that applies.
+```sh
+just wiki-lint          # or: python3 wiki/scripts/check_wiki.py check
+```
+
+Fix any finding. `gen-contents <page>` is the fix for a stale Contents
+block.
+
+Then the rule none of that enforces: **whichever change makes a page
+stale corrects it in the same change, not as a follow-up.** Skill
+[`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) is the checklist, and
+skill [`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md)'s step 2
+runs it by name before a branch is pushed.
+
+The checks are structural. They will not notice that a sentence became
+untrue.
 
 ## See also
 
-- [README.md](README.md) — the wiki's own top-level index.
-- [`wiki/scripts/check_wiki.py`](scripts/check_wiki.py) — the mechanical
-  checks this page's rules exist to make possible.
-- Skill [`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md) — the
-  general discipline behind "dates are absolute" and "index over
-  restatement," applied beyond just this wiki.
+- [styleguide-4llm.md](styleguide-4llm.md) — the dense companion: the
+  full reasoning behind each rule, the exception grants, and this
+  guide's provenance.
+- [README.md](README.md) — the wiki's own index.
+- [`wiki/scripts/check_wiki.py`](scripts/check_wiki.py) — the checks
+  these rules exist to make possible.

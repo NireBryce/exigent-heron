@@ -70,6 +70,12 @@ At the end of a change that could make a wiki fact wrong, for example:
    - Dates absolute (`2026-09-05`), never relative ("today", "last week").
    - Relative links verified to resolve after editing.
    - kebab-case naming; `README.md` reserved for a directory's own index.
+   - **Each page is a pair**: `<page>.md` for human contributors,
+     `<page>-4llm.md` for the same subject's dense reasoning, history and
+     dated deviations. Put each fact in exactly one half — the current
+     answer in the article, the why/when/what-was-rejected in the
+     companion — and edit whichever half actually went stale, not both by
+     reflex. `check_wiki.py` knows nothing about the pairing.
    - If a fix balloons into new prose that argues a fact rather than
      linking to it, that's a sign the fact belongs in the linked file's
      own header comment instead.

@@ -6,7 +6,7 @@ The app is **built** — all six phases, verified ([wiki/status.md](wiki/status.
 
 Section numbers are cited from ~50 other files (Kotlin doc comments, CI, hooks, `SECURITY.md`, every wiki page). **Do not renumber. Add, don't shuffle.**
 
-This file holds requirements only. The package tree, data flow, and what each file does: [wiki/architecture.md](wiki/architecture.md). What's verified: [wiki/status.md](wiki/status.md). How to run it: [wiki/testing.md](wiki/testing.md). Known gaps and filed issues: [wiki/open-threads.md](wiki/open-threads.md). Each class's own doc comment carries its reasoning and edge cases — that copy stays correct, so read it rather than expecting this file to repeat it.
+This file holds requirements only. The package tree, data flow, and what each file does: [wiki/architecture.md](wiki/architecture.md). What's verified: [wiki/status.md](wiki/status.md). How to run it: [wiki/testing.md](wiki/testing.md). Known gaps and filed issues: [wiki/open-threads.md](wiki/open-threads.md). Each class's own doc comment carries its reasoning and edge cases — that copy stays correct, so read it rather than expecting this file to repeat it. Every wiki page has a context-dense companion at `wiki/<page>-4llm.md` holding that subject's full reasoning, dated deviations and history; read the companion when you need why rather than what ([wiki/README-4llm.md](wiki/README-4llm.md) is the index).
 
 ---
 
@@ -175,7 +175,7 @@ This is the one exception to this app otherwise requesting zero runtime permissi
 - The listener service is the **only** component exported without being the launcher activity, and its `android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"` is what stops other apps binding it. **Do not remove it.**
 - Every other service, receiver, and provider: `android:exported="false"`.
 - `allowBackup="false"`, `fullBackupContent="false"`, `dataExtractionRules` present and excluding everything; `filterTouchesWhenObscured="true"` on `MainActivity`.
-- **Do not create a `BroadcastReceiver` that accepts text to speak.** A convenient testing shortcut that gives every app on the device a voice. Use the debug-variant injector `debug/FakeNotifications.kt` ([wiki/testing.md](wiki/testing.md)).
+- **Do not create a `BroadcastReceiver` that accepts text to speak.** A convenient testing shortcut that gives every app on the device a voice. Use the debug-variant injector `debug/FakeNotifications.kt` ([wiki/testing-4llm.md](wiki/testing-4llm.md)).
 - **No `INTERNET` in any manifest, including debug.** `BLUETOOTH_CONNECT` (§4.9) is the one runtime-permission exception. The `<queries>` block for the app picker is a visibility declaration, not a grant — it must not become `QUERY_ALL_PACKAGES`.
 - Release: `isMinifyEnabled = true`, `isShrinkResources = true`.
 - Signing reads **environment variables only** (`RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`); the config isn't created when they're absent. **Never commit a keystore or password.** `*.jks`, `*.keystore`, `local.properties` stay in `.gitignore`. Skill `signing-and-log-hygiene`.

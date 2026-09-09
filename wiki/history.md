@@ -2,350 +2,112 @@
 
 _Last modified: 2026-09-08_
 
+_Text is llm generated with occasional human review_
+
 ## Contents
 
-- [This repo's history so far](#this-repos-history-so-far)
-- [Decisions made while implementing, beyond AGENTS.md's own text](#decisions-made-while-implementing-beyond-agentsmds-own-text)
+- [What this page is](#what-this-page-is)
+- [Decisions you are most likely to trip over](#decisions-you-are-most-likely-to-trip-over)
+- [Things that were removed on purpose](#things-that-were-removed-on-purpose)
+- [Deliberate deferrals](#deliberate-deferrals)
+- [See also](#see-also)
 
-## This repo's history so far
+Why the code looks like this, where a commit message isn't enough.
 
-`git log` is the accurate record at this size; this page exists for the
-*reasoning* behind a decision once one needs more context than a commit
-message carries, not as a running paraphrase of the log — see
-[styleguide.md](styleguide.md)'s "index over restatement."
+## What this page is
 
-## Decisions made while implementing, beyond AGENTS.md's own text
+`git log` is the accurate record of *what* changed. This page exists for
+the *reasoning* behind a decision, and only where the reasoning is
+non-obvious enough that someone would otherwise undo it by accident.
 
-- **Package name resolved**: `AGENTS.md` §3's tree — the one it carried
-  until 2026-09-08, see the swap below — used `com.<yourdomain>.notifreader`
-  as a placeholder; the real package is `net.breadthcharge.exigentheron`
-  (`app/build.gradle.kts`). Not a deviation, just the placeholder filled
-  in — noted here rather than silently, since a future reader diffing the
-  spec's tree against the real one would otherwise wonder whether it was
-  intentional.
-- **The same test race was diagnosed and fixed twice, independently**
-  (noticed 2026-09-08): `SpeechQueueTest`'s burst-collapse test raced its
-  own consumer — the producer's `enqueue()` doesn't suspend, but the
-  consumer runs on `Dispatchers.Default` and could receive and batch the
-  first few items while the remaining sends were still happening, so a
-  batch of ≤5 got spoken item-by-item instead of collapsed. It was fixed
-  on the `ci-hardening` branch on 2026-09-06 (commit `6acca26`, gating on
-  a `"gate"` utterance) and again on `main` as `456f174` (gating on a
-  `"primer"` utterance) — the same technique, different names, neither
-  aware of the other, because the branch was never merged. Only the
-  `main` one is live; the branch's copy became a merge conflict that
-  existed solely to be discarded. The reason this went unnoticed for two
-  days is that nothing tracked the open PR: `open-threads.md` said "no
-  issues filed" at the time, and an open branch with real work in it had
-  no entry anywhere. Recorded as the argument for
-  [open-threads.md](open-threads.md) listing open *PRs*, not just issues,
-  if this happens twice.
-- **`AGENTS.md` rewritten from a build spec into a standing contract**
-  (2026-09-08): it opened with "Read this whole document before writing a
-  single file," worked in phases, and told an agent what to build — all
-  addressed to someone starting from nothing, which stopped being the
-  audience once all six phases were verified. It now states what the app
-  must keep satisfying instead. Three constraints shaped the rewrite:
-  **(1)** its section numbers are cited from ~50 other files (Kotlin doc
-  comments, CI, both hooks, `SECURITY.md`, every wiki page — ~230
-  citations), so §0–§8 and §4.1–§4.10 are stable by policy now, stated in
-  the file itself: add, don't renumber. **(2)** Several files quote its
-  sentences verbatim (`AndroidTtsEngine` on §4.8's "do not silently
-  accept the system default", CI on §4.6's grep, the signing guard on
-  §5's "Never commit a keystore or password", `architecture.md` on
-  §4.1's "a stable hash of title+body"), so those phrases were preserved
-  word-for-word rather than paraphrased. **(3)** It is always in an
-  agent's context, so the rewrite cut for size: ~21.4KB to ~18KB, taken
-  almost entirely from text that duplicated the code it described (the
-  `NotificationPayload` and `Rule` declarations, `SafeLog`'s signatures,
-  the OTP keyword list, §5's manifest XML) and from phase narration that
-  [status.md](status.md) already held. What was *not* cut: the rules
-  themselves, and the short rationale attached to a rule that exists to
-  stop someone helpfully reversing it. §4 is still 47% of the file and
-  is close to irreducible at that.
-  The rewrite also surfaced two spec/code disagreements, both recorded
-  rather than quietly resolved: §4.5's user-editable OTP pattern list is
-  specified but not built (see [open-threads.md](open-threads.md)), and
-  `Settings.truncationLengthSeconds` had shipped with no spec section at
-  all — now folded into §4.7.
-- **`AGENTS.md` §3 and `architecture.md` swapped roles** (2026-09-08):
-  §3 used to carry a target package tree and a data-flow diagram, and
-  [architecture.md](architecture.md) tracked how far the real tree had
-  caught up to it, explicitly declining to keep a second copy of the tree
-  itself. That split cost more than it paid: a target tree and a real
-  tree are the same shape, so every new file had to be reconciled against
-  a tree written before the app existed, and the spec's copy could never
-  be right about a file the spec hadn't anticipated — by the time of the
-  swap there were five such files plus a package (`ui/permission/`) the
-  spec named that the code never grew. Now `architecture.md` holds the
-  tree and the diagram, and §3 holds a six-bullet package summary plus
-  the two things a tree can't express and that genuinely are
-  requirements: `domain/`'s zero-Android-imports rule, and the pipeline
-  ordering. Recorded in [styleguide.md](styleguide.md) as the second
-  standing exception to "index over restatement," after
-  [testing.md](testing.md).
-- **`SecretDetector`'s downgrade mechanics, spelled out** (2026-09-05):
-  `AGENTS.md` §4.5 says OTP-shaped content gets "suppress or downgrade to
-  announce-only" but doesn't say what text an announce-only downgrade
-  should actually carry. The literal-seeming answer — reuse the original
-  `Decision.Speak.text` — would defeat the downgrade entirely, since that
-  text is exactly what looked like a secret. `SecretDetector.scan`
-  instead synthesizes a generic "New notification from X" from the title
-  alone, and if the incoming decision is already `AnnounceOnly` with text
-  that *itself* still contains the flagged body (a user `Rule.template`
-  embedding `{body}` would do this), downgrades one step further to
-  `Suppress` rather than let it through disguised as an announcement. See
-  `SecretDetector.kt`'s own doc comment and `SecretDetectorTest`'s
-  `announce-only decision that still embeds the flagged body` case.
-- **`RuleEngine`'s regex-timeout mitigation is real but narrower than
-  `AGENTS.md` §4.4 implies** (2026-09-05), verified rather than assumed:
-  - `withTimeoutOrNull(100.milliseconds)` bounds how long `evaluate()`
-    waits; it does not stop the match itself. Confirmed directly —
-    interrupting a thread mid-match on a genuinely slow pattern does not
-    stop it (`java.util.regex` has no cooperative-cancellation checks).
-  - The "crafted message causes catastrophic backtracking" scenario the
-    spec warns about is narrower than the textbook framing suggests on
-    a modern JVM. OpenJDK memoizes failed backtracking positions
-    (JDK-6328855), which makes classic nested-quantifier shapes like
-    `(a+)+$` linear-time rather than exponential — measured directly:
-    `(a+)+$`, `(a+)+b`, `(a|a)+$`, `(a|aa)+$`, and `(.*)+b`, the five
-    textbook ReDoS examples, all resolved in ~0ms against adversarial
-    input up to 40 characters on this JVM (OpenJDK 21.0.12). That
-    memoization is disabled whenever the pattern has a backreference —
-    `^(a+)+\1b$` measured 24 chars ≈ 277ms, 26 ≈ 1.1s, 28 ≈ 4.5s,
-    doubling roughly every 2 characters, genuinely exponential and still
-    not interruptible.
-  - Net effect: the 100ms timeout mainly protects the *caller* from a
-    backreference pattern, not the app from the CPU cost of one — a
-    matched-but-timed-out rule leaves a real thread burning in
-    `Dispatchers.Default` after `evaluate()` has moved on. The 2000-char
-    input cap is what keeps that bounded per attack. See
-    `RuleEngine.kt`'s own doc comment for the same explanation kept next
-    to the code it describes, and
-    [traps-and-skills.md](traps-and-skills.md) for how the *first*
-    attempt at testing this got it wrong.
-- **`SpeechQueue` depends on function references, not `AudioFocusManager`
-  or `AudioManager` directly** (2026-09-05): `AudioFocusManager`'s
-  constructor calls `context.getSystemService(...)` immediately, which
-  makes it — and anything holding one — impossible to construct in a
-  JVM test. `SpeechQueue` instead takes `requestAudioFocus: () -> Boolean`,
-  `abandonAudioFocus: () -> Unit`, and `isInCall: () -> Boolean`;
-  `AppContainer` wires the real ones (`audioFocusManager::requestFocus`,
-  a real `AudioManager.mode` check). This is what makes
-  `SpeechQueueTest` possible at all without a second fake class beyond
-  `TtsEngine`'s — see `SpeechQueue.kt`'s own doc comment.
-- **The in-call check moved ahead of the audio-focus request**
-  (2026-09-05): the first version of `SpeechQueue.speakOne()` requested
-  focus, then checked `isInCall()` and bailed. That's backwards — it
-  meant every notification arriving during a call would request (and
-  immediately abandon) audio focus for an utterance it was never going
-  to speak. Caught by re-reading the method before running anything, not
-  by a test; reordered so the in-call check runs first and focus is
-  never touched at all when it's going to skip anyway.
-- **`AppContainer`'s Phase 2 hardcoded rule targeted `com.google.android.apps.messaging`**
-  (2026-09-05): `BUILD_PLAN.md` said "rules hardcoded to one package"
-  without naming one. Google Messages was just a common default app to
-  test against, not a meaningful choice. Superseded in Phase 3, same day:
-  `phase2HardcodedRules` is gone, replaced by real `RuleRepository`
-  persistence and a rule editor — see the entries below.
-- **App name stays the repo codename, deliberately** (2026-09-05):
-  `res/values/strings.xml`'s `app_name` was flagged in
-  [open-threads.md](open-threads.md) as possibly-an-oversight before
-  Phase 3 (the UI phase) shipped it as the visible launcher label.
-  Confirmed with the user while planning Phase 3: keep
-  `"exigent-heron"` — intentional, not a placeholder left behind.
-- **Regex DoS mitigation: `InterruptibleCharSequence` + reject
-  backreferences, not RE2J** (2026-09-05, Phase 3): the gap
-  `RuleEngine`'s own doc comment already named — a backreference pattern
-  is genuinely exponential *and* the 100ms `withTimeoutOrNull` doesn't
-  actually stop the underlying match, only abandons the caller — got a
-  real fix this phase rather than staying a documented caveat. Two
-  options were weighed:
-  - **Chosen**: wrap regex input in `InterruptibleCharSequence` (checks
-    `Thread.currentThread().isInterrupted` in `charAt`, throws) and run
-    matching inside `kotlinx.coroutines.runInterruptible` (which calls
-    `Thread.interrupt()` on cancellation) — the standard Java mitigation
-    for un-cancellable `java.util.regex` matches. Plus: `RuleValidator`
-    now rejects backreferences outright at rule-compile-time (both in the
-    rule editor and defensively in `RuleEngine.compileOrNull`), since even
-    a cleanly-interrupted match still costs the full 100ms on every
-    notification from that app, forever. No new dependency.
-  - **Considered and rejected**: `google/re2j` — linear-time by
-    construction (RE2 doesn't support backreferences or lookaround at
-    all), which would have let the timeout/interruption machinery be
-    deleted entirely. Its license (BSD-3-Clause, confirmed by fetching
-    its actual `LICENSE`) is permissive and would have been fine, but it's
-    a dependency outside `AGENTS.md` §2's closed list, needs a NOTICE
-    file for attribution, and drops lookahead/lookbehind support for
-    every future rule author, not just ones who'd have written a
-    backreference. Chosen fix closes the actually-documented gap at a
-    much smaller cost; see `RuleEngine.kt`'s updated doc comment for the
-    same reasoning kept next to the code.
-  - One existing test, `RuleEngineTest`'s "catastrophic backtracking
-    times out and suppresses rather than hanging", used a backreference
-    pattern specifically *because* nothing else on this JVM reliably
-    stays slow (see the ReDoS entry above and
-    [traps-and-skills.md](traps-and-skills.md)) — that pattern now gets
-    rejected at compile time instead of ever running, so the test was
-    rewritten to assert the new (correct) behavior rather than the old
-    timeout path, which this same change made unreachable for that input.
-    `InterruptibleCharSequenceTest` covers the interruption mechanism
-    directly instead, since a genuinely slow *non*-backreference pattern
-    is now hard to construct at all on this JVM.
-- **`RuleEngineHolder` rebuilds `RuleEngine` reactively, not once at
-  `AppContainer` construction** (2026-09-05, Phase 3): `AGENTS.md` §2
-  specifies Coroutines + Flow but doesn't say how a persisted rule change
-  reaches the running `RuleEngine`. Rebuilding a `RuleEngine` from
-  whatever `RuleRepository.rules` currently emits (cheap — just regex
-  compilation over ~30 rules) is what makes a rule edit take effect on
-  the next notification rather than requiring an app restart or
-  force-stop; the alternative (construct once, ignore later edits until
-  restart) would have made the rule editor feel broken. Lives in
-  `domain/` despite reacting to a `Flow` — `Flow`/`CoroutineScope` are
-  coroutines, not Android, so this doesn't violate §3's "zero Android
-  imports" rule.
-- **`SettingsRepository` scaffolded empty on purpose** (2026-09-05,
-  Phase 3): `BUILD_PLAN.md` lists it under Phase 3, but no concrete
-  setting exists yet — headset-only/lock-gate/DND/engine-picker/
-  announce-only are all Phase 4 (`AGENTS.md` §4.8-§4.10). Decided with
-  the user: wire the DataStore file now (so Phase 4 only adds preference
-  keys, not plumbing) but add no placeholder field just to have one — a
-  fake field would violate `AGENTS.md` §0's YAGNI rule for no real gain.
-- **No navigation-compose dependency for the Phase 3 rule screens**
-  (2026-09-05): three screens (main, rule list, rule editor) don't
-  justify a new dependency outside `AGENTS.md` §2's list. `MainActivity`
-  holds a small `Screen` sealed interface and a manual `when` instead;
-  the installed-app picker is a `Dialog` launched from inside the rule
-  editor rather than a fourth nav destination, specifically to avoid
-  needing to pass a picker result back across a screen boundary with no
-  navigation library to do it.
-- **Phase 4's "templates" and "announce-only mode" bullets were already
-  done, from Phase 1** (2026-09-06): `BUILD_PLAN.md` lists both under
-  Phase 4, but `Rule.template`/`RuleEngine.render` and
-  `RuleAction.ANNOUNCE_ONLY` landed in Phase 1 and have been exposed in
-  the rule editor since Phase 3 — confirmed by reading both files
-  directly rather than assuming the phase list was still accurate.
-  Phase 4 didn't re-touch either; nothing here was re-implemented.
-- **`AppContainer.ttsEngine`/`speechQueue` became `var`s, with a
-  `rebuildTtsEngine` method, rather than reconstructing the whole
-  container** (2026-09-06, Phase 4): `AGENTS.md` §4.8 requires switching
-  the TTS engine to "take effect," but `AndroidTtsEngine` binds one
-  `TextToSpeech` instance to one engine package for its lifetime, and
-  `SpeechQueue` holds its `TtsEngine` by constructor reference — neither
-  can be told to change engines in place. Rebuilding just those two
-  (shutting the old engine down only once the new one is live) is the
-  smallest change that makes a settings-screen choice actually apply,
-  short of restarting the whole app. The container's first engine choice
-  is read synchronously (`runBlocking` on `settingsRepository.settings.first()`)
-  at construction time — a local Preferences-file read, not a network
-  call — since `App.onCreate()` has no later point to construct these
-  from before something might need to speak.
-- **`SpeechQueue`'s queue-collapse-on-burst subsumes its old DROP_OLDEST
-  regression test** (2026-09-06, Phase 4): implementing "drain whatever's
-  already buffered into one batch, collapse if >5" means the consumer no
-  longer looks at requests one at a time — it looks at the *channel's
-  current contents* before any of them reach the fake `TtsEngine`. That
-  removed the property the old overflow test depended on (gating one
-  item's `onSpeak()` to force the rest to overflow individually was only
-  reliable when processing was one-at-a-time); a burst large enough to
-  overflow the 32-item channel is now, deterministically, also large
-  enough to collapse, and the exact surviving count depends on how much
-  the real consumer drains concurrently with the test's sends rather than
-  being a fixed number. The old test was removed rather than forced to
-  pass with a flaky workaround — see `SpeechQueueTest.kt`'s own comment
-  where it used to be. `DROP_OLDEST` itself is unchanged (it's `Channel`'s
-  own guarantee); it's just no longer independently observable through
-  `SpeechQueue`'s output once collapse always fires first for a burst
-  that size.
-- **`RuleEditorViewModel.save()`'s form-only checks moved into
-  `RuleFormValidator`** (2026-09-06, post-Phase-5): a coverage review
-  found this was the one place in the UI layer that broke the pattern
-  every other screen already follows — decision logic pulled into a
-  pure, injectable function (`RuleValidator`, `RuleCodec`,
-  `shouldDropNotification`) rather than left inline in a `ViewModel`
-  where it can't be unit-tested without instantiating one. The regex
-  half was already out (`RuleValidator`); the empty-app-selection and
-  non-numeric-priority checks weren't. `RuleFormValidator.validate(...)`
-  now does both, returning parsed field values alongside the error set
-  so `save()` stays a thin caller. `RuleFormValidatorTest` covers all
-  four fields individually and in combination (86 → 96 tests).
-- **Project license: Apache-2.0** (2026-09-07): the repo sat public on
-  GitHub with no LICENSE file — legally "all rights reserved" despite the
-  visibility; nobody but the owner had any reuse rights. Chose Apache-2.0
-  over MIT for the express patent grant and the explicit default
-  contribution terms (a PR lands under the license without extra
-  paperwork), and because it is the license every shipped runtime
-  dependency already carries, so the tree speaks one license.
-  `THIRD_PARTY_NOTICES.md` at the root records what the APK ships with —
-  relevant because `app/build.gradle.kts` strips the
-  `META-INF/{AL2.0,LGPL2.1}` license files the dependencies ship with
-  (the standard template exclusion, fine while the app is sideloaded for
-  personal use; the notices file is what closes that gap if the APK is
-  ever distributed). JUnit is the one non-Apache dependency (EPL-1.0) and
-  is test-only, never shipped.
-- **`BUILD_PLAN.md` removed** (2026-09-08): all six phases it specified
-  are built and verified (`status.md`'s Phase status table), so the
-  phase-by-phase build order it held no longer has forward-looking work
-  left to guide. Its acceptance criteria live on as plain text in
-  `status.md`'s Spec column, `testing.md`'s device-test steps, and
-  scattered code comments citing "Phase N" directly rather than the file;
-  the phase rule itself (build and install at each boundary, don't start
-  N+1 before N's criteria pass) moved into `AGENTS.md` §6 inline.
-  `wiki/scripts/check_wiki.py` no longer scans it. This entry, not a
-  restored copy, is the record of what it said and why it's gone.
-- **Code style is an `.editorconfig`, not ktlint or detekt**
-  (**2026-09-08**): a readability pass found the formatting genuinely
-  inconsistent — three files whose import blocks had drifted out of the
-  ASCII order the other 22 use, and 13 lines over the ~120 columns
-  everything else sits under. Two ways to stop that: a `.editorconfig`,
-  which Android Studio and IntelliJ honour with nothing added to the
-  build, or the ktlint Gradle plugin, which actually enforces it in CI.
-  ktlint is the better tool and was recommended; `.editorconfig` alone is
-  what landed, because `AGENTS.md` §0 makes a new dependency a question to
-  ask rather than a call to make, §2's list is meant to be the whole list,
-  and the question hadn't been answered when the work went in. The trade
-  is named in `.editorconfig`'s own header comment: this binds whatever
-  editor opens the file, not CI, so an agent writing through a plain
-  filesystem write is unconstrained by it. ktlint reads the same file and
-  would enforce exactly what it already says, so switching later is
-  additive, not a rewrite. Recorded here so the choice reads as a
-  deliberate deferral rather than an oversight.
-- **`AGENTS.md` §3's "no logic worth testing" claim was softened, and the
-  boundary it protects was given a CI grep** (2026-09-08). Two separate
-  problems with one sentence. First, the rule it states — `domain/` has
-  zero Android imports — was the load-bearing assumption of the entire
-  test strategy and was enforced by review alone; `check.yml` now greps
-  for `^import android.` under `domain/`, in the same shape as the
-  existing `android.util.Log` check. Second, "everything else is Android
-  framework glue that is a pain to test and should therefore contain no
-  logic worth testing" read as a statement of fact about the Android
-  side, and it wasn't one: `AppContainer` was deciding what a revoked
-  `BLUETOOTH_CONNECT` should mean, and Phase 4's output-route bug (gate
-  checked once at enqueue instead of per utterance) lived in a seam every
-  JVM test passed straight through. The sentence is now framed as the
-  goal the boundary serves, with `app/src/androidTest/` named as the tool
-  for the rest. The rule itself did not change and is not weaker.
-- **`AppContainer`'s gate lambdas were split into `speech/GatePolicy.kt`**
-  (2026-09-08), following the precedent
-  `listener/NotificationExtractionPolicy.kt` set: policy as a pure
-  function over plain values, caller left as glue thin enough that
-  reading it is enough to believe it. `GatePolicy` mirrors
-  `NotificationManager.INTERRUPTION_FILTER_ALL` as its own constant the
-  same way `SecretDetector` mirrors `VISIBILITY_PRIVATE`/`VISIBILITY_SECRET`,
-  and carries the same drift risk — the intended mitigation is an
-  instrumented test asserting the mirror still matches, which a JVM test
-  structurally cannot do.
-- **`SpeechGates` groups the queue's three gate lambdas** (2026-09-08).
-  Worth recording because it is *not* the fix it looks like: the three
-  `() -> Boolean` checks still sit adjacent inside `SpeechGates`, so
-  transposing two of them still compiles. Named arguments are what
-  actually prevent that, at both call sites, and PR #51's test-side
-  builder already covered the test half. What this buys is a smaller
-  constructor and one documented home for the three; it was landed with
-  that understood rather than as a claimed compile-time guarantee.
-- Nothing else yet beyond the above. This page grows as real decisions
-  get made that `AGENTS.md` doesn't already narrate — a library swapped
-  for another, a phase's scope adjusted, something specified that turned
-  out not to work as written. See skill
-  [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md) for when a change is
-  the kind that belongs here.
+The full, dated entry list is in [history-4llm.md](history-4llm.md). What
+follows is the subset most likely to matter while you're editing.
+
+## Decisions you are most likely to trip over
+
+**Regex safety is two mechanisms, not one.** `RuleValidator` rejects
+backreferences outright at save time, *and* matching runs inside
+`InterruptibleCharSequence` + `runInterruptible`. Both are needed:
+`java.util.regex` has no cooperative cancellation, so a bare
+`withTimeoutOrNull` abandons the caller while the thread keeps burning.
+RE2J was considered and rejected — it would have removed the machinery
+entirely, but it's outside `AGENTS.md` §2's dependency list and drops
+lookahead/lookbehind for every future rule author.
+
+**`SecretDetector` never reuses the flagged text.** A `Speak` →
+`AnnounceOnly` downgrade synthesizes "New notification from X" from the
+title alone, because the original text is exactly what looked like a
+secret. If an incoming `AnnounceOnly` still embeds the flagged body — a
+user template with `{body}` does this — it downgrades one step further to
+`Suppress`.
+
+**`SpeechQueue` takes function references, not Android objects.**
+`AudioFocusManager`'s constructor calls `getSystemService` immediately,
+which makes anything holding one impossible to construct in a JVM test.
+This is the only reason `SpeechQueueTest` exists without a second fake
+class.
+
+**The in-call check runs before the audio-focus request.** The first
+version had it backwards, so every notification during a call requested
+and immediately abandoned focus for an utterance it was never going to
+speak.
+
+**Both `*Holder` classes rebuild reactively.** `RuleEngineHolder` and
+`SecretDetectorHolder` rebuild from a `Flow` on every emission, so an
+edit takes effect on the next notification rather than the next app
+start. Rebuilding is cheap. Constructing once would make the editors feel
+broken.
+
+**No navigation-compose.** Four screens don't justify a dependency
+outside §2's list. `MainActivity` holds a `Screen` sealed interface and a
+`when`. The app picker is a `Dialog` inside the rule editor precisely so
+a result doesn't need to cross a screen boundary.
+
+**`AppContainer.ttsEngine`/`speechQueue` are `var`s.** `AndroidTtsEngine`
+binds one `TextToSpeech` to one engine package for its lifetime, so
+switching engines means rebuilding that pair — the smallest thing that
+makes §4.8's "takes effect" true short of restarting the app.
+
+## Things that were removed on purpose
+
+- **`BUILD_PLAN.md`** (2026-09-08) — all six phases built and verified,
+  so a forward-looking build order had nothing left to guide. Its
+  criteria live on in [status.md](status.md) and [testing.md](testing.md);
+  the phase rule moved into `AGENTS.md` §6.
+- **`phase2HardcodedRules`** — a Phase 2 stopgap targeting Google
+  Messages, arbitrary and superseded in Phase 3 by real persistence and
+  the rule editor. A fresh install now speaks nothing until you add a
+  rule.
+- **`SpeechQueue`'s old `DROP_OLDEST` overflow test** — queue-collapse
+  made the property it depended on unobservable. Removed rather than
+  forced to pass with a flaky workaround. `DROP_OLDEST` itself is
+  unchanged.
+
+## Deliberate deferrals
+
+Recorded so they read as choices rather than oversights:
+
+- **Code style is an `.editorconfig`, not ktlint.** ktlint is the better
+  tool and was recommended; `.editorconfig` is what landed, because a new
+  dependency is a question to ask and the question hadn't been answered.
+  The trade — this binds an editor, not CI — is named in
+  `.editorconfig`'s own header. ktlint reads the same file, so switching
+  later is additive.
+- **`SettingsRepository` was scaffolded empty in Phase 3**, with no
+  placeholder field, because a fake field would violate `AGENTS.md` §0's
+  YAGNI rule for no gain.
+- **`app_name` stays `"exigent-heron"`** — confirmed with the user while
+  planning Phase 3, not a placeholder left behind.
+- **Apache-2.0, not MIT** (2026-09-07) — for the express patent grant,
+  the explicit default contribution terms, and because every shipped
+  runtime dependency already carries it.
+
+## See also
+
+- [history-4llm.md](history-4llm.md) — the full dated record, including
+  the `AGENTS.md` rewrite, the ReDoS measurements, and every decision not
+  summarized here.
+- [architecture-4llm.md](architecture-4llm.md) — divergences from the
+  spec's original tree.
+- [traps-and-skills.md](traps-and-skills.md) — mistakes, as distinct from
+  decisions.
