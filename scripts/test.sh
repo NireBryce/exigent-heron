@@ -181,6 +181,12 @@ suite_structure() {
 
 suite_wiki() {
     need python3
+    # The self-test runs FIRST, deliberately: a check that passes because
+    # the tree is clean and one that passes because it examines nothing
+    # look identical, and this repo has shipped the second kind twice. See
+    # wiki/scripts/test_check_wiki.py's own docstring.
+    say "wiki check self-test"
+    python3 wiki/scripts/test_check_wiki.py
     say "wiki claims"
     python3 wiki/scripts/check_wiki.py check
 }

@@ -42,6 +42,15 @@ slower runner. **If a test's correctness depends on one thread losing a
 race, gate the race** — don't weaken the assertion, and don't trust local
 green.
 
+**A check that examines nothing passes exactly like a check that found
+nothing.** `check_freshness` reported "no findings" across all 18 wiki
+pages having looked at none of them — its date regex is anchored but
+compiled without `re.M`, so a whole-file search matched nothing and every
+page hit the skip. It was caught only because a case *built to fail*
+came back clean. The fix is not vigilance: `wiki/scripts/test_check_wiki.py`
+now asserts every check still fires on input designed to break it, and
+`just wiki-lint` runs it before trusting the checks.
+
 **`scope.cancel()` does not wait.** Cancellation is requested, not
 completed. A test's coroutine bled into the next one's setup roughly 1
 run in 3 through the shared `Dispatchers.Default` pool. Use

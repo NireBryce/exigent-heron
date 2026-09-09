@@ -130,7 +130,8 @@ Read these directly. The wiki summarizes; the comment is correct.
   shows only the last comment line above a recipe.
 - **CI** ([`check.yml`](../.github/workflows/check.yml)) runs inside `nix
   develop` so versions cannot drift from local. Carries both structural
-  greps, `lintDebug`/`lintRelease` with SARIF upload to code scanning,
+  greps, `just wiki-lint` (self-test then claims — added **2026-09-08**;
+  the wiki checks were local-only before that), `lintDebug`/`lintRelease` with SARIF upload to code scanning,
   and (since 2026-09-08) CodeQL in a separate workflow with
   `build-mode: manual`.
 - **`.claude/hooks/`** — git guard (destructive git, direct
@@ -139,7 +140,9 @@ Read these directly. The wiki summarizes; the comment is correct.
 - **`.claude/skills/`** — repo-local skills. `submit-a-pr` is the one to
   read before landing anything.
 - **`wiki/scripts/check_wiki.py`** — the wiki's mechanical checks; see
-  [README-4llm.md](README-4llm.md).
+  [README-4llm.md](README-4llm.md). `test_check_wiki.py` alongside it
+  proves each check still fires on input built to break it, and runs
+  first.
 
 ## Licensing
 

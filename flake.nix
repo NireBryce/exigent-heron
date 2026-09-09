@@ -50,6 +50,11 @@
             # thing that dispatches to them too — same reasoning as not
             # committing a gradlew.
             pkgs.just
+            # wiki/scripts/*.py are run by `just wiki-lint` and by CI.
+            # scripts/test.sh only asserts python3 is on PATH, which until
+            # 2026-09-08 meant whatever the host happened to have — the one
+            # toolchain this flake didn't pin.
+            pkgs.python3
           ];
 
           JAVA_HOME = jdk.home;

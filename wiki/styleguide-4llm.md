@@ -149,6 +149,13 @@ predates that notice. It rewrites an existing block in place correctly,
 which is the case that actually comes up; a brand-new page needs the
 block moved below the notice by hand.
 
+**Proven able to fail:** `wiki/scripts/test_check_wiki.py` gives every
+check above at least one fixture that must produce a finding, plus a
+clean-tree case that must produce none. `just wiki-lint` runs it first,
+and CI runs `just wiki-lint`. The suite's own teeth were verified by
+mutation — reverting each of four behaviours turns it red — rather than
+by trusting that it passes.
+
 **Cannot see, at all:** whether any sentence is true. A claim about what
 a class does, a "why" that no longer applies, a date left un-bumped, a
 duplicated fact across a page pair. That is the entire reason skill
