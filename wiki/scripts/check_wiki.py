@@ -98,7 +98,29 @@ extractable facts only:
             see a fact restated in different words; that stays a human
             judgement call, the same line every other check here draws.
 
-  check     Runs all nine of the above.
+  freshness Every page's `_Last modified:` date against what git says
+            about that page, which is the half `dates` explicitly cannot
+            do: `dates` checks the line's presence and shape, never
+            whether it is still true. Two cases, deliberately different
+            severities.
+
+            A page with uncommitted substantive edits whose date isn't
+            today is a hard finding -- you are editing it right now,
+            bumping costs one line, and this cannot affect CI, which runs
+            on a clean checkout where nothing is uncommitted.
+
+            A page whose last substantive commit is newer than its stated
+            date is a REVIEW finding. It is real drift, but styleguide.md
+            deliberately exempts "a purely mechanical touch (a
+            gen-contents run, a typo fix)" from needing a bump, and no
+            script can tell a typo fix from a meaning change -- so this
+            one prints loudly and leaves the call to a human.
+
+            Both ignore changes that only touch the `_Last modified:`
+            line, the provenance notice, or the `## Contents` block, so a
+            gen-contents run or a date bump alone never trips it.
+
+  check     Runs all ten of the above.
 
     check_wiki.py phases       [repo-root]
     check_wiki.py skills       [repo-root]
@@ -109,6 +131,7 @@ extractable facts only:
     check_wiki.py contents     [repo-root]
     check_wiki.py dates        [repo-root]
     check_wiki.py pairs        [repo-root]
+    check_wiki.py freshness    [repo-root]
     check_wiki.py check        [repo-root]
     check_wiki.py gen-contents <file.md> [file.md ...]
 
@@ -117,7 +140,7 @@ wiki/ -> repo root). `gen-contents` is a fixer, not a checker: it rewrites
 each given page's `## Contents` block in place to match that page's real
 headings -- the actual fix for a `contents` finding.
 """
-import re, sys, pathlib, datetime
+import re, sys, pathlib, datetime, subprocess
 
 # Phase number -> key filenames from each phase's own component list
 # (originally BUILD_PLAN.md's, before it was removed once all six phases
@@ -483,6 +506,118 @@ def check_dates(root):
     return findings
 
 
+def git(root, *args):
+    """Run a git command in `root`, returning stdout (empty on failure --
+    this script must still work in a tarball with no .git)."""
+    try:
+        r = subprocess.run(('git', '-C', str(root)) + args,
+                           capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return ''
+    return r.stdout if r.returncode == 0 else ''
+
+
+def is_bookkeeping(line):
+    """True for a changed line that styleguide.md doesn't consider a
+    content edit: the `_Last modified:` line itself, the provenance
+    notice, a `## Contents` heading or one of its generated bullets, or a
+    blank line. A diff made only of these is a gen-contents run or a date
+    bump, not something that makes the date stale."""
+    s = line.strip()
+    return (not s or s == NOTICE_LINE or s == '## Contents'
+            or LAST_MODIFIED_LINE.match(s) is not None
+            or CONTENTS_ITEM_LINE.match(s) is not None)
+
+
+def has_substantive_change(diff):
+    """True if a unified diff changes any line `is_bookkeeping` doesn't
+    excuse. Skips the +++/--- file headers, which are not content."""
+    for line in diff.splitlines():
+        if line.startswith(('+++', '---')):
+            continue
+        if line.startswith(('+', '-')) and not is_bookkeeping(line[1:]):
+            return True
+    return False
+
+
+# Bounds the history walk below. A page whose last 40 commits were all
+# pure bookkeeping is not a case worth paying for on every run.
+FRESHNESS_MAX_COMMITS = 40
+
+
+def last_substantive_commit_date(root, path):
+    """The `%cs` date of the newest commit that changed `path` in a way
+    `is_bookkeeping` doesn't excuse, or None if there is no such commit
+    (or no git). Walks newest-first and stops at the first hit, so the
+    common case is two git calls."""
+    rel = path.relative_to(root).as_posix()
+    log = git(root, 'log', f'-{FRESHNESS_MAX_COMMITS}', '--format=%H %cs',
+              '--', rel)
+    for entry in log.splitlines():
+        sha, _, date = entry.partition(' ')
+        if not sha:
+            continue
+        diff = git(root, 'show', '--format=', '--unified=0', sha, '--', rel)
+        if has_substantive_change(diff):
+            return date.strip()
+    return None
+
+
+def working_tree_change(root, path):
+    """The uncommitted diff for `path` against HEAD, or None if there
+    isn't one. An untracked page counts as changed in full -- it is new,
+    so its date should be today."""
+    rel = path.relative_to(root).as_posix()
+    if git(root, 'ls-files', '--error-unmatch', '--', rel).strip() == '':
+        return path.read_text()  # untracked: treat the whole file as new
+    return git(root, 'diff', '--unified=0', 'HEAD', '--', rel) or None
+
+
+def stated_date(text):
+    """The page's `_Last modified:` date, or None. Matches line by line on
+    purpose: LAST_MODIFIED_LINE is anchored but compiled without re.M, so
+    searching a whole file with it silently matches nothing -- which is
+    exactly how the first version of this check passed on every page while
+    testing none of them."""
+    for line in text.splitlines():
+        m = LAST_MODIFIED_LINE.match(line)
+        if m:
+            return m.group(1)
+    return None
+
+
+def check_freshness(root):
+    """Every page's `_Last modified:` date against git -- see this
+    module's docstring for the two cases and why their severities
+    differ."""
+    if not git(root, 'rev-parse', '--git-dir').strip():
+        return []  # no git (a tarball, a vendored copy) -- nothing to say
+    today = datetime.date.today().isoformat()
+    findings = []
+    for path in sorted(root.joinpath('wiki').rglob('*.md')):
+        stated = stated_date(path.read_text())
+        if stated is None:
+            continue  # check_dates already reports a missing line
+
+        pending = working_tree_change(root, path)
+        if pending and has_substantive_change(pending) and stated != today:
+            findings.append(
+                f"STALE DATE  {path}: edited but not committed, and its "
+                f"`_Last modified: {stated}_` isn't today ({today}) -- bump "
+                f"it in this same change, per skill wiki-sync's step 4")
+            continue  # the pending edit is the live fact; don't also
+                      # report the older committed drift underneath it
+
+        committed = last_substantive_commit_date(root, path)
+        if committed and committed > stated:
+            findings.append(
+                f"REVIEW  {path}: `_Last modified: {stated}_` but its last "
+                f"substantive commit was {committed} -- either the date was "
+                f"never bumped, or that commit was the mechanical kind "
+                f"styleguide.md exempts. A script can't tell which")
+    return findings
+
+
 COMPANION_SUFFIX = '-4llm'
 
 # A shared paragraph shorter than this is usually an unavoidable one-liner
@@ -631,7 +766,7 @@ def main():
     root = repo_root([sys.argv[0]] + sys.argv[2:])
 
     cmds = ('phases', 'skills', 'gradle', 'recipes', 'links', 'anchors',
-            'contents', 'dates', 'pairs', 'check')
+            'contents', 'dates', 'pairs', 'freshness', 'check')
     if cmd not in cmds:
         print(__doc__)
         sys.exit(2)
@@ -655,6 +790,8 @@ def main():
         findings += check_dates(root)
     if cmd in ('pairs', 'check'):
         findings += check_pairs(root)
+    if cmd in ('freshness', 'check'):
+        findings += check_freshness(root)
 
     for f in findings:
         print(f)

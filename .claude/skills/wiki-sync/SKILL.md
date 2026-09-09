@@ -85,13 +85,16 @@ At the end of a change that could make a wiki fact wrong, for example:
      the title) to today, on every page you actually edited in this step
      — not on a page you only read and found still correct.
      `check_wiki.py dates` only catches the line being missing or
-     malformed, never a stale date left behind; that half is this step.
+     malformed; `freshness` catches the rest mechanically — it fails hard
+     if you have uncommitted substantive edits to a page whose date isn't
+     today, which is exactly this step, and flags committed drift as
+     REVIEW.
 5. **Run the mechanical checks** before calling it done:
    ```sh
    python3 wiki/scripts/check_wiki.py check
    ```
    Fix any `contents`/`anchors`/`links`/`skills`/`gradle`/`recipes`/
-   `phases`/`dates`/`pairs` finding it reports — `gen-contents <page>` regenerates a stale
+   `phases`/`dates`/`pairs`/`freshness` finding it reports — `gen-contents <page>` regenerates a stale
    `## Contents` block automatically rather than by hand.
 6. **If nothing in `wiki/` actually mentions what changed, say so and
    stop.** Don't manufacture an edit to a page the change doesn't touch —

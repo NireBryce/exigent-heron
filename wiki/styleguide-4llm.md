@@ -120,6 +120,11 @@ authority; this is the shape of what it can and cannot see.
 - `contents` — every page's `## Contents` matches its own `##` headings.
 - `dates` — the `_Last modified:_` line exists, is shaped right, and is
   not in the future.
+- `freshness` — that date against git: uncommitted substantive edits with
+  a non-today date fail hard; a last-substantive-commit newer than the
+  stated date is REVIEW. Bookkeeping-only changes (the date line, the
+  notice, the Contents block) are excused, so a gen-contents run never
+  trips it.
 - `recipes` — `` `just <recipe>` `` mentions against `.justfile`, which is
   a single file listing every valid name, so nothing is hand-maintained.
 
