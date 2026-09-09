@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Static checks of wiki/ (and AGENTS.md, the file outside wiki/ that
-carries wiki-shaped claims) against the actual source tree, for claims
-that silently go stale after a refactor -- a file renamed, a phase's
-status claimed without re-checking it, a skill renamed. Nothing about
-`gradle
-build` or `nix flake check` reads prose, so a doc can say something the
-tree has stopped agreeing with and nothing catches it.
+"""Static checks of wiki/ (plus AGENTS.md, and .claude/ for the two
+link checks -- the files outside wiki/ that carry wiki-shaped claims)
+against the actual source tree, for claims that silently go stale after a
+refactor -- a file renamed, a phase's status claimed without re-checking
+it, a skill renamed. Nothing about `gradle build` or `nix flake check`
+reads prose, so a doc can say something the tree has stopped agreeing
+with and nothing catches it.
 
 Ported and cut down from nixos-configs' own `wiki/scripts/check_wiki.py`,
 which checks a multi-host NixOS module tree (imports, a category-classes
@@ -103,6 +103,7 @@ extractable facts only:
     check_wiki.py phases       [repo-root]
     check_wiki.py skills       [repo-root]
     check_wiki.py gradle       [repo-root]
+    check_wiki.py recipes      [repo-root]
     check_wiki.py links        [repo-root]
     check_wiki.py anchors      [repo-root]
     check_wiki.py contents     [repo-root]
