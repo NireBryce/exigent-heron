@@ -4,35 +4,42 @@ _Last modified: 2026-09-08_
 
 ## Contents
 
-- [Module and package layout](#module-and-package-layout)
-- [The critical structural rule](#the-critical-structural-rule)
+- [The rule everything else follows from](#the-rule-everything-else-follows-from)
+- [Package tree](#package-tree)
 - [Data flow](#data-flow)
 - [What each package holds](#what-each-package-holds)
-- [Where this diverged from the spec's original tree](#where-this-diverged-from-the-specs-original-tree)
+- [Test source sets](#test-source-sets)
+- [Adding a class](#adding-a-class)
+- [See also](#see-also)
 
-**This page is the tree.** As of **2026-09-08** it holds the canonical
-package layout and data-flow diagram for this app;
-[`AGENTS.md`](../AGENTS.md) §3 carries a six-bullet summary of the same
-split and points here for the rest.
+Where the code lives and how it fits together. **This page is the
+canonical tree** — [`AGENTS.md`](../AGENTS.md) §3 keeps a six-bullet
+summary and points here.
 
-That's a deliberate swap of the two documents' previous roles, and it is
-the second exception to this wiki's "index over restatement" rule
-([styleguide.md](styleguide.md)) after [testing.md](testing.md). The
-reason: a *target* tree and a *real* tree are the same shape, so keeping
-them in two files meant every new file had to be reconciled against a
-spec tree that was written before the app existed and could never be
-right about a file the spec hadn't anticipated. Five such files already
-existed, plus a package (`ui/permission/`) the spec named and the code
-never grew — all recorded below. One tree, kept honest against
-`app/src`, is the fix. What stays in `AGENTS.md` is the part a tree
-can't express: which of these boundaries are *requirements* rather than
-observations, which is what its §3 summary and §4's per-component specs
-are for.
+## The rule everything else follows from
 
-## Module and package layout
+**`domain/` has zero Android imports.** `RuleEngine`, `SecretDetector`,
+and `Deduplicator` are plain Kotlin, unit-testable on the JVM with no
+Robolectric, no instrumentation, no emulator. CI enforces it with a grep
+for `^import android.` under `domain/`.
 
-Single Gradle module (`:app`) — multi-module isn't worth the build-file
-overhead at this size. Under
+`kotlinx.coroutines` is fine in `domain/` — it is not Android. That's why
+`RuleEngine` and both holder classes can live there.
+
+The corollary, which comes up constantly: **when logic is specified
+inside an Android class but doesn't actually need Android, split it out.**
+`NotificationExtractionPolicy`, `TextSanitizer`, `ContentHash`,
+`InterruptibleCharSequence`, `RuleFormValidator`, and `GatePolicy` all
+exist because of that.
+
+Everything outside `domain/` aims to be glue thin enough that reading it
+is enough to believe it. That's a goal, not a fact — the worst pipeline
+bug so far lived in a seam every JVM test passed straight through.
+`app/src/androidTest/` is the tool for where the goal doesn't hold.
+
+## Package tree
+
+Single Gradle module (`:app`). Under
 `app/src/main/java/net/breadthcharge/exigentheron/`:
 
 ```
@@ -42,11 +49,11 @@ net.breadthcharge.exigentheron/
 ├── SafeLog.kt                        # the ONLY file permitted to touch android.util.Log
 │
 ├── listener/
-│   ├── NotificationTtsListener.kt      # NotificationListenerService — THIN, routing only
+│   ├── NotificationTtsListener.kt      # NotificationListenerService — routing only
 │   ├── NotificationExtractor.kt        # StatusBarNotification -> NotificationPayload
-│   └── NotificationExtractionPolicy.kt # pure drop conditions; see "Where this diverged"
+│   └── NotificationExtractionPolicy.kt # pure drop conditions
 │
-├── domain/                           # PURE. zero Android imports. See the rule below.
+├── domain/                           # PURE. zero Android imports.
 │   ├── NotificationPayload.kt        # toString() emits key + package only, never content
 │   ├── SpeechRequest.kt
 │   ├── Rule.kt                       # @Serializable, with RuleAction
@@ -57,11 +64,11 @@ net.breadthcharge.exigentheron/
 │   ├── RuleFormValidator.kt          # the rest of the editor's save-time gate
 │   ├── RuleCodec.kt                  # JSON encode/decode/list-editing
 │   ├── SecretDetector.kt             # can only ever downgrade a Decision
-│   ├── SecretDetectorHolder.kt       # rebuilds a SecretDetector from Flow<List<String>> (OTP keywords)
+│   ├── SecretDetectorHolder.kt       # rebuilds a SecretDetector from Flow<List<String>>
 │   ├── Deduplicator.kt               # injected clock; LRU + TTL
-│   ├── ContentHash.kt                # see "Where this diverged"
-│   ├── TextSanitizer.kt              # see "Where this diverged"
-│   └── InterruptibleCharSequence.kt  # see "Where this diverged"
+│   ├── ContentHash.kt                # stable hash of title+body
+│   ├── TextSanitizer.kt              # control/zero-width/bidi stripping
+│   └── InterruptibleCharSequence.kt  # makes a runaway regex actually abortable
 │
 ├── speech/
 │   ├── SpeechQueue.kt                # single-consumer actor over a bounded Channel
@@ -70,7 +77,7 @@ net.breadthcharge.exigentheron/
 │   ├── AudioFocusManager.kt
 │   ├── AudioBecomingNoisyReceiver.kt # a route change *during* an utterance
 │   ├── OutputRouteGate.kt            # headset-only enforcement
-│   ├── GatePolicy.kt                 # PURE — the gate decisions AppContainer used to inline
+│   ├── GatePolicy.kt                 # PURE — the DND/Bluetooth gate decisions
 │   └── LockStateGate.kt              # don't-speak-while-locked
 │
 ├── data/
@@ -84,65 +91,6 @@ net.breadthcharge.exigentheron/
     └── settings/                     # SettingsScreen
 ```
 
-Plus two source sets outside `main/`:
-
-- `app/src/debug/java/net/breadthcharge/exigentheron/debug/FakeNotifications.kt`
-  — the Phase 1 fake-notification injector (see [status.md](status.md)).
-  `debug/` source set only, per `AGENTS.md` §5; see
-  [testing.md](testing.md) for how to invoke it. Shares
-  `domain/ContentHash.kt`'s hashing rather than keeping its own copy —
-  that duplication was the plan from the start, see its own comment.
-- `app/src/test/java/net/breadthcharge/exigentheron/` — one test class per
-  testable class above, mirroring the same package structure.
-  `listener/NotificationExtractionPolicyTest.kt` and
-  `speech/SpeechQueueTest.kt` are the first tests here to exercise
-  Android-facing (if Android-import-light or -free) code rather than pure
-  `domain/` — see [traps-and-skills.md](traps-and-skills.md) for two real
-  problems that surfaced specifically because of that. 118 tests as of
-  **2026-09-08**; [status.md](status.md) has the current pass count
-  rather than a second copy of the number here.
-- `app/src/androidTest/java/net/breadthcharge/exigentheron/` — added
-  **2026-09-08**, the instrumented source set `AGENTS.md` §3 now names
-  for what a JVM test structurally cannot reach. Four classes, 19 tests:
-  the two DataStore repositories' round-trips (neither had any test),
-  `AndroidTtsEngineTest` (that `stop()` really unblocks a suspended
-  `speak()` — a fake can only show `SpeechQueue` *calls* it),
-  `GatePolicyFrameworkConstantsTest` (that the constants `SecretDetector`
-  and `GatePolicy` mirror still equal the framework's), and
-  `InstalledAppsTest` (a regression test for the `<queries>` manifest
-  block). [testing.md](testing.md) has how to run them and what they
-  deliberately don't prove.
-
-## The critical structural rule
-
-**`domain/` has zero Android imports.** `RuleEngine`, `SecretDetector`,
-and `Deduplicator` are pure Kotlin, unit-testable on the JVM with no
-Robolectric, no instrumentation, no emulator. This keeps the logic most
-worth testing the cheapest thing here to test. Enforced as of
-**2026-09-08** by a grep in [`check.yml`](../.github/workflows/check.yml),
-anchored to `^import android.` so `kotlinx.coroutines` — legal in
-`domain/`, and used by `RuleEngine` and both holders — still passes.
-
-"Everything else is glue that should hold no logic worth testing" is the
-*goal* that boundary serves, not a description of what is already true,
-and `AGENTS.md` §3 now says so rather than reading as though the Android
-side weren't worth testing. `AppContainer` held two real decisions in
-lambdas no JVM test could reach until `speech/GatePolicy.kt` split them
-out (**2026-09-08**), and the worst pipeline bug so far lived in a seam
-every JVM test passed straight through — see
-[history.md](history.md).
-
-This is a *requirement*, not an observation about how the code happens to
-be arranged, which is why `AGENTS.md` §3 states it too rather than only
-linking here. Its practical consequence shows up repeatedly below: where
-logic was specified inside an Android class but didn't actually need
-Android, it got split out anyway.
-
-`domain/`'s one non-stdlib dependency is `kotlinx-coroutines-core`, used
-by `RuleEngine` for `runInterruptible`/`withTimeoutOrNull`. That was
-resting on a transitive graph nothing in the build files named until
-**2026-09-07** — see [open-threads.md](open-threads.md).
-
 ## Data flow
 
 One path, implemented literally in `NotificationTtsListener.route()`:
@@ -152,245 +100,95 @@ onNotificationPosted(sbn)
   → NotificationExtractor.extract(sbn)      → NotificationPayload?
   → Deduplicator.isDuplicate(payload)       → drop if true
   → RuleEngine.evaluate(payload, rules)     → Decision
-  → SecretDetector.scan(decision)           → possibly downgrade to AnnounceOnly/Suppress
+  → SecretDetector.scan(decision)           → possibly downgrade
   → OutputRouteGate.allows()                → drop if false
   → LockStateGate.allows()                  → drop if false
   → SpeechQueue.enqueue(SpeechRequest)
   → AudioFocusManager.request() → TtsEngine.speak() → abandon focus when queue drains
 ```
 
-The listener service does routing only — each step is exactly one call,
-no branching logic of its own — and hops off the binder thread before
-`route()`, since rule matching can spend its full timeout budget and
-`onNotificationPosted` has to return promptly.
+**The ordering is a requirement** (`AGENTS.md` §3). Dedup before rules so
+a repost costs no regex work; `SecretDetector` after the rules and able
+only to downgrade; the gates last, immediately before enqueue.
 
-**The ordering is a requirement, not an implementation detail**, and
-`AGENTS.md` §3 keeps a one-line version of it for that reason. Dedup runs
-before the rule engine so a repost costs no regex work; `SecretDetector`
-runs after it and can only ever *downgrade* what the rules decided, never
-upgrade it (§4.5); the output and lock gates run last, immediately before
-enqueue.
+The listener does routing only — one call per step, no branching — and
+hops off the binder thread before `route()`.
 
-`OutputRouteGate` is checked twice — here at enqueue time, and again
-inside `SpeechQueue` before every utterance, because a headset connected
-when a notification is posted can disconnect before a busy queue reaches
-it. `AudioBecomingNoisyReceiver` covers the third case neither check can
-see: a route change *during* an utterance. See `AGENTS.md` §4.7 and
-[status.md](status.md) for the session that found both gaps.
+**`OutputRouteGate` is checked twice**, at enqueue and again per
+utterance, because a headset can disconnect while items are still
+queued. `AudioBecomingNoisyReceiver` covers the case neither check sees:
+a route change mid-utterance. All three exist because the enqueue-only
+version shipped and was wrong.
 
 ## What each package holds
 
-The per-file detail below is a map, not a substitute for the doc comments
-— several of these classes document their own reasoning far better than a
-summary can, and those are the copies that stay correct.
+Per-class reasoning lives in each class's own doc comment — that's the
+copy that stays correct. This is a map to get you to the right file.
 
-- `App.kt` / `AppContainer.kt` — `AppContainer` is the manual-DI container
-  `AGENTS.md` §2 specifies instead of Hilt. Wires `Deduplicator`,
-  `RuleRepository`, `SettingsRepository`, `RuleEngineHolder` (rebuilds a
-  `RuleEngine` from `ruleRepository.rules` on every emission — Phase 2's
-  `phase2HardcodedRules` is gone, see [history.md](history.md)),
-  `SecretDetectorHolder`, `AudioFocusManager`, `OutputRouteGate`,
-  `LockStateGate`. The two holders are exposed as `ruleEngine` and
-  `secretDetector` — properties named for the pipeline stage rather than
-  the wrapper class, matching `AGENTS.md` §3's pipeline, as of
-  **2026-09-08** (`secretDetector` was `secretDetectorHolder` until then,
-  the one place the two disagreed).
-  `ttsEngine`/`speechQueue` are `var`s (not `val`) as of Phase 4:
-  `rebuildTtsEngine(enginePackage)` swaps in a fresh `AndroidTtsEngine` +
-  `SpeechQueue` pair so a settings-screen engine choice actually takes
-  effect (`AGENTS.md` §4.8) instead of being fixed for the container's
-  lifetime — see [history.md](history.md).
-- `SafeLog.kt` — the sole permitted entry point to `android.util.Log`
-  (`AGENTS.md` §4.6). Logcat tag is `"ExigentHeron"`, not the class name —
-  worth knowing before scoping an `adb logcat` (see
-  [testing.md](testing.md) and skill
-  [`signing-and-log-hygiene`](../.claude/skills/signing-and-log-hygiene/SKILL.md)).
-  Exposes exactly `decision(pkg, ruleId, action)`, `lifecycle(msg)`,
-  `error(msg, t?)` — no arbitrary-string overload, by design.
-- `domain/` — pure Kotlin, no Android imports, per the rule above. Phase 1
-  landed `NotificationPayload.kt`, `Rule.kt` (with `RuleAction`),
-  `Decision.kt`, `Deduplicator.kt`, `RuleEngine.kt`, `SecretDetector.kt`,
-  `SpeechRequest.kt`. Phase 3 added four more, all still
-  Android-import-free: `RuleValidator.kt` (single source of truth for "is
-  this pattern acceptable" — rejects backreferences outright, used by both
-  the rule editor and `RuleEngine.compileOrNull`),
-  `InterruptibleCharSequence.kt` (makes `runInterruptible`'s
-  `Thread.interrupt()` actually abort a runaway match — see
-  [history.md](history.md)), `RuleCodec.kt` (pure JSON
-  encode/decode/list-editing that `data/RuleRepository.kt` wraps), and
-  `RuleEngineHolder.kt` (rebuilds a live `RuleEngine` from a
-  `Flow<List<Rule>>` so a rule edit takes effect without an app restart),
-  and as of **2026-09-08** `SecretDetectorHolder.kt` (rebuilds a live
-  `SecretDetector` from a `Flow<List<String>>` of OTP keywords, so a
-  keyword edit in settings takes effect without an app restart).
-  Post-Phase-5, `RuleFormValidator.kt` joined them, pulling
-  `RuleEditorViewModel.save()`'s remaining form-only checks (empty app
-  selection, non-numeric priority) out into the same pure/testable shape,
-  so the whole save-time gate is unit-tested rather than only its regex
-  half. `RuleEngine.kt`'s doc comment is worth reading directly rather
-  than summarized here — it documents a real, verified limitation of its
-  own regex-timeout mitigation, and how Phase 3 closed most of it (see
-  [history.md](history.md)).
-- `listener/` — `NotificationTtsListener.kt` (routing only; as of Phase 4,
-  `route()` also checks `outputRouteGate.allows()` and
-  `lockStateGate.allows()` right before `SpeechQueue.enqueue()`, logging a
-  `SafeLog.decision(..., action="suppress")` on either gate's no — the
-  same convention `Decision.Suppress` already used),
-  `NotificationExtractor.kt` (the Android-facing half of `AGENTS.md`
-  §4.2's extraction), and `NotificationExtractionPolicy.kt` (the pure
-  half — see "Where this diverged" below).
-- `data/` — `RuleRepository.kt` (Preferences DataStore, one JSON blob
-  under `stringPreferencesKey("rules_json")`, thin wrapper over
-  `domain/RuleCodec.kt`), `SettingsRepository.kt` (Phase 3 scaffold,
-  given real fields Phase 4: `Settings(headsetOnly, respectLockState,
-  allowDndOverride, ttsEnginePackage)`, one `booleanPreferencesKey`/
-  `stringPreferencesKey` each, exposed as `Flow<Settings>` plus per-field
-  setters — no round-trip JVM test, same reasoning as `RuleRepository`'s
-  lack of one: it's a thin DataStore wrapper with no logic of its own;
-  gained three more fields **2026-09-07** — `bluetoothDeviceControlEnabled`
-  plus two `stringSetPreferencesKey` address sets, see `AGENTS.md` §4.9;
-  gained a fourth, `truncationLengthSeconds: Int?`, the same day — null
-  by default (no limit), an `intPreferencesKey` when set; as of **2026-09-08**
-  gained `otpKeywords: Set<String>?` backed by `stringSetPreferencesKey`,
-  null = use `SecretDetector.DEFAULT_OTP_KEYWORDS`, see `AGENTS.md` §4.5),
-  and `BluetoothDevices.kt` (`loadBondedBluetoothDevices` — reads
-  `BluetoothAdapter.getBondedDevices()`, `BLUETOOTH_CONNECT`-gated,
-  returns an empty list rather than throwing when it isn't granted).
-  `AGENTS.md` §4.9 requires Allow and Deny to be mutually exclusive per
-  device *by construction* rather than by UI discipline; as built that
-  lives in `SettingsRepository.setBluetoothDeviceDecision`, which always
-  clears the other address set before writing — so there is no reachable
-  state, from the UI or otherwise, where one address sits in both.
-- `speech/` — `TtsEngine.kt` (interface), `AndroidTtsEngine.kt` (real
-  impl; as of Phase 4 takes an optional `enginePackage` and uses it with
-  `TextToSpeech(context, listener, engineName)`, checks
-  `LANG_MISSING_DATA`/`LANG_NOT_SUPPORTED` after a successful init rather
-  than treating init-success alone as ready, and exposes `listEngines()`
-  for the settings picker), `AudioFocusManager.kt`,
-  `GatePolicy.kt` (**2026-09-08** — pure, no Android imports, holding the
-  DND and Bluetooth-address decisions `AppContainer` previously made
-  inline in the lambdas it hands the gates; the framework reads that feed
-  it stayed behind, same split `listener/NotificationExtractionPolicy.kt`
-  makes against `NotificationExtractor`), `SpeechQueue.kt`
-  (Phase 4: takes `isBlockedByDnd` alongside `isInCall` — both, with
-  `isOutputRouteAllowed`, grouped into a `SpeechGates` parameter
-  **2026-09-08**, and the consumer's dispatcher made injectable at the
-  same time so a test can confine it off the process-wide
-  `Dispatchers.Default` pool — and its consumer now drains whatever else is already
-  buffered into a batch before deciding whether to speak it item-by-item
-  or collapse it to one "`<n>` new notifications." summary — `AGENTS.md`
-  §4.7's queue-collapse-on-burst; **2026-09-07**: when
-  `Settings.truncationLengthSeconds` is set, races `TtsEngine.speak()`
-  against a timeout of that many seconds and calls `TtsEngine.stop()`
-  explicitly on timeout — cancelling the coroutine alone wouldn't stop
-  the real `TextToSpeech` engine mid-utterance, only the wait on its
-  completion callback), `OutputRouteGate.kt` (Phase 4 — headset-only
-  enforcement against `AudioManager.getDevices`), `LockStateGate.kt`
-  (Phase 4 — the separate don't-speak-while-locked toggle against
-  `KeyguardManager.isKeyguardLocked()`), and
-  `AudioBecomingNoisyReceiver.kt` (**2026-09-07** — `AGENTS.md` §4.7's
-  `ACTION_AUDIO_BECOMING_NOISY` handling, see "Data flow" above). Both
-  gates take their Android-facing checks as function references, the same
-  pattern `SpeechQueue`'s own constructor already used for `isInCall` —
-  see each file's own doc comment.
-- `ui/` — `MainActivity.kt` carries the enable-access button (`AGENTS.md`
-  §4.10) and the active TTS engine (§4.8's "the user should never have to
-  wonder," Phase 4), plus a manual `Screen` sealed interface (`Main` /
-  `RuleList` / `RuleEditor` / `Settings`, the last added Phase 4) switched
-  in a `when` — no navigation-compose dependency, since one isn't in
-  `AGENTS.md` §2's list and four screens don't need one.
-  `ui/settings/SettingsScreen.kt` (Phase 4) has the headset-only,
-  don't-speak-while-locked, and speak-during-DND toggles, plus the engine
-  picker (`AndroidTtsEngine.listEngines()`) and a live
-  ready/initializing/error status line wired to
-  `AppContainer.ttsEngineStatus`. `ui/rules/` (Phase 3) has
-  `RuleListScreen.kt` (list + enable toggle + delete, backed by
-  `RuleListViewModel`), `RuleEditorScreen.kt` (form + save-time
-  validation, backed by `RuleEditorViewModel`; the app picker is a
-  `Dialog` launched from inside this screen, not a separate nav
-  destination), and `InstalledApps.kt`
-  (`PackageManager.queryIntentActivities` against the `<queries>` block
-  added to `AndroidManifest.xml` this phase — see below). ViewModels are
-  constructed via `androidx.lifecycle.viewmodel.viewModelFactory` (already
-  part of the existing `lifecycle-viewmodel-compose` dependency), not
-  Hilt.
+- **`App.kt` / `AppContainer.kt`** — manual DI (`AGENTS.md` §2 specifies
+  this instead of Hilt). Wires the deduplicator, both repositories, both
+  holders, the audio focus manager, and the gates. `ttsEngine` and
+  `speechQueue` are `var`s: `rebuildTtsEngine(enginePackage)` swaps in a
+  fresh pair so a settings-screen engine choice actually takes effect.
+- **`SafeLog.kt`** — the sole entry point to `android.util.Log`. Exactly
+  `decision(pkg, ruleId, action)`, `lifecycle(msg)`, `error(msg, t?)`;
+  no arbitrary-string overload. **Logcat tag is `"ExigentHeron"`**, not
+  the class name — check before scoping an `adb logcat`.
+- **`domain/`** — the rule engine, secret detection, dedup, and the pure
+  validators/codecs. The two `*Holder` classes rebuild their subject from
+  a `Flow` so an edit in the UI takes effect on the next notification
+  rather than on the next app start.
+- **`listener/`** — the service (routing only), the Android-facing half
+  of extraction, and the pure drop-condition half.
+- **`data/`** — Preferences DataStore. Rules are one JSON blob under
+  `rules_json`; `Settings` carries headset-only, lock-state,
+  DND-override, engine package, the two Bluetooth address sets, a
+  truncation cap, and the OTP keyword list. Allow and Deny are mutually
+  exclusive *by construction* — `setBluetoothDeviceDecision` always
+  clears the other set before writing, so no reachable state has an
+  address in both.
+- **`speech/`** — the queue and everything that decides whether it may
+  speak. Both gates take their Android-facing checks as function
+  references, the same pattern `SpeechQueue`'s constructor already used;
+  that's what keeps them testable.
+- **`ui/`** — Compose screens plus a hand-rolled `Screen` sealed
+  interface switched in a `when`. **No navigation-compose dependency** —
+  four screens don't need one, and it isn't in `AGENTS.md` §2's list.
+  ViewModels come from `viewModelFactory`, not Hilt.
 
-## Where this diverged from the spec's original tree
+## Test source sets
 
-Kept as history, not as a live reconciliation: before **2026-09-08**,
-`AGENTS.md` §3 carried a target tree and this page tracked how far the
-real one had caught up to it. Now this page *is* the tree. These entries
-stay because the reasoning behind each still matters — and because the
-last one is a genuine spec/code disagreement, which `AGENTS.md` §0 asks
-be said out loud rather than built around silently.
+| Source set | Needs a device | Covers |
+|---|---|---|
+| `app/src/test/` | no | one class per testable class; almost all of `domain/` |
+| `app/src/androidTest/` | yes | what a JVM test structurally cannot reach |
+| `app/src/debug/` | no | `FakeNotifications`, the debug-only injector |
 
-`AGENTS.md` §3's original tree used `com.<yourdomain>.notifreader` as a
-placeholder package name; the real one is `net.breadthcharge.exigentheron`
-(see `app/build.gradle.kts`'s `namespace` and `applicationId`) — never a
-deviation, just the placeholder resolved.
+The instrumented set is small and deliberate: DataStore round-trips, that
+`AndroidTtsEngine.stop()` really unblocks a suspended `speak()`, that the
+framework constants `SecretDetector` and `GatePolicy` mirror still match,
+and a regression test for the `<queries>` manifest block.
+[testing.md](testing.md) has how to run them and what they don't prove.
 
-**2026-09-05, three files the spec tree didn't have**, all in service of
-the same goal the spec itself states — testable logic living outside
-Android framework glue:
+Current test counts live in [status.md](status.md) rather than here.
 
-- `domain/ContentHash.kt` — §4.1 says `NotificationPayload.contentHash`
-  is "a stable hash of title+body" but never says where it's computed.
-  Putting it in `domain/` (pure JVM, `java.security` not Android) is what
-  let `FakeNotifications` (debug/) and `NotificationExtractor` (main,
-  real notifications) share one implementation instead of two that could
-  drift apart — see [history.md](history.md).
-- `domain/TextSanitizer.kt` — §4.2's control/zero-width/bidi stripping is
-  specified under `NotificationExtractor`, but the stripping itself has
-  no Android dependency, so it lives in `domain/` and gets a real JVM
-  test the same way the rest of `domain/` does.
-- `listener/NotificationExtractionPolicy.kt` — §4.2's drop conditions
-  (ongoing, group summary, own package, empty title+body), as a pure
-  function over plain values rather than a `StatusBarNotification`.
-  Deliberately *not* moved into `domain/` — it's extraction policy, not
-  rule/secret/dedup business logic — but it has zero Android imports for
-  the same testability reason as the two above.
+## Adding a class
 
-A fourth, `domain/InterruptibleCharSequence.kt`, followed in Phase 3 for
-the same reason; `domain/RuleFormValidator.kt` post-Phase-5. Neither was
-in the spec tree either, and neither needs its own entry beyond the
-description above — the pattern is the same one all three of these
-established.
+1. Can it be pure? Then it goes in `domain/`, no Android imports.
+2. Does it decide something? Pull the decision into a pure function and
+   leave the framework read behind — `NotificationExtractionPolicy` and
+   `GatePolicy` are the two worked examples.
+3. Does it need an Android type at construction time? Take a function
+   reference instead, so a JVM test can supply one.
+4. If it ends up somewhere unexpected anyway, record why in
+   [architecture-4llm.md](architecture-4llm.md), dated, and say whether
+   `AGENTS.md` should be corrected instead of the code — its §0 asks for
+   disagreement out loud rather than worked around.
 
-**2026-09-05, one manifest addition not in `AGENTS.md` §5's snippet**:
-`AndroidManifest.xml` gained a `<queries>` block (`ACTION_MAIN` /
-`CATEGORY_LAUNCHER`) for the Phase 3 installed-app picker's
-`PackageManager.queryIntentActivities` call. Not a deviation from §5's
-hardening intent — it's a visibility declaration, not a permission grant,
-doesn't touch `INTERNET` or `QUERY_ALL_PACKAGES`, and §5's snippet predates
-Phase 3 needing to query other apps at all — but worth recording since §5
-itself doesn't mention it.
+## See also
 
-**2026-09-07, a real permission addition, not just a visibility
-declaration this time**: `AndroidManifest.xml` gained
-`<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />`
-for the per-device Bluetooth allow/deny feature (`AGENTS.md` §4.9). This
-is this app's first and only runtime permission — everything else here
-has been genuinely zero-permission-request until now. Requested only
-when the user turns the feature on in Settings, not at launch; see
-`SettingsScreen.kt`'s permission-launcher wiring and
-`Settings.bluetoothDeviceControlEnabled`'s own doc comment for why it
-defaults off.
-
-**A package the spec named and the code never grew**: §3's original tree
-had `ui/permission/` for the notification-access grant flow. It's in
-`ui/MainActivity.kt` instead — the flow is one button and one
-`NotificationManagerCompat.getEnabledListenerPackages` check, which
-didn't earn a package of its own. Recorded here rather than silently
-dropped when this page absorbed the tree; if a second permission flow
-ever lands (`BLUETOOTH_CONNECT`'s launcher already lives in
-`SettingsScreen.kt`, a second such site), the spec's original instinct
-gets better, not worse.
-
-If a real divergence happens later that *isn't* in this same spirit — a
-class that ends up somewhere other than its natural package for no
-principled reason, a component nothing anticipated — record it here with
-a date and why, per skill
-[`fact-hygiene`](../.claude/skills/fact-hygiene/SKILL.md), and say in the
-same change whether `AGENTS.md` itself should be corrected instead of the
-code, per its own §0 instinct to flag disagreement rather than build
-around it silently.
+- [architecture-4llm.md](architecture-4llm.md) — the dense companion:
+  per-file evolution with dates, and every recorded divergence from the
+  spec's original tree.
+- [overview.md](overview.md) — the shorter orientation.
+- [testing.md](testing.md) — running any of this.

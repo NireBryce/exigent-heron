@@ -5,84 +5,48 @@ _Last modified: 2026-09-08_
 ## Contents
 
 - [What this is](#what-this-is)
-- [The two-document system](#the-two-document-system)
-- [The pipeline](#the-pipeline)
-- [Components worth reading first](#components-worth-reading-first)
-- [Build and tooling](#build-and-tooling)
+- [The one hard constraint](#the-one-hard-constraint)
+- [What happens to a notification](#what-happens-to-a-notification)
+- [Where things live](#where-things-live)
+- [Working on it](#working-on-it)
+- [Which document answers what](#which-document-answers-what)
 - [See also](#see-also)
 
-Orientation for someone — human or agent — meeting this repo cold: what
-the app is, which document answers which kind of question, and the path a
-notification actually takes through the code.
-
-This page is a map, not a second copy of the territory. Per
-[styleguide.md](styleguide.md)'s "index over restatement," it points at
-the real source for every fact it mentions rather than restating it —
-most of what's summarized in a sentence here has a fuller treatment in a
-class's own doc comment, which is the copy that stays correct. Where a
-number would rot (test counts, phase status, line counts), it links to
-[status.md](status.md) instead of freezing one.
+What the app is, what it must never do, and how a notification gets from
+the system to a spoken sentence.
 
 ## What this is
 
 A personal, sideloaded Android app that reads selected notifications
-aloud via on-device TTS, with user-controlled filtering rules. Package
-`net.breadthcharge.exigentheron`, single Gradle module `:app`, Kotlin +
-Compose. [`AGENTS.md`](../AGENTS.md) §1 has the in-scope and
-explicitly-out-of-scope lists — the latter matters more than it usually
-does here, since it rules out cloud sync, LLM summarization, notification
-history, and reply actions by name.
+aloud via on-device TTS, filtered by rules you write.
 
-The defining constraint, stated three separate ways in `AGENTS.md` §0:
-**never log notification content, never request `INTERNET`, no
-telemetry.** Most of the structural decisions downstream are in service
-of that rather than of testability or elegance on their own terms.
+- Package `net.breadthcharge.exigentheron`, one Gradle module (`:app`).
+- Kotlin, Compose, manual DI (no Hilt), Coroutines + Flow, DataStore.
+- Apache-2.0 ([LICENSE](../LICENSE)).
+- Sideloaded for personal use — not a Play Store app.
 
-Licensed Apache-2.0 as of 2026-09-07 ([LICENSE](../LICENSE)), chosen over
-MIT for the express patent grant and because every shipped runtime
-dependency already carries it — see [history.md](history.md) for the full
-reasoning and [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) for what
-the APK actually ships with.
+Explicitly **out of scope**, and worth knowing before you propose a
+feature: cloud sync, LLM summarization, notification history, and reply
+actions. [`AGENTS.md`](../AGENTS.md) §1 has the full list.
 
-## The two-document system
+## The one hard constraint
 
-Two layers, deliberately not merged, because they answer different
-questions and go stale at different rates:
+**Never log notification content. Never request `INTERNET`. No
+telemetry.** `AGENTS.md` §0 states it three separate ways, and most of
+the structure below exists to serve it rather than to be elegant.
 
-- [`AGENTS.md`](../AGENTS.md) — the standing contract: the constraints
-  and per-component requirements the app must keep satisfying, in
-  numbered sections (§4.1–§4.10 are the per-component contracts
-  everything else cites). Rewritten from a build spec into that on
-  **2026-09-08**, once all six phases were done — see
-  [history.md](history.md). Written as an instruction to whichever agent
-  is working, including its own §0 instruction to say when it looks
-  wrong rather than build around it silently. Its section numbers are
-  cited from ~50 files, so they are stable by policy: add, don't
-  renumber.
-- `wiki/` — what's *actually true right now*, which the spec alone
-  doesn't track. [README.md](README.md) explains why that's a separate
-  layer at all; [status.md](status.md) holds the phase table (all six
-  phases built and verified as of 2026-09-07), where a "Verified" cell
-  requires a date and the literal command run that session.
+In practice that means:
 
-A third layer, `BUILD_PLAN.md`, held the phase-by-phase build order
-through the six phases it specified; it was removed once all of them
-were built and verified, since `status.md`'s own phase table had already
-absorbed what it said "done" meant for each — see
-[history.md](history.md).
+- `SafeLog` is the only file allowed to touch `android.util.Log`, and it
+  has no method that takes an arbitrary string. CI greps for this.
+- The manifest has no `INTERNET` permission, and the merged manifest gets
+  re-read to confirm it rather than assumed.
+- One runtime permission exists in the whole app: `BLUETOOTH_CONNECT`,
+  requested only if you turn on per-device Bluetooth control.
 
-[README.md](../README.md) is upfront that most of the implementation,
-tests, and this wiki are written by LLM coding agents under human
-direction and review. [history.md](history.md) records decisions made
-along the way that `AGENTS.md` doesn't narrate;
-[traps-and-skills.md](traps-and-skills.md) records mistakes actually made
-and caught, each paired with the skill holding its general form.
+## What happens to a notification
 
-## The pipeline
-
-One path — [architecture.md](architecture.md)'s "Data flow" section has
-the annotated version and the reasoning behind the ordering; `AGENTS.md`
-§3 states that ordering as a requirement. Implemented literally in
+One path, implemented literally in
 [`NotificationTtsListener.route()`](../app/src/main/java/net/breadthcharge/exigentheron/listener/NotificationTtsListener.kt):
 
 ```
@@ -95,98 +59,91 @@ onNotificationPosted(sbn)
   → SpeechQueue.enqueue()
 ```
 
-The listener is routing only — each step is exactly one call, no
-branching logic of its own — and hops off the binder thread before
-`route()`, since rule matching can spend its full timeout budget and
-`onNotificationPosted` has to return promptly.
+Three things about it are requirements, not accidents:
 
-**The critical structural rule** (`AGENTS.md` §3, and
-[architecture.md](architecture.md)): `domain/` has zero
-Android imports — CI greps for it. That's what keeps the logic most
-worth testing the cheapest thing here to test: plain JVM unit tests, no
-Robolectric, no emulator, no instrumentation. Everything else is
-framework glue that's *meant* to hold no logic worth testing, which is a
-goal rather than a guarantee — instrumented tests under
-`app/src/androidTest/` are the tool where it doesn't hold. Where logic was *specified* inside an Android class but didn't
-actually need Android, it was split out anyway —
-`listener/NotificationExtractionPolicy.kt`, `domain/TextSanitizer.kt`,
-`domain/ContentHash.kt`. All three are recorded as deliberate deviations,
-with reasons, in [architecture.md](architecture.md)'s "Where this
-diverged from the spec's original tree" section.
+- **The order.** Dedup before rules, so a repost costs no regex work.
+  Secrets after rules, because `SecretDetector` can only ever *downgrade*
+  what the rules decided. Gates last, right before enqueue.
+- **The listener is routing only** — each step is one call, no branching
+  of its own — and it hops off the binder thread first, because rule
+  matching can burn its whole timeout and `onNotificationPosted` has to
+  return promptly.
+- **Default-deny.** No rule matches, nothing is spoken. A fresh install
+  is silent until you add a rule.
 
-## Components worth reading first
+[architecture.md](architecture.md) has the annotated version.
 
-Each of these has a doc comment that is the real explanation; the point
-of listing them here is which ones repay reading directly.
+## Where things live
 
-- [`RuleEngine.kt`](../app/src/main/java/net/breadthcharge/exigentheron/domain/RuleEngine.kt)
-  — default-deny, first matching enabled rule by priority wins. Its class
-  doc is the single best thing to read in this codebase: it documents a
-  verified limitation of its own ReDoS mitigation (`java.util.regex` has
-  no cooperative cancellation, so a bare `withTimeoutOrNull` abandons the
-  caller while the thread keeps burning), how `InterruptibleCharSequence`
-  closes it, and why `RuleValidator` rejects backreferences outright
-  rather than relying on interruption alone.
-- [`SecretDetector.kt`](../app/src/main/java/net/breadthcharge/exigentheron/domain/SecretDetector.kt)
-  — can only ever *downgrade* a decision, never upgrade one. The
-  mechanics its doc spells out, which `AGENTS.md` §4.5 states as a rule
-  without them: a `Speak` → `AnnounceOnly` downgrade must not carry the
-  original text forward, since that text is exactly what looked like a
-  secret.
-- [`SpeechQueue.kt`](../app/src/main/java/net/breadthcharge/exigentheron/speech/SpeechQueue.kt)
-  — single-consumer actor over a bounded channel. Takes its
-  audio-focus/in-call/DND/route checks as function references rather than
-  Android objects, which is what keeps it JVM-testable. Three layered
-  fixes live here, each closing a gap the previous one couldn't see —
-  the doc comment says which is which.
-- [`SafeLog.kt`](../app/src/main/java/net/breadthcharge/exigentheron/SafeLog.kt)
-  — the only file permitted to touch `android.util.Log` (`AGENTS.md`
-  §4.6), with deliberately no arbitrary-string overload. Its logcat tag
-  is `"ExigentHeron"`, not a class name — worth knowing before scoping an
-  `adb logcat`, see [testing.md](testing.md).
+```
+domain/     pure Kotlin, zero Android imports — rules, secrets, dedup
+listener/   the NotificationListenerService and extraction
+speech/     the queue, the TTS engine, the audio gates
+data/       DataStore-backed settings and rules
+ui/         Compose screens
+```
 
-## Build and tooling
+**`domain/` having zero Android imports is the load-bearing rule here.**
+CI enforces it with a grep. It is what lets the logic most worth testing
+be tested by plain JVM unit tests — no Robolectric, no emulator. Where
+logic was specified inside an Android class but didn't actually need
+Android, it got pulled out anyway.
 
-- **Nix flake** pins the JDK, Kotlin, Gradle, and the Android SDK.
-  **No `gradlew` is committed, by design** — the dev shell puts `gradle`
-  on `PATH` instead. `direnv allow`, then `gradle assembleDebug` /
-  `gradle testDebugUnitTest`; see [README.md](../README.md) and
-  [flake.nix](../flake.nix).
-- [**CI**](../.github/workflows/check.yml) runs inside `nix develop` so
-  versions can't drift from local, and includes the hard grep `AGENTS.md`
-  §4.6 asks for by name: `android.util.Log` must appear in exactly one
-  file. Lint runs for both variants and its SARIF goes to code scanning.
-- [**`.claude/hooks/`**](../.claude/hooks/) — a git guard
-  ([`git-guard-pretooluse.sh`](../.claude/hooks/git-guard-pretooluse.sh):
-  destructive git actions, and direct commit/merge/push to `main`) plus
-  the signing and log-hygiene guards. Each is a mechanical backstop for
-  a slip, not the policy itself: the rules live in `AGENTS.md` §0 and the skills
-  below as plain files any agent can read, whether or not its harness
-  fires hooks.
-- [**`.claude/skills/`**](../.claude/skills/) — the repo-local skills.
-  [`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md) is the one to
-  read before landing anything: every change goes via a branch and a PR,
-  never a direct commit to `main`.
-- [**`wiki/scripts/check_wiki.py`**](scripts/check_wiki.py) — mechanical
-  checks of links, anchors, `## Contents` blocks, skill names, and
-  claimed phase status against the real tree, since nothing about
-  `gradle build` reads prose.
+Everything outside `domain/` is meant to be glue thin enough that reading
+it is enough to believe it. That is a goal, not a guarantee — instrumented
+tests under `app/src/androidTest/` exist for where it doesn't hold.
 
-Both the spec and this wiki lean on a sibling `NireBryce/nixos-configs` repo as
-their model — the wiki structure, the git-guard hook, `check_wiki.py`,
-and several skills are adaptations of its equivalents, each with its
-deliberate differences documented in place rather than silently applied.
+## Working on it
+
+```sh
+direnv allow      # or: nix develop
+just              # lists every recipe
+just test         # JVM unit tests, no device needed
+just build        # debug APK
+just test-all     # everything, cheapest first
+```
+
+There is **no `gradlew`** in this repo, deliberately — the Nix dev shell
+puts a pinned `gradle`, JDK, Kotlin, Android SDK, and an emulator on
+`PATH`. See [flake.nix](../flake.nix).
+
+Before you land anything:
+
+- Every change goes via a branch and a PR — never a direct commit to
+  `main`. Skill [`submit-a-pr`](../.claude/skills/submit-a-pr/SKILL.md).
+- If your change makes a wiki page wrong, fix it in the same change.
+  Skill [`wiki-sync`](../.claude/skills/wiki-sync/SKILL.md).
+- New dependencies are a question to ask, not a call to make —
+  `AGENTS.md` §2's list is meant to be the whole list.
+
+[testing.md](testing.md) has the rest.
+
+## Which document answers what
+
+| Question | File |
+|---|---|
+| what must this app always do? | [`AGENTS.md`](../AGENTS.md) |
+| where does this class live, and why there? | [architecture.md](architecture.md) |
+| does this actually work yet? | [status.md](status.md) |
+| how do I run it? | [testing.md](testing.md) |
+| is this a known problem? | [open-threads.md](open-threads.md) |
+| why is it built this way? | [history.md](history.md) |
+| why does this class do that odd thing? | the class's own doc comment |
+
+That last row matters more than it looks. `RuleEngine.kt`,
+`SecretDetector.kt`, and `SpeechQueue.kt` each document real, verified
+limitations of their own mitigations, and those comments are the copy
+that stays correct. Read them rather than expecting a wiki page to
+repeat them.
+
+Most of this codebase, including this wiki, is written by LLM coding
+agents under human direction and review — see the root
+[README.md](../README.md).
 
 ## See also
 
-- [README.md](README.md) — the wiki's own index, and why this link layer
-  exists separately from `AGENTS.md`.
-- [architecture.md](architecture.md) — the canonical package tree and
-  data-flow diagram, plus where the code diverged from `AGENTS.md` §3's
-  original tree.
-- [status.md](status.md) — what's actually built and verified, dated,
-  versus only specified.
-- [testing.md](testing.md) — how to actually run and exercise the app.
-- [styleguide.md](styleguide.md) — the house rules this page follows,
-  including the "index over restatement" one it's most at risk of
-  breaking.
+- [overview-4llm.md](overview-4llm.md) — the dense companion: full
+  constraint provenance, the document-layer reasoning, and the tooling
+  inventory.
+- [architecture.md](architecture.md) — the tree and the data flow.
+- [testing.md](testing.md) — how to actually run it.

@@ -6,7 +6,7 @@ The app is **built** — all six phases, verified ([wiki/status.md](wiki/status.
 
 Section numbers are cited from ~50 other files (Kotlin doc comments, CI, hooks, `SECURITY.md`, every wiki page). **Do not renumber. Add, don't shuffle.**
 
-This file holds requirements only. The package tree, data flow, and what each file does: [wiki/architecture.md](wiki/architecture.md). What's verified: [wiki/status.md](wiki/status.md). How to run it: [wiki/testing.md](wiki/testing.md). Known gaps and filed issues: [wiki/open-threads.md](wiki/open-threads.md). Each class's own doc comment carries its reasoning and edge cases — that copy stays correct, so read it rather than expecting this file to repeat it.
+This file holds requirements only. The package tree, data flow, and what each file does: [wiki/architecture.md](wiki/architecture.md). What's verified: [wiki/status.md](wiki/status.md). How to run it: [wiki/testing.md](wiki/testing.md). Known gaps and filed issues: [wiki/open-threads.md](wiki/open-threads.md). Each class's own doc comment carries its reasoning and edge cases — that copy stays correct, so read it rather than expecting this file to repeat it. Every wiki page has a context-dense companion at `wiki/<page>-4llm.md` holding that subject's full reasoning, dated deviations and history; read the companion when you need why rather than what ([wiki/README-4llm.md](wiki/README-4llm.md) is the index).
 
 ---
 
