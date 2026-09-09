@@ -102,9 +102,9 @@ Cold start on this repo, cheapest useful order:
 ## Mechanical checks
 
 [`scripts/check_wiki.py`](scripts/check_wiki.py), run as `just wiki-lint`
-or `python3 wiki/scripts/check_wiki.py check`. Nine checks: `phases`,
+or `python3 wiki/scripts/check_wiki.py check`. Ten checks: `phases`,
 `skills`, `gradle`, `recipes`, `links`, `anchors`, `contents`, `dates`,
-`pairs`.
+`pairs`, `freshness`.
 The script's own docstring is the authority on what each does and what it
 deliberately does not catch.
 
@@ -124,7 +124,14 @@ Consequences worth knowing before editing:
   headings. Fix with `python3 wiki/scripts/check_wiki.py gen-contents
   <page>` — never by hand.
 - `dates` checks the `_Last modified:` line exists, is shaped right, and
-  is not in the future. It cannot check that it is still true.
+  is not in the future. It cannot check that it is still true — that is
+  `freshness`'s job.
+- `freshness` (added **2026-09-08**) checks the date against git. A page
+  with uncommitted substantive edits whose date isn't today is a hard
+  finding; a page whose last substantive commit postdates its stated date
+  is REVIEW, because styleguide.md exempts mechanical touches and no
+  script can tell a typo fix from a meaning change. Changes confined to
+  the date line, the notice, or the `## Contents` block never count.
 - `pairs` (added **2026-09-08**) checks every page has its counterpart —
   a missing or orphaned half is a hard failure — and flags a prose
   paragraph of 25+ words written verbatim into both halves as a REVIEW
