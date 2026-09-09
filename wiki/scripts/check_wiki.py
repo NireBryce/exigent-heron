@@ -58,9 +58,11 @@ extractable facts only:
             Mechanical, unlike `gradle` above: .justfile is a single file
             listing every valid name, so this needs no hand-maintained set.
 
-  links     Every relative markdown link (`[text](target)`) across wiki/
-            and AGENTS.md resolves to a real file. Fully general -- a link
-            target either exists or it doesn't, no judgement call needed.
+  links     Every relative markdown link (`[text](target)`) across wiki/,
+            AGENTS.md, and .claude/ resolves to a real file. Fully general
+            -- a link target either exists or it doesn't, no judgement
+            call needed, which is why this one check reaches into .claude/
+            when the rest deliberately don't (see `link_files`).
 
   anchors   Every `#fragment` on a markdown link -- same-file or into
             another page -- against a real GitHub-slug computation of the
@@ -81,7 +83,22 @@ extractable facts only:
             between a heading list going stale mechanically and deciding
             what belongs on the page.
 
-  check     Runs all seven of the above.
+  pairs     Every page under wiki/ is half of a pair: `<page>.md` written
+            for a human contributor, `<page>-4llm.md` holding the same
+            subject's context-dense and historical material
+            (styleguide.md's "The paired-page convention"). A page with no
+            counterpart is a hard finding -- the convention says add both.
+            This check also looks for the pairing's other failure mode,
+            the same fact written into both halves: a prose paragraph of
+            DUP_MIN_WORDS or more words appearing verbatim in both is a
+            REVIEW finding, since the split's whole premise is that a fact
+            lives in exactly one half and a duplicated one rots in the
+            other. Headings, fenced code, and the mandatory header lines
+            are excluded -- those are *supposed* to look alike. It cannot
+            see a fact restated in different words; that stays a human
+            judgement call, the same line every other check here draws.
+
+  check     Runs all nine of the above.
 
     check_wiki.py phases       [repo-root]
     check_wiki.py skills       [repo-root]
@@ -90,6 +107,7 @@ extractable facts only:
     check_wiki.py anchors      [repo-root]
     check_wiki.py contents     [repo-root]
     check_wiki.py dates        [repo-root]
+    check_wiki.py pairs        [repo-root]
     check_wiki.py check        [repo-root]
     check_wiki.py gen-contents <file.md> [file.md ...]
 
@@ -141,6 +159,25 @@ def doc_files(root):
     """Every markdown file the checks below scan: all of wiki/ (recursive)
     plus AGENTS.md."""
     return sorted(root.joinpath('wiki').rglob('*.md')) + [root / 'AGENTS.md']
+
+
+def link_files(root):
+    """`doc_files` plus every SKILL.md and hook doc under .claude/ -- the
+    scope for `links` and `anchors` only.
+
+    Those two are fully general (a path either resolves or it doesn't), so
+    widening them costs nothing and catches a class of bug the narrower
+    scope structurally could not: skill wiki-sync spent from 2026-09-05 to
+    2026-09-08 pointing at `../../wiki/styleguide.md`, one level short of
+    the repo root, and nothing noticed because .claude/ was never scanned.
+
+    The other checks deliberately keep the narrower `doc_files` scope.
+    They would drown here: skills under .claude/ cite nixos-configs' own
+    skills by name (`ship`, `secrets-hygiene`), Claude Code's built-ins
+    (`fewer-permission-prompts`), and recipes this repo deliberately does
+    NOT have (`just preflight`, named precisely to say so) -- every one a
+    false positive, and a check that cries wolf gets ignored."""
+    return doc_files(root) + sorted(root.joinpath('.claude').rglob('*.md'))
 
 
 STATUS_ROW = re.compile(
@@ -278,11 +315,12 @@ MD_LINK = re.compile(r'\[[^\]]*\]\(([^)]+)\)')
 
 
 def check_links(root):
-    """Every relative markdown link across wiki/ and AGENTS.md resolves to
-    a real file. Skips `http(s)://`/`mailto:` targets and a pure in-page
-    anchor (`(#see-also)`, no file component)."""
+    """Every relative markdown link across `link_files` -- wiki/,
+    AGENTS.md, and .claude/ -- resolves to a real file. Skips
+    `http(s)://`/`mailto:` targets and a pure in-page anchor
+    (`(#see-also)`, no file component)."""
     findings = []
-    for path in doc_files(root):
+    for path in link_files(root):
         for m in MD_LINK.finditer(path.read_text()):
             target = m.group(1).strip()
             if target.startswith(('http://', 'https://', 'mailto:')):
@@ -342,11 +380,12 @@ def _page_anchors(path):
 
 def check_anchors(root):
     """Every `#fragment` on a markdown link resolves to a real heading on
-    the target page, per `github_slug` above. Skips a target `check_links`
-    would already flag as a broken file path."""
+    the target page, per `github_slug` above. Same `link_files` scope as
+    `check_links`, which already flags a broken file path, so this skips
+    those."""
     cache = {}
     findings = []
-    for path in doc_files(root):
+    for path in link_files(root):
         for m in MD_LINK.finditer(path.read_text()):
             target = m.group(1).strip()
             if target.startswith(('http://', 'https://', 'mailto:')):
@@ -411,6 +450,7 @@ def check_contents(root):
 
 
 LAST_MODIFIED_LINE = re.compile(r'^_Last modified: (\d{4}-\d{2}-\d{2})_\s*$')
+NOTICE_LINE = '_Text is llm generated with occasional human review_'
 
 
 def check_dates(root):
@@ -439,6 +479,97 @@ def check_dates(root):
             findings.append(
                 f"FUTURE DATE  {path}: Last modified says {date}, which is "
                 f"after today ({today})")
+    return findings
+
+
+COMPANION_SUFFIX = '-4llm'
+
+# A shared paragraph shorter than this is usually an unavoidable one-liner
+# ("See styleguide.md.", a repeated warning phrase), not a duplicated fact.
+# Tuned against the 2026-09-08 split, which is clean at this threshold.
+DUP_MIN_WORDS = 25
+
+
+def article_of(path):
+    """The article path for a `-4llm` companion, or None if `path` is
+    already an article."""
+    if not path.stem.endswith(COMPANION_SUFFIX):
+        return None
+    return path.with_name(path.stem[:-len(COMPANION_SUFFIX)] + '.md')
+
+
+def companion_of(path):
+    """The `-4llm` companion path for an article, or None if `path` is
+    itself a companion."""
+    if path.stem.endswith(COMPANION_SUFFIX):
+        return None
+    return path.with_name(path.stem + COMPANION_SUFFIX + '.md')
+
+
+def prose_paragraphs(text):
+    """Blank-line-separated prose paragraphs, normalized to single-spaced
+    text. Excludes fenced code, headings, list items (a Contents block is
+    all list items, and a shared bullet is usually a link line rather than
+    a duplicated fact) and the mandatory header lines -- all of which are
+    *meant* to look similar across a pair."""
+    paragraphs, current, in_fence = [], [], False
+    for line in text.splitlines():
+        if FENCE.match(line):
+            in_fence = not in_fence
+            if current:
+                paragraphs.append(' '.join(current))
+                current = []
+            continue
+        if in_fence:
+            continue
+        stripped = line.strip()
+        if not stripped:
+            if current:
+                paragraphs.append(' '.join(current))
+                current = []
+            continue
+        if (HEADING.match(line) or stripped.startswith(('-', '*', '|', '>'))
+                or LAST_MODIFIED_LINE.match(stripped) or stripped == NOTICE_LINE):
+            if current:
+                paragraphs.append(' '.join(current))
+                current = []
+            continue
+        current.append(stripped)
+    if current:
+        paragraphs.append(' '.join(current))
+    return {' '.join(p.split()) for p in paragraphs
+            if len(p.split()) >= DUP_MIN_WORDS}
+
+
+def check_pairs(root):
+    """Every wiki page has its counterpart, and no long prose paragraph is
+    written into both halves -- see this module's docstring."""
+    pages = set(root.joinpath('wiki').rglob('*.md'))
+    findings = []
+    for path in sorted(pages):
+        article = article_of(path)
+        if article is not None:
+            if article not in pages:
+                findings.append(
+                    f"ORPHAN COMPANION  {path}: no article at "
+                    f"{article.name} -- a companion with no article has no "
+                    f"entry point (styleguide.md, 'The paired-page "
+                    f"convention')")
+            continue
+        companion = companion_of(path)
+        if companion not in pages:
+            findings.append(
+                f"MISSING COMPANION  {path}: no {companion.name} -- "
+                f"styleguide.md's paired-page convention says add both")
+            continue
+        shared = prose_paragraphs(path.read_text()) & \
+            prose_paragraphs(companion.read_text())
+        for para in sorted(shared):
+            excerpt = para if len(para) <= 90 else para[:87] + '...'
+            findings.append(
+                f"REVIEW  {path} and {companion.name} share a paragraph "
+                f"verbatim -- a fact belongs in exactly one half: "
+                f'"{excerpt}"')
     return findings
 
 
@@ -499,7 +630,7 @@ def main():
     root = repo_root([sys.argv[0]] + sys.argv[2:])
 
     cmds = ('phases', 'skills', 'gradle', 'recipes', 'links', 'anchors',
-            'contents', 'dates', 'check')
+            'contents', 'dates', 'pairs', 'check')
     if cmd not in cmds:
         print(__doc__)
         sys.exit(2)
@@ -521,6 +652,8 @@ def main():
         findings += check_contents(root)
     if cmd in ('dates', 'check'):
         findings += check_dates(root)
+    if cmd in ('pairs', 'check'):
+        findings += check_pairs(root)
 
     for f in findings:
         print(f)

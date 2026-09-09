@@ -47,11 +47,14 @@ Consequences that are easy to get wrong:
   generated `## Contents`, resolving links, absolute dates. The checker
   scans `wiki/**/*.md`, so a companion is checked exactly like an
   article.
-- **`check_wiki.py` has no concept of the pairing.** Nothing verifies a
-  companion exists, or that a fact isn't duplicated across the pair.
-  Those are judgment calls, in the same category as every other prose
-  claim the script cannot read. Worth adding a pairing check if pages
-  ever start appearing unpaired.
+- **`check_wiki.py`'s `pairs` check covers the structural half of the
+  convention**, added **2026-09-08**: a page with no counterpart is a hard
+  failure, and a prose paragraph of 25+ words written verbatim into both
+  halves is a REVIEW finding. What it still cannot see is a fact
+  *restated in different words* across the pair — the common case, and a
+  judgment call like every other prose claim the script can't read. Treat
+  a green `pairs` as evidence about structure and copy-paste, not about
+  whether the split was made well.
 
 ## Splitting an existing page
 
@@ -104,8 +107,11 @@ authority; this is the shape of what it can and cannot see.
 
 **Structural, mechanical, trustworthy:**
 
-- `links` — every relative markdown link across `wiki/` and `AGENTS.md`
-  resolves. Fully general. (This goes further than
+- `links` — every relative markdown link across `wiki/`, `AGENTS.md` and
+  `.claude/` resolves. Fully general, which is why this one reaches into
+  `.claude/` when the name-matching checks deliberately don't: skills
+  there cite nixos-configs' own skills and recipes this repo doesn't
+  have, all of which would be false positives. (This goes further than
   `NireBryce/nixos-configs`'s own script, whose styleguide says outright
   "there's no automated check for this" for file targets. Verified
   2026-09-05 by reading `check_links`, not assumed from a docstring.)
