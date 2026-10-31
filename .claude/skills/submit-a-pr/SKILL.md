@@ -180,9 +180,22 @@ to take further — don't close it, don't delete the branch.
 
 **6. Merge — on yes only:**
 
+Before merging or deleting anything, read the PR's own facts and use them;
+never type a branch name from memory:
+
 ```sh
-gh pr merge <n> --rebase   # single-commit PR
-gh pr merge <n> --merge    # multi-commit PR
+gh pr view <n> --json isCrossRepository,headRefName,headRefOid,baseRefName
+```
+
+Stop and tell the user, merging and deleting nothing, if `isCrossRepository`
+is true, if `headRefName` is `main`, `master` or the repo's default branch, or
+if `headRefName` equals `baseRefName`. Those would aim the delete at a branch
+that is not the PR's own topic branch. Merge with `--match-head-commit
+<headRefOid>`, and delete only `headRefName`.
+
+```sh
+gh pr merge <n> --rebase --match-head-commit <headRefOid>   # single-commit PR
+gh pr merge <n> --merge --match-head-commit <headRefOid>    # multi-commit PR
 ```
 
 **Never pass `--delete-branch`.** That collapses the second confirmation
@@ -193,8 +206,8 @@ whether to delete the branch. On yes:
 
 ```sh
 git checkout main && git pull
-git branch -d <branch-name>
-git push origin --delete <branch-name>
+git branch -d <headRefName>
+git push origin --delete <headRefName>
 ```
 
 On no: leave it, say it's still there. Report the merge commit and the
